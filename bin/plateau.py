@@ -165,11 +165,11 @@ def gen_landscape(protein_df,proteome_file, min_overlap=11, max_step_size=5, min
 
             protein_df.at[r,'landscape'].append(group_landscape)
 
-            # build whole group sequence without proteome file
-            # TODO: add case for grouped peptides with different modifications?
+            # build whole group sequences
             consensus_seq = ''
             consensus_pos = []
             for sequence, sequence_pos in zip(row['grouped_peptides_sequence'][group], row['grouped_peptides_start'][group]):
+                sequence = re.sub(r"\(.*?\)","",sequence)
                 sequence_pos = [i for i in range(sequence_pos, sequence_pos + len(sequence))]
                 for aa, aa_pos in zip(sequence, sequence_pos):
                     if aa_pos not in consensus_pos:
@@ -178,11 +178,7 @@ def gen_landscape(protein_df,proteome_file, min_overlap=11, max_step_size=5, min
                     else:
                         if consensus_seq[consensus_pos.index(aa_pos)] != aa:
                             ('We have a problem here!')
-            protein_df.at[r,'whole_epitopes'].append(consensus_seq)
-       
-            # build whole group sequence with proteome file
-            # prot_seq = get_prot_seg(protein_df.at[r,'accession'], proteome_file)
-            # protein_df.at[r,'whole_epitopes'].append(prot_seq[min(pep_group_start):max(pep_group_end)])  
+            protein_df.at[r,'whole_epitopes'].append(consensus_seq) 
 
     return protein_df
 
@@ -222,9 +218,11 @@ def get_consensus_epitopes(protein_df, min_epi_len=9):
                     pep_in_prot_end = pep_in_prot_start + current_pep_length
 
                     # get consensus epitopes
-                    whole_epitope_wo_mod =re.sub(r"\(.*?\)","",protein_df.at[r,'whole_epitopes'][group])
+                    whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     break
+    return protein_df
+
 
 def gen_epitope(input_tsv, proteome_file, min_overlap=11, max_step_size=5,min_epi_len=9):
     '''
@@ -247,8 +245,6 @@ def gen_epitope(input_tsv, proteome_file, min_overlap=11, max_step_size=5,min_ep
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, min_epi_len)
     protein_df = gen_landscape(protein_df,proteome_file)
     protein_df = get_consensus_epitopes(protein_df, min_epi_len=9)
-    #protein_df = gen_landscape(protein_df, min_overlap, max_step_size)
-    #protein_df = remove_short_peptides(protein_df, min_epi_len)
     return protein_df
 
 
