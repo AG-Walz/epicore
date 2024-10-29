@@ -276,24 +276,31 @@ def map_pep_core(input_tsv, protein_df):
     MHCquant_out['core_epitopes'] = [[] for _ in range(len(MHCquant_out))]
     
     for r, row in MHCquant_out.iterrows():
-        sequence = row['sequence']
-        # get protein 
-        for accession in row['accessions'].split(';'):
 
-            # dont use sequence here but positions
-            prot_row = protein_df[(protein_df['accession'] == accession)  & protein_df['sequence'].map(lambda x: sequence in x)] 
-            idx = [i for i, x in enumerate(prot_row['sequence'].to_list()[0]) if x == sequence]
+        # get protein 
+        for mapping, accession in enumerate(row['accessions'].split(';')):
+
+            # get start and end index for that group 
+            start = row['start'].split(';')[mapping]
+            end = row['end'].split(';')[mapping]
+            sequence = row['sequence']
+
+            prot_row = protein_df[(protein_df['accession'] == accession) & protein_df['sequence'].map(lambda x: sequence in x)]
+            idx = [i for i, x in enumerate(zip(prot_row['start'].to_list()[0],prot_row['end'].to_list()[0])) if (x[0] == int(start) and x[1] == int(end))]
             if len(idx) > 1:
-                print('The peptide was found ' + str(len(idx)) + ' times.')
                 print(accession)
-                print(sequence)
-                print(idx)
-                # TODO: check this case, can it occur, ...
+                for i in idx:
+                    print(i)
+                    print(prot_row['sequence'].to_list()[0][i])
+                print('The peptide was found ' + str(len(idx)) + ' times.')
 
             mapped_group = prot_row['sequence_group_mapping'].to_list()[0][idx[0]]
-
             MHCquant_out.at[r,'core_epitopes'].append(prot_row['consensus_epitopes'].to_list()[0][mapped_group])
             MHCquant_out.at[r,'whole_epitopes'].append(prot_row['whole_epitopes'].to_list()[0][mapped_group])
+    
+        # convert list to ; separated strings
+        MHCquant_out.at[r,'core_epitopes'] = ';'.join(MHCquant_out.at[r,'core_epitopes'])
+        MHCquant_out.at[r,'whole_epitopes'] = ';'.join(MHCquant_out.at[r,'whole_epitopes'])
     return MHCquant_out
 
 
@@ -312,3 +319,5 @@ if __name__ == "__main__":
     __main__()
 
 # TODO: check filtering of short peptides
+
+
