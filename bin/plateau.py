@@ -251,8 +251,8 @@ def gen_epitope(input_tsv, proteome_file, min_overlap=11, max_step_size=5,min_ep
     # get all proteins and their associated peptides
     protein_df = prot_pep_link(input_tsv)
 
-    protein_df['end'] = protein_df.apply(lambda row: [x for _, x in sorted(zip(row['start'], row['end']))],axis=1) 
-    protein_df['sequence'] = protein_df.apply(lambda row: [x for _, x in sorted(zip(row['start'], row['sequence']))],axis=1) 
+    protein_df['end'] = protein_df.apply(lambda row: [x for _, x in sorted(zip(row['start'], row['end']), key=lambda y: y[0])],axis=1) 
+    protein_df['sequence'] = protein_df.apply(lambda row: [x for _, x in sorted(zip(row['start'], row['sequence']), key=lambda y: y[0])],axis=1) 
     protein_df['start'] = protein_df['start'].apply(lambda x: sorted([int(i) for i in x])) 
 
     # group peptides 
@@ -292,6 +292,7 @@ def map_pep_core(input_tsv, protein_df):
                 for i in idx:
                     print(i)
                     print(prot_row['sequence'].to_list()[0][i])
+                print([[x[0],x[1]] for i, x in enumerate(zip(prot_row['start'].to_list()[0],prot_row['end'].to_list()[0])) if (x[0] == int(start) and x[1] == int(end))])
                 print('The peptide was found ' + str(len(idx)) + ' times.')
 
             mapped_group = prot_row['sequence_group_mapping'].to_list()[0][idx[0]]
@@ -319,5 +320,3 @@ if __name__ == "__main__":
     __main__()
 
 # TODO: check filtering of short peptides
-
-
