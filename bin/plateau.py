@@ -3,6 +3,9 @@ import pandas as pd
 from Bio import SeqIO
 import numpy as np
 import re
+import matplotlib.pyplot as plt
+import matplotlib.ticker as tck
+from matplotlib.ticker import MaxNLocator
 
 def parse_input():
     parser = argparse.ArgumentParser(description='Input File and Parameters')
@@ -198,6 +201,9 @@ def get_consensus_epitopes(protein_df, min_epi_len=9):
         - input DataFrame, with the consensus epitope of each epitope group
     '''
     protein_df['consensus_epitopes'] = [[] for _ in range(len(protein_df))]
+    protein_df['core_epitopes_start'] = [[] for _ in range(len(protein_df))]
+    protein_df['core_epitopes_end'] = [[] for _ in range(len(protein_df))]
+
     for r, row in protein_df.iterrows():
         for group,landscape in enumerate(row['landscape']):
             
@@ -227,6 +233,8 @@ def get_consensus_epitopes(protein_df, min_epi_len=9):
                     # get consensus epitopes
                     whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
+                    protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
+                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group])) 
                     break
                 
                 # if no core with length > min_epi_length
@@ -234,6 +242,8 @@ def get_consensus_epitopes(protein_df, min_epi_len=9):
                     pep_in_prot_start = ce_start_pos
                     pep_in_prot_end = pep_in_prot_start + current_pep_length
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
+                    protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
+                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
 
     return protein_df
 
@@ -288,12 +298,11 @@ def map_pep_core(input_tsv, protein_df):
             prot_row = protein_df[(protein_df['accession'] == accession) & protein_df['sequence'].map(lambda x: sequence in x)]
             idx = [i for i, x in enumerate(zip(prot_row['start'].to_list()[0],prot_row['end'].to_list()[0])) if (x[0] == int(start) and x[1] == int(end))]
             if len(idx) > 1:
-                print(accession)
-                for i in idx:
-                    print(i)
-                    print(prot_row['sequence'].to_list()[0][i])
-                print([[x[0],x[1]] for i, x in enumerate(zip(prot_row['start'].to_list()[0],prot_row['end'].to_list()[0])) if (x[0] == int(start) and x[1] == int(end))])
-                print('The peptide was found ' + str(len(idx)) + ' times.')
+                #check if multiple occurrence due to modification
+                wo_mod = [re.sub(r"\(.*?\)","",prot_row['sequence'].to_list()[0][i]) for i in idx]
+                if len(set(wo_mod)) > 1:
+                    print('Something went wrong with the mapping!')
+                  
 
             mapped_group = prot_row['sequence_group_mapping'].to_list()[0][idx[0]]
             MHCquant_out.at[r,'core_epitopes'].append(prot_row['consensus_epitopes'].to_list()[0][mapped_group])
@@ -305,6 +314,58 @@ def map_pep_core(input_tsv, protein_df):
     return MHCquant_out
 
 
+def vis_prot(protein_df, accession, proteome, plot_path=''):
+    '''
+    input:
+        - protein_df: pandas DataFrame with one protein per row and all core and whole epitopes matched 
+        - accession: accession of protein for visualization
+        - plot_path: location where plot gets saved  
+    '''
+    prot_row = protein_df[(protein_df['accession'] == accession)]
+    prot_seq = get_prot_seg(accession, proteome)
+
+    prot_landscape = [0 for aa in prot_seq]
+
+    fig, ax = plt.subplots(figsize=(6, 2), layout='constrained')
+    ax.yaxis.set_major_locator(tck.MultipleLocator())
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=20))
+    group_landscapes = []
+    group_cores = []
+    max_y = 0
+    for group, landscape in enumerate(prot_row['landscape'].to_list()[0]):
+        group_landscape = [0 for aa in prot_seq]
+        group_core = [0 for aa in prot_seq]
+
+        #get start position
+        group_start = min(prot_row['grouped_peptides_start'].to_list()[0][group])
+        for idx, position in enumerate(landscape):
+            group_landscape[group_start+int(idx)] += position
+        for pos in range(prot_row['core_epitopes_start'].to_list()[0][group],prot_row['core_epitopes_end'].to_list()[0][group]):
+            group_core[pos] += 1
+
+        group_landscapes.append(group_landscape)
+        group_cores.append(group_core)
+
+        if max(group_landscape) > max_y:
+            max_y = max(group_landscape)
+    
+    rgba_red = [1,0,0,1]
+    rgba_red_a = [1,0,0,0.5]
+    rgba_blue = [0,0,1,1]
+    rgba_blue_a = [0,0,1,0.5]
+    for i in range(len(group_landscapes)):
+        if i % 2 == 0:
+            ax.bar(range(len(prot_landscape)),group_landscapes[i],width=1, color=[rgba_red if pos == 1 else rgba_red_a for pos in group_cores[i]])
+        else:
+            ax.bar(range(len(prot_landscape)),group_landscapes[i],width=1, color=[rgba_blue if pos == 1 else rgba_blue_a for pos in group_cores[i]])
+    
+    ax.set_title('Number of peptides mapped to each amino acid position and core epitopes of protein {}'.format(accession))
+    ax.set_xlabel('Position in protein {}'.format(accession))
+    ax.set_ylabel('Number of mapped peptides')
+    print(max_y)
+    plt.show()
+
+
 def __main__():
     args = parse_input()
     mhcquant_out = args.input_tsv
@@ -314,6 +375,7 @@ def __main__():
     out_linked = map_pep_core(mhcquant_out,protein_df)
     protein_df.to_csv('plateau_result.csv')
     out_linked.to_csv('mhcquant_link_groups.csv')
+    vis_prot(protein_df,'sp|P10909|CLUS_HUMAN',fasta_proteome)
 
 
 if __name__ == "__main__":
