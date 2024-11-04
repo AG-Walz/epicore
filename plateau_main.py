@@ -13,7 +13,7 @@ def __main__():
 
     parser = argparse.ArgumentParser(description='Input File and Parameters')
     parser.add_argument('-input_tsv', type=str,
-                        help='PATH to the MHCquant output in tsv format.')
+                        help='PATH to the identification data.')
     parser.add_argument('-proteome', type=str, 
                         help='PATH to the fasta file of the proteome used for identification.')
     parser.add_argument('-min_epi_length', type=int, required=False, default=9,
@@ -28,6 +28,14 @@ def __main__():
                         help='Path to where output tsvs and pdfs should be stored.')
     parser.add_argument('-plateau_csv', type=str, required=False,
                         help='Path to localplateau tsv. If set all input arguments other than -prot_accession, -out and -plateau_csv will be ignored and the peptide coverage and core epitopes of the given proteins will get visualized based on the plateau_csv.')
+    parser.add_argument('-seq_column', type=str, required=True,
+                        help='Header of the input data column, that contains the peptide sequences.')
+    parser.add_argument('-protacc_column', type=str, required=True,
+                        help='Header of the input data column, that contains the protein accession.')
+    parser.add_argument('-pep_position', type=str, required=False,
+                        help='Comma separated string, with the headers of the input data columns, that contain the peptide start and end position in the protein. This is an optional flag and will speed up the process a lot.')
+    parser.add_argument('-input_type', type=str, required=True,
+                        help='File format of the identification data. The flag can be set to CSV, TSV or XLSX.')
     args = parser.parse_args()
 
     mhcquant_out = args.input_tsv
@@ -62,7 +70,7 @@ def __main__():
         #vis_prot(protein_df,'sp|P01024|CO3_HUMAN',fasta_proteome)
         #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
         # class two 
-        #vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
+        vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
         #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
 
         if prot_accession is not None:
