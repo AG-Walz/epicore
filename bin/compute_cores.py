@@ -4,7 +4,7 @@ import pandas as pd
 import re
 
 
-def get_prot_seg(peptide, proteome_file):
+def get_prot_seg(accession, proteome_file):
     '''
     input:
         - accession (str)
@@ -14,7 +14,7 @@ def get_prot_seg(peptide, proteome_file):
     '''
     proteome = SeqIO.parse(open(proteome_file),'fasta')
     for protein in proteome:
-        if protein.id == peptide:
+        if protein.id == accession:
             return protein.seq
 
 
@@ -232,7 +232,7 @@ def get_consensus_epitopes(protein_df, min_epi_len):
     return protein_df
 
 
-def gen_epitope(input_tsv, min_overlap, max_step_size, min_epi_len):
+def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len):
     '''
      input:
         - input_tsv: MHCquant output
@@ -242,8 +242,6 @@ def gen_epitope(input_tsv, min_overlap, max_step_size, min_epi_len):
     output:
         - for each protein: list of core and whole peptides
     '''
-    # get all proteins and their associated peptides
-    protein_df = prot_pep_link(input_tsv)
 
     protein_df['end'] = protein_df.apply(lambda row: [x for _, x in sorted(zip(row['start'], row['end']), key=lambda y: y[0])],axis=1) 
     protein_df['sequence'] = protein_df.apply(lambda row: [x for _, x in sorted(zip(row['start'], row['sequence']), key=lambda y: y[0])],axis=1) 

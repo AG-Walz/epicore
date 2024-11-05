@@ -7,7 +7,7 @@ import ast
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core
 from bin.visualize_protein import vis_prot
-
+from bin.parse_input import parse_input
     
 def __main__():
 
@@ -32,10 +32,14 @@ def __main__():
                         help='Header of the input data column, that contains the peptide sequences.')
     parser.add_argument('-protacc_column', type=str, required=True,
                         help='Header of the input data column, that contains the protein accession.')
-    parser.add_argument('-pep_position', type=str, required=False,
+    parser.add_argument('-pep_position', type=str, required=False,default='',
                         help='Comma separated string, with the headers of the input data columns, that contain the peptide start and end position in the protein. This is an optional flag and will speed up the process a lot.')
     parser.add_argument('-input_type', type=str, required=True,
                         help='File format of the identification data. The flag can be set to CSV, TSV or XLSX.')
+    parser.add_argument('-delimiter', type=str, required=True,
+                        help='Delimiter of entries in columns of input file.')
+    parser.add_argument('-mod_delimiter', type=str, required=True,
+                        help='Delimiter that separates the peptide sequence from modifications.')
     args = parser.parse_args()
 
     mhcquant_out = args.input_tsv
@@ -46,7 +50,21 @@ def __main__():
     prot_accession = args.prot_accession
     out_dir = args.out 
     plateau_csv = args.plateau_csv
+    seq_column = args.seq_column
+    protacc_column = args.protacc_column
+    pep_position = args.pep_position
+    input_type = args.input_type
+    delimiter = args.delimiter
+    mod_delimiter = args.mod_delimiter
+    
+    # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
+    protein_df = parse_input(mhcquant_out, input_type, seq_column, protacc_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
+    
+    # compute the whole and core sequences of the given peptides
 
+    protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length)
+    protein_df.to_csv('prot_startend.csv')
+    '''
     if plateau_csv is None:
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -70,7 +88,7 @@ def __main__():
         #vis_prot(protein_df,'sp|P01024|CO3_HUMAN',fasta_proteome)
         #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
         # class two 
-        vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
+        # vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
         #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
 
         if prot_accession is not None:
@@ -86,9 +104,15 @@ def __main__():
             protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
             protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
             vis_prot(protein_df,accession,fasta_proteome,out_dir + '/' + accession + '.pdf')
+    '''
 
 
 
 
 if __name__ == "__main__":
     __main__()
+
+
+
+#TODO: check if index for positions is correct for plotting etc.
+#TODO: check for peptides with multiple occurrences in protein (Bsp LLLLLLLLLLLL)
