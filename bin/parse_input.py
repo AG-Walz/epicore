@@ -163,9 +163,11 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, 
             accession = protein['accession']
             starts = []
             ends = []
+            updated_peps = []
 
-            for _, peptide in enumerate(peptides):
-                
+            for n_p, peptide in enumerate(peptides):
+                updated_peps.append(peptide)
+
                 # remove modifications in the sequence for the matching step 
                 pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
                 peptide = re.sub(pattern,"",peptide)
@@ -177,6 +179,11 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, 
                     pep_start, pep_end = group_repetitive(pep_start,pep_end)
                     print('CAUTION! The peptide sequence occurs multiple times')
                 if len(pep_start) > 1:
+                    for pos in pep_start[:-1]:
+                        updated_peps.append(peptide)
+                        print(peptide)
+                    
+                    #protein['sequence'].insert(n_p,n_p+1)
                     print('CAUTION! The peptide sequence occurs multiple times at different positions')
                     # TODO add peptide sequence to df
                 
@@ -189,6 +196,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, 
             # collect all start and end positions in the protein
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
+            proteins.at[p, 'sequence'] = updated_peps
     else:
         # if the start and end positions of the peptides is defined in the input evidence file
 
