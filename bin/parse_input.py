@@ -1,7 +1,8 @@
 import pandas as pd 
-from bin.compute_cores import get_prot_seg
 import re
 import numpy as np 
+from Bio import SeqIO
+
 
 def read_id_output(id_output, output_type, seq_column, protacc_column, pep_pos=''):
     '''
@@ -31,11 +32,46 @@ def read_id_output(id_output, output_type, seq_column, protacc_column, pep_pos='
 
     else:
         peptides_df = peptides_df[[protacc_column,seq_column]]
-        
+    
+    peptides_df = peptides_df.astype(str)
     return peptides_df
 
-        
-def compute_pep_pos(peptide, prot_accession, proteome):
+
+def proteome_to_df(proteome):
+    '''
+    input:
+        - proteome: fasta file with the proteome
+    output:
+        - pandas dataframe containing one protein accession and its corresponding sequence per row
+    '''
+    proteome_df = pd.DataFrame(columns=['accession', 'sequence'])
+    proteome = SeqIO.parse(open(proteome),'fasta')
+    for protein in proteome:
+        protein_entry = {'accession':protein.id, 'sequence':str(protein.seq)}
+        proteome_df.loc[len(proteome_df)] = protein_entry
+    print(proteome_df)
+    return proteome_df
+
+
+def get_prot_seq(accession, proteome_df):
+    '''
+    input:
+        - accession (str)
+        - reference proteome (fasta)
+    output:
+        - protein sequence corresponding to accession 
+    '''
+    #protein_seq = proteome_df.loc[proteome_df['accession'] == accession,'sequence'].iloc[0]
+    if (proteome_df['accession'] == accession).any():
+        protein_seq = proteome_df.loc[proteome_df['accession'] == accession,'sequence'].iloc[0]
+    elif proteome_df['accession'].str.contains(accession).any():
+        protein_seq = proteome_df.loc[proteome_df['accession'].str.contains(accession),'sequence'].iloc[0]
+    else:
+        raise Exception('The protein with {} does not occur in the given proteome! Please use the proteome that was used for the identification of the peptides.'.format(accession))
+    return protein_seq    
+
+
+def compute_pep_pos(peptide, prot_accession, proteome_df):
     '''
     input:
         - peptide: sequence of the peptide
@@ -44,21 +80,40 @@ def compute_pep_pos(peptide, prot_accession, proteome):
     output:
         - start position(s) of peptide in protein
         - end position(s) of peptide in protein 
-    '''      
-    prot_seq = get_prot_seg(prot_accession, proteome)
-    pos_list = prot_seq.split(peptide)
-    if len(pos_list) > 2:
-        print('CAUTION! The peptide occurs multiple times.')
-    start = []
-    end = []
-    current_pos = 0
-    for pos in pos_list[:-1]:
-        current_pos += len(pos)
-        start.append(current_pos)
-        end.append(current_pos+len(peptide)-1)
-        current_pos += len(peptide)
+    '''    
+    
+    prot_seq = get_prot_seq(prot_accession, proteome_df)
+    
+    # regular expression for all occurrences of peptide in protein (also overlapping ones) 
+    peptide_search = '(?=' + peptide + ')' 
+    
+    # get all occurrences of the peptide in the protein 
+    pos_list = [[match.start(),match.start()+len(peptide)-1] for match in re.finditer(peptide_search,prot_seq)]
+    if len(pos_list) == 0:
+        raise Exception('The peptide {} does not occur in the protein with accession {} in the proteome you specified, but your input file provides evidence for that! Please use the proteome that was used for the identification of the peptides.'.format(peptide, prot_accession))
+    
+    pos_list = np.array(pos_list)
+    start = pos_list[:,0]
+    end = pos_list[:,1]
+
     return start, end
 
+
+def group_repetitive(starts, ends):
+    '''
+    input:  
+        - starts: list that contains all start positions of the peptide in the protein
+        - end: list that contains all end positions of the peptide in the protein
+    output:
+        - if the the start and end positions only differ by one return the smallest start and highest end value
+          else: starts and ends that were the input
+    '''
+    start_diffs = np.diff(starts)
+    end_diffs = np.diff(ends)
+    if set(start_diffs) == {1} and set(end_diffs) == {1}:
+        return [min(starts)], [max(ends)]
+    else:
+        return starts, ends
 
 
 def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, mod_delimiter, pep_pos=''):
@@ -79,52 +134,83 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, 
                 start positions of peptide in protein
                 end positions of peptide in protein
     '''
+    # load the proteome into a pandas dataframe
+    proteome_df = proteome_to_df(proteome)
+
     if pep_pos == '':
+        # if the start and end positions of the peptides is not defined in the input evidence file 
+
         proteins = pd.DataFrame(columns=[protacc_column, seq_column],dtype=object)
+        proteins = pd.DataFrame(columns=['accession', 'sequence'])
+
+        # create a row for each protein, that contains all peptides matched to the protein in the input evidence file
         for _, peptide in peptides_df.iterrows():
             prot_accessions = peptide[protacc_column].split(delimiter)
             for i, prot_accession in enumerate(prot_accessions):
-                if prot_accession in proteins[protacc_column].values:
-                    proteins.loc[proteins[protacc_column] == prot_accession, seq_column] = proteins.loc[proteins[protacc_column] == prot_accession, seq_column].apply(lambda x: x + [peptide[seq_column]])
+                if prot_accession in proteins['accession'].values:
+                    proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
                 else:
-                    protein_entry = {protacc_column:prot_accession, seq_column:[peptide[seq_column]]}
+                    protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]]}
                     proteins.loc[len(proteins)] = protein_entry
+
+        # add the columns start and end
         proteins['start'] = [[] for _ in range(len(proteins))]
         proteins['end'] = [[] for _ in range(len(proteins))]
+
+        # compute the peptide positions for each peptide of each protein
         for p, protein in proteins.iterrows():
-            peptides = protein[seq_column]
-            accession = protein[protacc_column]
+            peptides = protein['sequence']
+            accession = protein['accession']
             starts = []
             ends = []
+
             for _, peptide in enumerate(peptides):
+                
+                # remove modifications in the sequence for the matching step 
                 pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
                 peptide = re.sub(pattern,"",peptide)
-                pep_start, pep_end = compute_pep_pos(peptide, accession, proteome)
-                if pep_start == []:
-                    print('CAUTION! The peptide sequence does not occur in the protein sequence.')
-                    print(peptide)
-                    print(accession)
+                pep_start, pep_end = compute_pep_pos(peptide, accession, proteome_df)
+
+                if pep_start.size == 0:
+                    raise Exception('The peptide {} does not occur in the protein with accession {} in the proteome you specified, but your input file provides evidence for that! Please use the proteome that was used for the identification of the peptides.'.format(peptide, prot_accession))
+                if pep_start.size > 1:
+                    pep_start, pep_end = group_repetitive(pep_start,pep_end)
+                    print('CAUTION! The peptide sequence occurs multiple times')
+                if len(pep_start) > 1:
+                    print('CAUTION! The peptide sequence occurs multiple times at different positions')
+                    # TODO add peptide sequence to df
+                
+                # collect all start and end positions of the peptide in the protein
                 for start in pep_start:
                     starts.append(start)
                 for end in pep_end:
                     ends.append(end)
+            
+            # collect all start and end positions in the protein
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
     else:
-        peptides_df = peptides_df[['accessions','sequence', 'start', 'end']]
+        # if the start and end positions of the peptides is defined in the input evidence file
+
+        # get columns that contain start and end position 
+        pep_start = pep_pos.split(',')[0]
+        pep_end = pep_pos.split(',')[1]
+        proteins = pd.DataFrame([protacc_column,seq_column, pep_start, pep_end],dtype=object)
         proteins = pd.DataFrame(columns=['accession', 'sequence', 'start','end'])
 
         for _, peptide in peptides_df.iterrows():
+
             # get all proteins associated with the peptide
-            prot_accessions = peptide['accessions'].split(';')
+            prot_accessions = peptide[protacc_column].split(delimiter)
             for i, prot_accession in enumerate(prot_accessions):
                 if prot_accession in proteins['accession'].values:
-                    proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide['sequence']])
-                    proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [int(pos) for pos in [peptide['start'].split(';')[i]]])
-                    proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [int(pos) for pos in [peptide['end'].split(';')[i]]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [int(pos) for pos in [peptide[pep_start].split(delimiter)[i]]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [int(pos) for pos in [peptide[pep_end].split(delimiter)[i]]])
                 else:
-                    protein_entry = {'accession':prot_accession, 'sequence':[peptide['sequence']], 'start':[int(pos) for pos in [peptide['start'].split(';')[i]]], 'end':[int(pos) for pos in [peptide['end'].split(';')[i]]]}
+                    protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[int(pos) for pos in [peptide[pep_start].split(delimiter)[i]]], 'end':[int(pos) for pos in [peptide[pep_end].split(delimiter)[i]]]}
                     proteins.loc[len(proteins)] = protein_entry
+
     return proteins
 
 def parse_input(input, input_type, seq_column, protacc_column, delimiter, proteome, mod_delimiter, pep_pos=''):

@@ -15,7 +15,13 @@ def get_prot_seg(accession, proteome_file):
     proteome = SeqIO.parse(open(proteome_file),'fasta')
     for protein in proteome:
         if protein.id == accession:
-            return protein.seq
+            return str(protein.seq)
+    proteome = SeqIO.parse(open(proteome_file),'fasta')
+    for protein in proteome:
+        if accession in protein.id:
+            return str(protein.seq)
+    print('CAUTION! The protein with {} does not occur in the proteom. Check if the correct proteome is being used.'.format(accession))
+    
 
 
 def prot_pep_link(input_tsv):

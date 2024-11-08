@@ -36,7 +36,7 @@ def __main__():
                         help='Comma separated string, with the headers of the input data columns, that contain the peptide start and end position in the protein. This is an optional flag and will speed up the process a lot.')
     parser.add_argument('-input_type', type=str, required=True,
                         help='File format of the identification data. The flag can be set to CSV, TSV or XLSX.')
-    parser.add_argument('-delimiter', type=str, required=True,
+    parser.add_argument('-delimiter', type=str, required=False,default=None,
                         help='Delimiter of entries in columns of input file.')
     parser.add_argument('-mod_delimiter', type=str, required=True,
                         help='Delimiter that separates the peptide sequence from modifications.')
@@ -63,7 +63,10 @@ def __main__():
     # compute the whole and core sequences of the given peptides
 
     protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length)
-    protein_df.to_csv('prot_startend.csv')
+    #shutil.rmtree(out_dir)
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+    protein_df.to_csv(out_dir + '/plateau.csv')
     '''
     if plateau_csv is None:
         if not os.path.exists(out_dir):
