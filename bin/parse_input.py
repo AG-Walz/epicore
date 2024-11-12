@@ -134,11 +134,12 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, 
                 start positions of peptide in protein
                 end positions of peptide in protein
     '''
-    # load the proteome into a pandas dataframe
-    proteome_df = proteome_to_df(proteome)
 
     if pep_pos == '':
         # if the start and end positions of the peptides is not defined in the input evidence file 
+        # 
+        # load the proteome into a pandas dataframe
+        proteome_df = proteome_to_df(proteome)
 
         proteins = pd.DataFrame(columns=[protacc_column, seq_column],dtype=object)
         proteins = pd.DataFrame(columns=['accession', 'sequence'])
@@ -177,15 +178,17 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, 
                     raise Exception('The peptide {} does not occur in the protein with accession {} in the proteome you specified, but your input file provides evidence for that! Please use the proteome that was used for the identification of the peptides.'.format(peptide, prot_accession))
                 if pep_start.size > 1:
                     pep_start, pep_end = group_repetitive(pep_start,pep_end)
-                    print('CAUTION! The peptide sequence occurs multiple times')
+                    #print('CAUTION! The peptide sequence occurs multiple times')
+
                 if len(pep_start) > 1:
-                    for pos in pep_start[:-1]:
+                    for _ in pep_start[:-1]:
                         updated_peps.append(peptide)
                         print(peptide)
                     
-                    #protein['sequence'].insert(n_p,n_p+1)
-                    print('CAUTION! The peptide sequence occurs multiple times at different positions')
-                    # TODO add peptide sequence to df
+                    #print('CAUTION! The peptide sequence occurs multiple times at different positions')
+                else:
+                    print('CAUTION! The peptide sequence {} is part of a repetitive region and will be used as evidence of the entire repetitive region.'.format(peptide))
+                    # TODO: repetitive region: write start and end position to evidence file and add to visualization
                 
                 # collect all start and end positions of the peptide in the protein
                 for start in pep_start:
