@@ -183,11 +183,11 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, 
                 if len(pep_start) > 1:
                     for _ in pep_start[:-1]:
                         updated_peps.append(peptide)
-                        print(peptide)
                     
                     #print('CAUTION! The peptide sequence occurs multiple times at different positions')
-                else:
+                    #else:
                     print('CAUTION! The peptide sequence {} is part of a repetitive region and will be used as evidence of the entire repetitive region.'.format(peptide))
+                    print(accession)
                     # TODO: repetitive region: write start and end position to evidence file and add to visualization
                 
                 # collect all start and end positions of the peptide in the protein

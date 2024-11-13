@@ -57,6 +57,15 @@ def __main__():
     delimiter = args.delimiter
     mod_delimiter = args.mod_delimiter
     
+    # check if all input paths exist
+    if not os.path.isfile(mhcquant_out):
+        raise Exception('The given evidence file does not exist.')
+    if not os.path.isfile(fasta_proteome):
+        raise Exception('The given proteome file does not exist.')
+    # check if the input file type is supported
+    if not (input_type == 'CSV' or input_type == 'TSV' or input_type == 'XLSX'):
+        raise Exception('The defined input type is not defined. Please change the input type to one of the following file types: CSV, TSV or XLSX')
+
     # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
     protein_df = parse_input(mhcquant_out, input_type, seq_column, protacc_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
 
@@ -73,8 +82,8 @@ def __main__():
         
         # compute core epitopes and map peptides to cores
         protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length)
-        out_linked = map_pep_core(mhcquant_out,protein_df)
         protein_df.to_csv(out_dir + '/plateau_result.csv')
+        out_linked = map_pep_core(mhcquant_out,protein_df,delimiter)
         out_linked.to_csv(out_dir + '/evidence_link_groups.csv')
         
         # visualize result - examples
@@ -112,3 +121,4 @@ if __name__ == "__main__":
 
 
 #TODO: check if index for positions is correct for plotting etc.
+

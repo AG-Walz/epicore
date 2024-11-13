@@ -231,6 +231,7 @@ def get_consensus_epitopes(protein_df, min_epi_len):
                 if intensity == intens[-1]:
                     pep_in_prot_start = ce_start_pos
                     pep_in_prot_end = pep_in_prot_start + current_pep_length
+                    whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
                     protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
