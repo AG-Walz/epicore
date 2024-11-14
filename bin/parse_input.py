@@ -2,9 +2,10 @@ import pandas as pd
 import re
 import numpy as np 
 from Bio import SeqIO
+import os 
 
 
-def read_id_output(id_output, output_type, seq_column, protacc_column, pep_pos=''):
+def read_id_output(id_output, seq_column, protacc_column, pep_pos=''):
     '''
     input:
         - id_output: file that contains identification output
@@ -16,15 +17,19 @@ def read_id_output(id_output, output_type, seq_column, protacc_column, pep_pos='
     output:
         - peptides_df: pandas dataframe containing the columns sequence and protein accession (and optional start and stop column) of input file
     '''
-    if output_type == 'CSV':
+    
+    ext = os.path.splitext(id_output)[1]
+    if ext == '.csv':
         peptides_df = pd.read_csv(id_output, delimiter=',')
-    elif output_type == 'TSV':
+    elif ext == '.tsv':
         peptides_df = pd.read_csv(id_output, delimiter='\t')
-    elif output_type == 'XLSX':
-        print('xlsx')
+    elif ext == '.xlsx':
         peptides_df = pd.read_excel(id_output)
+    else:
+        raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
 
     if pep_pos != '':
+
         # read in start and end position if information is provided
         start = pep_pos.split(',')[0]
         end = pep_pos.split(',')[1]
@@ -224,7 +229,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, 
 
     return proteins
 
-def parse_input(input, input_type, seq_column, protacc_column, delimiter, proteome, mod_delimiter, pep_pos=''):
+def parse_input(input, seq_column, protacc_column, delimiter, proteome, mod_delimiter, pep_pos=''):
     '''
     input:
         - input: output file of search engine
@@ -244,9 +249,9 @@ def parse_input(input, input_type, seq_column, protacc_column, delimiter, proteo
                 end positions of peptide in protein
     '''
     if pep_pos != '':
-        peptides_df = read_id_output(input, input_type, seq_column, protacc_column,pep_pos)
+        peptides_df = read_id_output(input, seq_column, protacc_column,pep_pos)
         protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, mod_delimiter, pep_pos)
     else:
-        peptides_df = read_id_output(input, input_type, seq_column, protacc_column)
+        peptides_df = read_id_output(input, seq_column, protacc_column)
         protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, delimiter, proteome, mod_delimiter)
     return protein_df

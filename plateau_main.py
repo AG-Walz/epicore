@@ -34,8 +34,6 @@ def __main__():
                         help='Header of the input data column, that contains the protein accession.')
     parser.add_argument('-pep_position', type=str, required=False,default='',
                         help='Comma separated string, with the headers of the input data columns, that contain the peptide start and end position in the protein. This is an optional flag and will speed up the process a lot.')
-    parser.add_argument('-input_type', type=str, required=True,
-                        help='File format of the identification data. The flag can be set to CSV, TSV or XLSX.')
     parser.add_argument('-delimiter', type=str, required=False,default=None,
                         help='Delimiter of entries in columns of input file.')
     parser.add_argument('-mod_delimiter', type=str, required=True,
@@ -53,7 +51,6 @@ def __main__():
     seq_column = args.seq_column
     protacc_column = args.protacc_column
     pep_position = args.pep_position
-    input_type = args.input_type
     delimiter = args.delimiter
     mod_delimiter = args.mod_delimiter
     
@@ -62,12 +59,9 @@ def __main__():
         raise Exception('The given evidence file does not exist.')
     if not os.path.isfile(fasta_proteome):
         raise Exception('The given proteome file does not exist.')
-    # check if the input file type is supported
-    if not (input_type == 'CSV' or input_type == 'TSV' or input_type == 'XLSX'):
-        raise Exception('The defined input type is not defined. Please change the input type to one of the following file types: CSV, TSV or XLSX')
 
     # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
-    protein_df = parse_input(mhcquant_out, input_type, seq_column, protacc_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
+    protein_df = parse_input(mhcquant_out, seq_column, protacc_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
 
     if plateau_csv is None:
         if not os.path.exists(out_dir):
