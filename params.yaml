@@ -1,0 +1,16 @@
+parameters:
+  mhcquant_out: test_data/DN02_Brain_class2.tsv
+  fasta_proteome: test_data/spHUMANwoi_201014_validated.fasta
+  seq_column: sequence
+  protacc_column: accessions
+  start_column: start
+  end_column: end
+  out_dir: Brain_class2_mhcquant
+  mod_delimiter: (,)
+  delimiter: ;
+  prot_accession: sp|P10909|CLUS_HUMAN
+  plateau_csv: 
+  min_overlap: 11
+  max_step_size: 5
+  min_epi_length: 9
+

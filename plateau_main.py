@@ -3,15 +3,32 @@ import os
 import shutil
 import pandas as pd 
 import ast
+import yaml
 
-from bin.params import *
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core
 from bin.visualize_protein import vis_prot
 from bin.parse_input import parse_input
 
 def __main__():
-    
+
+    # read parameters defined in yaml file 
+    with open('params.yaml','r') as yaml_file:
+        params = yaml.safe_load(yaml_file)
+    min_epi_length = params['parameters']['min_epi_length']
+    min_overlap = params['parameters']['min_overlap']
+    max_step_size = params['parameters']['max_step_size']
+    mhcquant_out = params['parameters']['mhcquant_out']
+    fasta_proteome = params['parameters']['fasta_proteome']
+    seq_column = params['parameters']['seq_column']
+    protacc_column = params['parameters']['protacc_column']
+    delimiter = params['parameters']['delimiter']
+    mod_delimiter = params['parameters']['mod_delimiter']
+    plateau_csv = params['parameters']['plateau_csv']
+    out_dir = params['parameters']['out_dir']
+    prot_accession = params['parameters']['prot_accession']
+
+
     pep_position = ''
 
     # check if all input paths exist
@@ -46,8 +63,8 @@ def __main__():
         #vis_prot(protein_df,'sp|P01024|CO3_HUMAN',fasta_proteome)
         #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
         # class two 
-        # vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
-        #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
+        vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
+        vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
 
         if prot_accession is not None:
             for accession in prot_accession.split(','):
