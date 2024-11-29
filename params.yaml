@@ -1,6 +1,4 @@
 parameters:
-  mhcquant_out: test_data/DN02_Brain_class2.tsv
-  fasta_proteome: test_data/spHUMANwoi_201014_validated.fasta
   seq_column: sequence
   protacc_column: accessions
   start_column: start

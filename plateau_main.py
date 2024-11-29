@@ -12,14 +12,28 @@ from bin.parse_input import parse_input
 
 def __main__():
 
+    parser = argparse.ArgumentParser(description='Input File and Parameters')
+    parser.add_argument('-input_tsv', type=str,
+                        help='PATH to the evidence file.')
+    parser.add_argument('-proteome', type=str, 
+                        help='PATH to the fasta file of the proteome used for identification.')
+    parser.add_argument('-params_file', type=str, required=False, default=9,
+                        help='PATH to the params.yaml file.')
+    args = parser.parse_args()
+
+    evidence_file = args.input_tsv
+    fasta_proteome = args.proteome
+    params_file = args.params_file
+
     # read parameters defined in yaml file 
-    with open('params.yaml','r') as yaml_file:
+    with open(params_file,'r') as yaml_file:
         params = yaml.safe_load(yaml_file)
+
+    print(params)
+
     min_epi_length = params['parameters']['min_epi_length']
     min_overlap = params['parameters']['min_overlap']
     max_step_size = params['parameters']['max_step_size']
-    mhcquant_out = params['parameters']['mhcquant_out']
-    fasta_proteome = params['parameters']['fasta_proteome']
     seq_column = params['parameters']['seq_column']
     protacc_column = params['parameters']['protacc_column']
     delimiter = params['parameters']['delimiter']
@@ -32,13 +46,13 @@ def __main__():
     pep_position = ''
 
     # check if all input paths exist
-    if not os.path.isfile(mhcquant_out):
+    if not os.path.isfile(evidence_file):
         raise Exception('The given evidence file does not exist.')
     if not os.path.isfile(fasta_proteome):
         raise Exception('The given proteome file does not exist.')
 
     # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
-    protein_df = parse_input(mhcquant_out, seq_column, protacc_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
+    protein_df = parse_input(evidence_file, seq_column, protacc_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
 
     if plateau_csv is None:
         if not os.path.exists(out_dir):
@@ -54,7 +68,7 @@ def __main__():
         # compute core epitopes and map peptides to cores
         protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length)
         protein_df.to_csv(out_dir + '/plateau_result.csv')
-        out_linked = map_pep_core(mhcquant_out,protein_df,delimiter)
+        out_linked = map_pep_core(evidence_file,protein_df,delimiter)
         out_linked.to_csv(out_dir + '/evidence_link_groups.csv')
         
         # visualize result - examples
