@@ -10,7 +10,6 @@ The tool can be used to identify and quantify shared consensus epitopes.
 3. Enter the following command:
     ```
     python3 plateau_main.py -input_tsv <EVIDENCE_FILE> -proteome <PROTEOME>.fasta -params params.yaml
-    python3 plateau_main.py 
     ```
 
 #### First time set up 
@@ -42,8 +41,6 @@ parameters:
 The description of each parameter can be found in the table below.
 | Parameter | Description |
 | --- | --- |
-| mhcquant_out | Defines the path to the evidence file. |
-| fasta_proteome | Defines the path to the fasta file containing the proteome used used by the search engine. |
 | max_step_size | Defines the maximal step size of two peptdes to still be grouped to the same core. If the start positions of two peptides differ by that number the peptides are only grouped together if they overlap by a minimum of min_overlap amino acids. |
 | min_overlap | Defines the minimal overlap between two epitopes to still be grouped together if the start position between both epitopes differ more than max step size. |
 | min_epi_length | Defines the minimum epitope length. This is the minimal length a core epitope has to have. If for a group the whole sequence is shorter than the minimum epitope length the core will be defined as the whole sequence.| 

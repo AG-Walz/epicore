@@ -36,6 +36,7 @@ def __main__():
     max_step_size = params['parameters']['max_step_size']
     seq_column = params['parameters']['seq_column']
     protacc_column = params['parameters']['protacc_column']
+    intensity_column = params['parameters']['intensity_column']
     delimiter = params['parameters']['delimiter']
     mod_delimiter = params['parameters']['mod_delimiter']
     plateau_csv = params['parameters']['plateau_csv']
@@ -52,7 +53,7 @@ def __main__():
         raise Exception('The given proteome file does not exist.')
 
     # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
-    protein_df = parse_input(evidence_file, seq_column, protacc_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
+    protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
 
     if plateau_csv is None:
         if not os.path.exists(out_dir):
@@ -77,8 +78,8 @@ def __main__():
         #vis_prot(protein_df,'sp|P01024|CO3_HUMAN',fasta_proteome)
         #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
         # class two 
-        vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
-        vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
+        #vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
+        #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
 
         if prot_accession is not None:
             for accession in prot_accession.split(','):

@@ -155,14 +155,22 @@ def gen_landscape(protein_df):
     protein_df['whole_epitopes'] = [[] for _ in range(len(protein_df))]
 
     for r, row in protein_df.iterrows():
+        seen_pep={}
         for group, [pep_group_start, pep_group_end] in enumerate(zip(row['grouped_peptides_start'], row['grouped_peptides_end'])):
+    
             start_idx = pep_group_start[0]
             group_landscape = [0 for _ in range(max(pep_group_end)+1-min(pep_group_start))]#np.zeros(max(pep_group_end)+1-min(pep_group_start)) 
-            for pep_start, pep_end in zip(pep_group_start, pep_group_end):
-                for pos in range(pep_start, pep_end+1):
-                    # only for identification, for quantification add intensity here
-                    group_landscape[pos-start_idx] += 1
-
+            
+            for pep_idx, pep_pos in enumerate(zip(pep_group_start, pep_group_end)):
+                pep_start = pep_pos[0]
+                pep_end = pep_pos[1]
+                if str(pep_start) + '-' + str(pep_end) not in seen_pep:
+                    seen_pep[str(pep_start) + '-' + str(pep_end)] = [row['grouped_peptides_sequence'][group][pep_idx]]
+                    for pos in range(pep_start, pep_end+1):
+                        # only for identification, for quantification add intensity here
+                        group_landscape[pos-start_idx] += 1
+                else: 
+                    seen_pep[str(pep_start) + '-' + str(pep_end)].append(row['grouped_peptides_sequence'][group][pep_idx])
             protein_df.at[r,'landscape'].append(group_landscape)
 
             # build whole group sequences
@@ -179,7 +187,7 @@ def gen_landscape(protein_df):
                         if consensus_seq[consensus_pos.index(aa_pos)] != aa:
                             ('Something with the mapping went wrong here!')
             protein_df.at[r,'whole_epitopes'].append(consensus_seq) 
-
+        
     return protein_df
 
 
