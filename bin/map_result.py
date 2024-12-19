@@ -14,14 +14,14 @@ def map_pep_core(input_tsv, protein_df, delimiter, position_boolean=False):
     MHCquant_out = pd.read_csv(input_tsv, delimiter='\t')
     MHCquant_out['whole_epitopes'] = [[] for _ in range(len(MHCquant_out))]
     MHCquant_out['core_epitopes'] = [[] for _ in range(len(MHCquant_out))]
+    MHCquant_out['proteome_occurence'] = [[] for _ in range(len(MHCquant_out))]
+
+
     
     for r, row in MHCquant_out.iterrows():
-        
-        # seen keeps track of how often the peptide of the row is mapped to the same accession in a row
-        seen = {}
 
         # loop over all proteins mapped to the peptide in the evidence file 
-        for mapping, accession in enumerate(row['accessions'].split(';')):
+        for mapping, accession in enumerate(row['accessions'].split(delimiter)):
             
             if position_boolean:
 
@@ -46,18 +46,7 @@ def map_pep_core(input_tsv, protein_df, delimiter, position_boolean=False):
                 
             else:
 
-                # if the peptide of the row is mapped to the same protein multiple times idx_pos keeps track 
-                # which mapping gets processed currently  
-                idx_pos = 0
-
                 sequence = row['sequence']
-
-                # get mapping that is processed currently
-                if str(sequence) + str(accession) not in seen:
-                    seen[str(sequence) + str(accession)] = 1
-                else:
-                    idx_pos = seen[str(sequence) + str(accession)]
-                    seen[str(sequence) + str(accession)] += 1
 
                 # get protein row that contains the current peptide sequence and is associated with the protein from the evidence file
                 prot_row = protein_df[(protein_df['accession'] == accession) & protein_df['sequence'].map(lambda x: sequence in x)]
@@ -73,9 +62,13 @@ def map_pep_core(input_tsv, protein_df, delimiter, position_boolean=False):
                  
                 
             # get core and whole epitope associated with the peptide in the evidence file
-            mapped_group = prot_row['sequence_group_mapping'].to_list()[0][idx[idx_pos]]
-            MHCquant_out.at[r,'core_epitopes'].append(prot_row['consensus_epitopes'].to_list()[0][mapped_group])
-            MHCquant_out.at[r,'whole_epitopes'].append(prot_row['whole_epitopes'].to_list()[0][mapped_group])
+            for id in idx:
+                mapped_group = prot_row['sequence_group_mapping'].to_list()[0][id]
+                MHCquant_out.at[r,'core_epitopes'].append(prot_row['consensus_epitopes'].to_list()[0][mapped_group])
+                MHCquant_out.at[r,'whole_epitopes'].append(prot_row['whole_epitopes'].to_list()[0][mapped_group])
+                prot_occurence = accession +':'+ str(prot_row['core_epitopes_start'].to_list()[0][mapped_group]) + '-' + str(prot_row['core_epitopes_end'].to_list()[0][mapped_group])
+                MHCquant_out.at[r,'proteome_occurence'].append(prot_occurence)
+            
 
     
         # convert list to delimiter separated strings
