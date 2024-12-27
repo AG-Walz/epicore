@@ -107,7 +107,6 @@ def compute_pep_pos(peptide, prot_accession, proteome_df):
 
     return start, end
 
-# TODO: each repetitive region max +1 for total counts landscape
 def group_repetitive(starts, ends, peptide, accession, found_repetitive=''):
     '''
     input:  
@@ -160,7 +159,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, del
         proteome_df = proteome_to_df(proteome)
 
         #proteins = pd.DataFrame(columns=[protacc_column, seq_column],dtype=object)
-        proteins = pd.DataFrame(columns=['accession', 'sequence'])
+        proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity'])
 
         # create a row for each protein, that contains all peptides matched to the protein in the input evidence file
         for _, peptide in peptides_df.iterrows():
@@ -171,6 +170,8 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, del
                 if 'DECOY' not in prot_accession:
                     if prot_accession in proteins['accession'].values:
                         proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
+                        proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
+
                     else:
                         protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]]}
                         proteins.loc[len(proteins)] = protein_entry
@@ -184,13 +185,16 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, del
 
             peptides = protein['sequence']
             accession = protein['accession']
+            intensity = protein['intensity']
             starts = []
             ends = []
             updated_peps = []
+            updated_intens = []
 
             for n_p, peptide in enumerate(peptides):
                 updated_peps.append(peptide)
-
+                updated_intens.append(intensity[n_p])
+                
                 # remove modifications in the sequence for the matching step 
                 pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
                 peptide = re.sub(pattern,"",peptide)
@@ -205,9 +209,9 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, del
                 if len(pep_start) > 1:
                     for _ in pep_start[:-1]:
                         updated_peps.append(peptide)
+                        updated_intens.append(intensity[n_p])
                     
                     print('The peptide sequence {} occurs multiple times in {}. It will be used as evidence for all occurrences.'.format(peptide, accession))
-                    # TODO: repetitive region: write start and end position to evidence file and add to visualization
                 
                 # collect all start and end positions of the peptide in the protein
                 for start in pep_start:
@@ -219,6 +223,8 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, del
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
             proteins.at[p, 'sequence'] = updated_peps
+            proteins.at[p,'intensity'] = updated_intens
+
             proteins.to_csv('proteins_all_repetitive.csv')
 
     else:
@@ -228,7 +234,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, del
         pep_start = pep_pos.split(',')[0]
         pep_end = pep_pos.split(',')[1]
         proteins = pd.DataFrame([protacc_column,seq_column, pep_start, pep_end],dtype=object)
-        proteins = pd.DataFrame(columns=['accession', 'sequence', 'start','end'])
+        proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'start','end'])
 
         for _, peptide in peptides_df.iterrows():
 
@@ -237,10 +243,11 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, del
             for i, prot_accession in enumerate(prot_accessions):
                 if prot_accession in proteins['accession'].values:
                     proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
                     proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [int(pos) for pos in [peptide[pep_start].split(delimiter)[i]]])
                     proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [int(pos) for pos in [peptide[pep_end].split(delimiter)[i]]])
                 else:
-                    protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[int(pos) for pos in [peptide[pep_start].split(delimiter)[i]]], 'end':[int(pos) for pos in [peptide[pep_end].split(delimiter)[i]]]}
+                    protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'start':[int(pos) for pos in [peptide[pep_start].split(delimiter)[i]]], 'end':[int(pos) for pos in [peptide[pep_end].split(delimiter)[i]]]}
                     proteins.loc[len(proteins)] = protein_entry
 
     return proteins
@@ -266,15 +273,13 @@ def parse_input(input, seq_column, protacc_column, intensity_column, delimiter, 
     '''
     if pep_pos != '':
         peptides_df = read_id_output(input, seq_column, protacc_column, intensity_column, delimiter, pep_pos)
-        print(peptides_df)
         protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, delimiter, proteome, mod_delimiter, pep_pos)
     else:
         peptides_df = read_id_output(input, seq_column, protacc_column, intensity_column, delimiter)
-        print(peptides_df)
         protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, delimiter, proteome, mod_delimiter)
     return protein_df
 
 
 
-## TODO: remove all DECOY hits
+
 ## TODO: add intensities for all accessions, not just the first

@@ -24,8 +24,8 @@ def get_prot_seg(accession, proteome_file):
     
 
 
-def prot_pep_link(input_tsv):
-    '''
+'''def prot_pep_link(input_tsv, seq_column, protacc_column, delimiter, intensity_column=''):
+    
     input:
         - input_tsv
     output:
@@ -35,7 +35,7 @@ def prot_pep_link(input_tsv):
                 peptides matched 
                 start positions of peptide in protein
                 end positions of peptide in protein
-    '''
+    
 
     # read MHCquant output to pd.DataFrame
     peptides = pd.read_csv(input_tsv, delimiter='\t')
@@ -44,17 +44,17 @@ def prot_pep_link(input_tsv):
 
     for _, peptide in peptides.iterrows():
         # get all proteins associated with the peptide
-        prot_accessions = peptide['accessions'].split(';')
+        prot_accessions = peptide[protacc_column].split(delimiter)
         for i, prot_accession in enumerate(prot_accessions):
             if prot_accession in proteins['accession'].values:
                 proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide['sequence']])
-                proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [int(pos) for pos in [peptide['start'].split(';')[i]]])
-                proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [int(pos) for pos in [peptide['end'].split(';')[i]]])
+                proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [int(pos) for pos in [peptide['start'].split(delimiter)[i]]])
+                proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [int(pos) for pos in [peptide['end'].split(delimiter)[i]]])
             else:
-                protein_entry = {'accession':prot_accession, 'sequence':[peptide['sequence']], 'start':[int(pos) for pos in [peptide['start'].split(';')[i]]], 'end':[int(pos) for pos in [peptide['end'].split(';')[i]]]}
+                protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]],'start':[int(pos) for pos in [peptide['start'].split(delimiter)[i]]], 'end':[int(pos) for pos in [peptide['end'].split(delimiter)[i]]]}
                 proteins.loc[len(proteins)] = protein_entry
 
-    return proteins
+    return proteins'''
 
 
 def remove_short_peptides(protein_df, min_epi_len):
@@ -92,52 +92,73 @@ def group_peptides(protein_df, min_overlap, max_step_size):
     protein_df['grouped_peptides_start'] = [[] for _ in range(len(protein_df))]
     protein_df['grouped_peptides_end'] = [[] for _ in range(len(protein_df))]
     protein_df['grouped_peptides_sequence'] = [[] for _ in range(len(protein_df))]
+    protein_df['grouped_peptides_intensity'] = [[] for _ in range(len(protein_df))]
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
+    protein_df['core_epitopes_intensity'] = [[] for _ in range(len(protein_df))]
 
     for r,row in protein_df.iterrows():
         
         start_pos =  row['start']
         end_pos = row['end']
         sequences = row['sequence']
+        intensity = row['intensity']
+
         grouped_peptides_start = []
         grouped_peptides_end = []
         grouped_peptides_sequence = []
+        grouped_peptides_intensity = []
         n_jumps = 0
         mapping = []
+        core_intensity = 0
+
 
         for i in range(len(start_pos)-1):
 
             grouped_peptides_start.append(start_pos[i])
             grouped_peptides_end.append(end_pos[i])
             grouped_peptides_sequence.append(sequences[i])
+            grouped_peptides_intensity.append(intensity[i])
 
             step_size = start_pos[i+1] - start_pos[i]
             pep_length = end_pos[i] - start_pos[i]
             mapping.append(n_jumps)
+            core_intensity += float(intensity[i])
+
             # create new peptide group after each jump
             if (step_size >= max_step_size) and (pep_length <= step_size + min_overlap):
                 protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
                 protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
                 protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
+                protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
+                protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
+
                 n_jumps += 1
                 grouped_peptides_end = []
                 grouped_peptides_start = []
                 grouped_peptides_sequence = []
+                core_intensity = 0
 
         # special case for last peptide match of protein
         if len(grouped_peptides_end) == 0:
             protein_df.at[r,'grouped_peptides_start'].append([start_pos[-1]])
             protein_df.at[r,'grouped_peptides_end'].append([end_pos[-1]])
             protein_df.at[r,'grouped_peptides_sequence'].append([sequences[-1]])
+            protein_df.at[r,'grouped_peptides_intensity'].append([intensity[-1]])
+            protein_df.at[r,'core_epitopes_intensity'].append(intensity[-1])
             mapping.append(n_jumps)
         else:
             grouped_peptides_start.append(start_pos[-1])
             grouped_peptides_end.append(end_pos[-1])
             grouped_peptides_sequence.append(sequences[-1])
+            grouped_peptides_intensity.append(intensity[-1])
+            core_intensity += float(intensity[-1])
             protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
             protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
             protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
+            protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
+            protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
             mapping.append(n_jumps)
+
         protein_df.at[r,'sequence_group_mapping'] = mapping
 
     return protein_df
