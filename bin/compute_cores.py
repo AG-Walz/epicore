@@ -95,7 +95,9 @@ def group_peptides(protein_df, min_overlap, max_step_size):
     protein_df['grouped_peptides_intensity'] = [[] for _ in range(len(protein_df))]
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_intensity'] = [[] for _ in range(len(protein_df))]
+    protein_df['relative_core_intensity'] = [[] for _ in range(len(protein_df))]
 
+    total_file_intensity = 0
     for r,row in protein_df.iterrows():
         
         start_pos =  row['start']
@@ -123,6 +125,7 @@ def group_peptides(protein_df, min_overlap, max_step_size):
             pep_length = end_pos[i] - start_pos[i]
             mapping.append(n_jumps)
             core_intensity += float(intensity[i])
+            total_file_intensity += float(intensity[i])
 
             # create new peptide group after each jump
             if (step_size >= max_step_size) and (pep_length <= step_size + min_overlap):
@@ -145,6 +148,7 @@ def group_peptides(protein_df, min_overlap, max_step_size):
             protein_df.at[r,'grouped_peptides_sequence'].append([sequences[-1]])
             protein_df.at[r,'grouped_peptides_intensity'].append([intensity[-1]])
             protein_df.at[r,'core_epitopes_intensity'].append(intensity[-1])
+            total_file_intensity += float(intensity[-1])
             mapping.append(n_jumps)
         else:
             grouped_peptides_start.append(start_pos[-1])
@@ -152,6 +156,7 @@ def group_peptides(protein_df, min_overlap, max_step_size):
             grouped_peptides_sequence.append(sequences[-1])
             grouped_peptides_intensity.append(intensity[-1])
             core_intensity += float(intensity[-1])
+            total_file_intensity += float(intensity[-1])
             protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
             protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
             protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
@@ -160,7 +165,8 @@ def group_peptides(protein_df, min_overlap, max_step_size):
             mapping.append(n_jumps)
 
         protein_df.at[r,'sequence_group_mapping'] = mapping
-
+        print(total_file_intensity)
+    protein_df['relative_core_intensity'] = protein_df['core_epitopes_intensity'].apply(lambda x: [float(ints)/total_file_intensity for ints in x])
     return protein_df
 
 
