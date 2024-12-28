@@ -1,63 +1,12 @@
-from Bio import SeqIO
+"""
+Computes core epitopes, by grouping overlapping peptides, together, building a landscape for each group and identifying plateaus with a defined minimal length in each landscape. 
+"""
+
 import numpy as np
-import pandas as pd
 import re
 
-
-def get_prot_seg(accession, proteome_file):
-    '''
-    input:
-        - accession (str)
-        - reference proteome (fasta)
-    output:
-        - protein sequence corresponding to accession 
-    '''
-    proteome = SeqIO.parse(open(proteome_file),'fasta')
-    for protein in proteome:
-        if protein.id == accession:
-            return str(protein.seq)
-    proteome = SeqIO.parse(open(proteome_file),'fasta')
-    for protein in proteome:
-        if accession in protein.id:
-            return str(protein.seq)
-    print('CAUTION! The protein with {} does not occur in the proteom. Check if the correct proteome is being used.'.format(accession))
-    
-
-
-'''def prot_pep_link(input_tsv, seq_column, protacc_column, delimiter, intensity_column=''):
-    
-    input:
-        - input_tsv
-    output:
-        - pandas DataFrame
-            > row for each protein accession in input:
-                protein accession 
-                peptides matched 
-                start positions of peptide in protein
-                end positions of peptide in protein
-    
-
-    # read MHCquant output to pd.DataFrame
-    peptides = pd.read_csv(input_tsv, delimiter='\t')
-    peptides = peptides[['accessions','sequence', 'start', 'end']]
-    proteins = pd.DataFrame(columns=['accession', 'sequence', 'start','end'])
-
-    for _, peptide in peptides.iterrows():
-        # get all proteins associated with the peptide
-        prot_accessions = peptide[protacc_column].split(delimiter)
-        for i, prot_accession in enumerate(prot_accessions):
-            if prot_accession in proteins['accession'].values:
-                proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide['sequence']])
-                proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [int(pos) for pos in [peptide['start'].split(delimiter)[i]]])
-                proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [int(pos) for pos in [peptide['end'].split(delimiter)[i]]])
-            else:
-                protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]],'start':[int(pos) for pos in [peptide['start'].split(delimiter)[i]]], 'end':[int(pos) for pos in [peptide['end'].split(delimiter)[i]]]}
-                proteins.loc[len(proteins)] = protein_entry
-
-    return proteins'''
-
-
 def remove_short_peptides(protein_df, min_epi_len):
+    # TODO check if necessary
     '''
     input:
         - protein_df: pandas DataFrame, one protein per row
@@ -79,23 +28,28 @@ def remove_short_peptides(protein_df, min_epi_len):
     return protein_df
 
 
-def group_peptides(protein_df, min_overlap, max_step_size):
+def group_peptides(protein_df, min_overlap, max_step_size, intensity=None):
     '''
     input:
         - protein_df: pandas DataFrame, one protein per row
         - min_overlap: minimum overlap length of two epitopes for a consensus epitope
         - max_step_size: maximum distance between the start positions of two epitopes for a consensus epitope
+        - intensity: parameter indicating if intensity column is provided or not
     output:
         - input DataFrame, with the start and end positions and peptide sequences grouped into consensus epitopes
     '''
 
+    # start, end, sequence and intensity of peptides of one group grouped together
     protein_df['grouped_peptides_start'] = [[] for _ in range(len(protein_df))]
     protein_df['grouped_peptides_end'] = [[] for _ in range(len(protein_df))]
     protein_df['grouped_peptides_sequence'] = [[] for _ in range(len(protein_df))]
-    protein_df['grouped_peptides_intensity'] = [[] for _ in range(len(protein_df))]
+    if intensity:
+        protein_df['grouped_peptides_intensity'] = [[] for _ in range(len(protein_df))]
+        # for each peptide group the total and relative intensity of the entire group
+        protein_df['core_epitopes_intensity'] = [[] for _ in range(len(protein_df))]
+        protein_df['relative_core_intensity'] = [[] for _ in range(len(protein_df))]
+    # for each peptide the index of its group
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
-    protein_df['core_epitopes_intensity'] = [[] for _ in range(len(protein_df))]
-    protein_df['relative_core_intensity'] = [[] for _ in range(len(protein_df))]
 
     total_file_intensity = 0
     for r,row in protein_df.iterrows():
@@ -103,15 +57,17 @@ def group_peptides(protein_df, min_overlap, max_step_size):
         start_pos =  row['start']
         end_pos = row['end']
         sequences = row['sequence']
-        intensity = row['intensity']
+        if intensity:
+            intensity = row['intensity']
 
         grouped_peptides_start = []
         grouped_peptides_end = []
         grouped_peptides_sequence = []
-        grouped_peptides_intensity = []
+        if intensity:
+            grouped_peptides_intensity = []
+            core_intensity = 0
         n_jumps = 0
         mapping = []
-        core_intensity = 0
 
 
         for i in range(len(start_pos)-1):
@@ -119,54 +75,60 @@ def group_peptides(protein_df, min_overlap, max_step_size):
             grouped_peptides_start.append(start_pos[i])
             grouped_peptides_end.append(end_pos[i])
             grouped_peptides_sequence.append(sequences[i])
-            grouped_peptides_intensity.append(intensity[i])
+            if intensity:
+                grouped_peptides_intensity.append(intensity[i])
 
             step_size = start_pos[i+1] - start_pos[i]
             pep_length = end_pos[i] - start_pos[i]
             mapping.append(n_jumps)
-            core_intensity += float(intensity[i])
-            total_file_intensity += float(intensity[i])
+            if intensity:
+                core_intensity += float(intensity[i])
+                total_file_intensity += float(intensity[i])
 
             # create new peptide group after each jump
             if (step_size >= max_step_size) and (pep_length <= step_size + min_overlap):
                 protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
                 protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
                 protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
-                protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
-                protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
+                if intensity:
+                    protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
+                    protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
 
                 n_jumps += 1
                 grouped_peptides_end = []
                 grouped_peptides_start = []
                 grouped_peptides_sequence = []
-                core_intensity = 0
+                if intensity:
+                    core_intensity = 0
 
         # special case for last peptide match of protein
         if len(grouped_peptides_end) == 0:
             protein_df.at[r,'grouped_peptides_start'].append([start_pos[-1]])
             protein_df.at[r,'grouped_peptides_end'].append([end_pos[-1]])
             protein_df.at[r,'grouped_peptides_sequence'].append([sequences[-1]])
-            protein_df.at[r,'grouped_peptides_intensity'].append([intensity[-1]])
-            protein_df.at[r,'core_epitopes_intensity'].append(intensity[-1])
-            total_file_intensity += float(intensity[-1])
+            if intensity:
+                protein_df.at[r,'grouped_peptides_intensity'].append([intensity[-1]])
+                protein_df.at[r,'core_epitopes_intensity'].append(intensity[-1])
+                total_file_intensity += float(intensity[-1])
             mapping.append(n_jumps)
         else:
             grouped_peptides_start.append(start_pos[-1])
             grouped_peptides_end.append(end_pos[-1])
             grouped_peptides_sequence.append(sequences[-1])
-            grouped_peptides_intensity.append(intensity[-1])
-            core_intensity += float(intensity[-1])
-            total_file_intensity += float(intensity[-1])
+            if intensity:
+                grouped_peptides_intensity.append(intensity[-1])
+                core_intensity += float(intensity[-1])
+                total_file_intensity += float(intensity[-1])
+                protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
+                protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
             protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
             protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
             protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
-            protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
-            protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
             mapping.append(n_jumps)
 
         protein_df.at[r,'sequence_group_mapping'] = mapping
-        print(total_file_intensity)
-    protein_df['relative_core_intensity'] = protein_df['core_epitopes_intensity'].apply(lambda x: [float(ints)/total_file_intensity for ints in x])
+    if intensity:
+        protein_df['relative_core_intensity'] = protein_df['core_epitopes_intensity'].apply(lambda x: [float(ints)/total_file_intensity for ints in x])
     return protein_df
 
 
@@ -222,6 +184,7 @@ def get_consensus_epitopes(protein_df, min_epi_len):
     '''
     input:
         - protein_df: pandas DataFrame, one protein per row
+        - min_epi_len: minimum length of an epitope
     output:
         - input DataFrame, with the consensus epitope of each epitope group
     '''
@@ -274,13 +237,15 @@ def get_consensus_epitopes(protein_df, min_epi_len):
     return protein_df
 
 
-def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len):
+def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity=False):
     '''
      input:
-        - input_tsv: MHCquant output
+        - input_tsv: evidence file
         - protein_df: pandas DataFrame, one protein per row
         - min_overlap: minimum overlap length of two epitopes for a consensus epitope
         - max_step_size: maximum distance between the start positions of two epitopes for a consensus epitope
+        - min_epi_len: minimum length of an epitope
+        - intensity: parameter indicating if intensity column is provided or not
     output:
         - for each protein: list of core and whole peptides
     '''
@@ -290,7 +255,7 @@ def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len):
     protein_df['start'] = protein_df['start'].apply(lambda x: sorted([int(i) for i in x])) 
 
     # group peptides 
-    protein_df = group_peptides(protein_df, min_overlap, max_step_size)
+    protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity)
     protein_df = gen_landscape(protein_df)
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
 
