@@ -6,28 +6,6 @@ import numpy as np
 import re
 import pandas as pd
 
-def remove_short_peptides(protein_df, min_epi_len):
-    # TODO check if necessary
-    '''
-    input:
-        - protein_df: pandas DataFrame, one protein per row
-        - min_epi_len: minimum length of an epitope
-    output:
-        - protein_df: input pandas DataFrame, without the epitopes shorter than min_epi_len
-    '''
-
-    for r,row in protein_df.iterrows():
-        new_start = []
-        new_end = []
-        for i in range(len(row['start'])):
-            if row['end'][i] - row['start'][i] > min_epi_len:
-                new_start.append(row['start'][i])
-                new_end.append(row['end'][i])
-        protein_df.at[r,'start'] = new_start
-        protein_df.at[r,'end'] = new_end
-
-    return protein_df
-
 
 def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
     '''
