@@ -42,9 +42,8 @@ def __main__():
     plateau_csv = params['parameters']['plateau_csv']
     out_dir = params['parameters']['out_dir']
     prot_accession = params['parameters']['prot_accession']
-
-
-    pep_position = ''
+    start_column = params['parameters']['start_column']
+    end_column = params['parameters']['end_column']
 
     # check if all input paths exist
     if not os.path.isfile(evidence_file):
@@ -53,7 +52,7 @@ def __main__():
         raise Exception('The given proteome file does not exist.')
 
     # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
-    protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, delimiter, fasta_proteome, mod_delimiter, pep_position)
+    protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, fasta_proteome, mod_delimiter)
 
     if plateau_csv is None:
         if not os.path.exists(out_dir):
@@ -67,9 +66,9 @@ def __main__():
                 exit()
         
         # compute core epitopes and map peptides to cores
-        protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length)
+        protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length,intensity_column)
         protein_df.to_csv(out_dir + '/plateau_result.csv')
-        out_linked = map_pep_core(evidence_file,protein_df,delimiter)
+        out_linked = map_pep_core(evidence_file,protein_df,seq_column,protacc_column,start_column,end_column,delimiter,mod_delimiter)
         out_linked.to_csv(out_dir + '/evidence_link_groups.csv')
         
         # visualize result - examples

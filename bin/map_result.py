@@ -1,86 +1,119 @@
+"""
+Assigns each peptide in the evidence files its core epitopes, the total intensity of that core epitope and the relative core intensity. 
+"""
+
 import pandas as pd
 import re
+import os 
 
-def map_pep_core(input_tsv, protein_df, delimiter, position_boolean=False):
+def read_entire_id_output(id_output):
     '''
     input:
-        - input_tsv: MHCquant output
-        - protein_df: pandas DataFrame with one protein per row and all core and whole epitopes matched to that position 
+        - id_output: evidence file
     output:
-        - input_tsv with two more columns, one for the whole epitope and one for the core epitope as a pandas dataframe
+        - peptides_df: pandas dataframe containing the columns sequence, protein accession and peptide intensity (and optional start and stop column) of input file
     '''
-    
+    # determine the file type
+    ext = os.path.splitext(id_output)[1]
+    if ext == '.csv':
+        peptides_df = pd.read_csv(id_output, delimiter=',')
+    elif ext == '.tsv':
+        peptides_df = pd.read_csv(id_output, delimiter='\t')
+    elif ext == '.xlsx':
+        peptides_df = pd.read_excel(id_output)
+    else:
+        raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
+    return peptides_df
+
+def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_column, end_column, delimiter, mod_delimiter):
+    '''
+    input:
+        - input_tsv: evidence file 
+        - protein_df: pandas DataFrame with one protein per row and all core and whole epitopes matched to that protein
+        - seq_column: header of the column containing peptide sequence information in the evidence file 
+        - protacc_column: header of the column containing protein accession information in the evidence file
+        - start_column: header of the column containing the start positions of peptides in proteins
+        - end_column: header of the column containing the end positions of peptides in proteins
+        - delimiter: delimiter that separates multiple entries in one column in the evidence file
+        - mod_delimiter: comma separated string with delimiters for peptide modifications
+    output:
+        - pandas DataFrame containing the input_tsv with four additional columns, for the whole and core epitope and the total and relative epitope intensity
+    '''
     # add the columns whole and core epitopes to the input evidence
-    MHCquant_out = pd.read_csv(input_tsv, delimiter='\t')
-    MHCquant_out['whole_epitopes'] = [[] for _ in range(len(MHCquant_out))]
-    MHCquant_out['core_epitopes'] = [[] for _ in range(len(MHCquant_out))]
-    MHCquant_out['proteome_occurence'] = [[] for _ in range(len(MHCquant_out))]
-    MHCquant_out['relative_core_intensity'] = [[] for _ in range(len(MHCquant_out))]
+    evidence_file_df = read_entire_id_output(evidence_file)
+    evidence_file_df['whole_epitopes'] = [[] for _ in range(len(evidence_file_df))]
+    evidence_file_df['core_epitopes'] = [[] for _ in range(len(evidence_file_df))]
+    evidence_file_df['proteome_occurence'] = [[] for _ in range(len(evidence_file_df))]
+    evidence_file_df['total_core_intensity'] = [[] for _ in range(len(evidence_file_df))]
+    evidence_file_df['relative_core_intensity'] = [[] for _ in range(len(evidence_file_df))]
 
-
-    
-    for r, row in MHCquant_out.iterrows():
+    for r, row in evidence_file_df.iterrows():
 
         # loop over all proteins mapped to the peptide in the evidence file 
-        for mapping, accession in enumerate(row['accessions'].split(delimiter)):
-            #only for testing!
+        for mapping, accession in enumerate(row[protacc_column].split(delimiter)):
+            #TODO: only for testing!
             if 'DECOY' not in accession:
-                if position_boolean:
+                if start_column and end_column:
 
                     # get start and end index of that peptide in the protein
-                    start = row['start'].split(delimiter)[mapping]
-                    end = row['end'].split(delimiter)[mapping]
-                    sequence = row['sequence']
+                    start = row[start_column].split(delimiter)[mapping]
+                    end = row[end_column].split(delimiter)[mapping]
+                    sequence = row[seq_column]
 
                     # get protein row that contains the current peptide sequence and is associated with the protein from the evidence file
                     prot_row = protein_df[(protein_df['accession'] == accession) & protein_df['sequence'].map(lambda x: sequence in x)]
-
 
                     # indices of peptides that match the sequence of the peptide, the accession of the mapped protein and the start and end position in the protein
                     idx = [i for i, x in enumerate(zip(prot_row['start'].to_list()[0],prot_row['end'].to_list()[0])) if (x[0] == int(start) and x[1] == int(end))]
 
                     if len(idx) > 1: 
-                        # check if multiple occurrence due to modification
-                        wo_mod = [re.sub(r"\(.*?\)","",prot_row['sequence'].to_list()[0][i]) for i in idx]
+                        # TODO: integrate mod_delimiter
+                        # check if multiple occurrence are due to modification
+                        wo_mod = [re.sub(r"[\[\(].*?[\]\)]","",prot_row['sequence'].to_list()[0][i]) for i in idx]
+                       
                         if len(set(wo_mod)) > 1:
                             raise Exception('Please check your evidence file. There are peptides with different sequences mapped to the same position in the protein.')
                 
                 
                 else:
-                    #only for testing!
-                    if 'DECOY' not in accession:
-                        sequence = row['sequence']
-
-                        # get protein row that contains the current peptide sequence and is associated with the protein from the evidence file
-                        prot_row = protein_df[(protein_df['accession'] == accession) & protein_df['sequence'].map(lambda x: sequence in x)]
-                        if len(prot_row['sequence'].to_list()) == 0:
-                            print(accession)
-                            print(sequence)
+                    sequence = row[seq_column]
+                    
+                    # get protein row that contains the current peptide sequence and is associated with the protein from the evidence file
+                    prot_row = protein_df[(protein_df['accession'] == accession) & protein_df['sequence'].map(lambda x: sequence in x)]
+                    if len(prot_row['sequence'].to_list()) == 0:
+                        print(accession)
+                        print(sequence)
                 
-                        # indices of peptides that match the sequence of the peptide and the accession of the mapped protein
-                        idx = [i for i, x in enumerate(prot_row['sequence'].to_list()[0]) if x == sequence]
+                    # indices of peptides that match the sequence of the peptide and the accession of the mapped protein
+                    idx = [i for i, x in enumerate(prot_row['sequence'].to_list()[0]) if x == sequence]
 
-                        if len(idx) > 1: 
-                            # check if multiple occurrence due to modification
-                            wo_mod = [re.sub(r"\(.*?\)","",prot_row['sequence'].to_list()[0][i]) for i in idx]
-                            if len(set(wo_mod)) > 1:
-                                raise Exception('Please check your evidence file. There are peptides with different sequences mapped to the same position in the protein.')
+                    if len(idx) > 1: # TODO update regex
+                        # check if multiple occurrence due to modification
+                        wo_mod = [re.sub(r"\(.*?\)","",prot_row['sequence'].to_list()[0][i]) for i in idx]
+                        
+                        if len(set(wo_mod)) > 1:
+                            raise Exception('Please check your evidence file. There are peptides with different sequences mapped to the same position in the protein.')
                  
                 
                 # get core and whole epitope associated with the peptide in the evidence file
                 for id in idx:
                     mapped_group = prot_row['sequence_group_mapping'].to_list()[0][id]
-                    MHCquant_out.at[r,'core_epitopes'].append(prot_row['consensus_epitopes'].to_list()[0][mapped_group])
-                    MHCquant_out.at[r,'whole_epitopes'].append(prot_row['whole_epitopes'].to_list()[0][mapped_group])
+                    evidence_file_df.at[r,'core_epitopes'].append(prot_row['consensus_epitopes'].to_list()[0][mapped_group])
+                    evidence_file_df.at[r,'whole_epitopes'].append(prot_row['whole_epitopes'].to_list()[0][mapped_group])
+                    evidence_file_df.at[r,'total_core_intensity'].append(str(prot_row['core_epitopes_intensity'].to_list()[0][mapped_group]))
+                    evidence_file_df.at[r,'relative_core_intensity'].append(str(prot_row['relative_core_intensity'].to_list()[0][mapped_group]))
                     prot_occurence = accession +':'+ str(prot_row['core_epitopes_start'].to_list()[0][mapped_group]) + '-' + str(prot_row['core_epitopes_end'].to_list()[0][mapped_group])
-                    MHCquant_out.at[r,'proteome_occurence'].append(prot_occurence)
+                    evidence_file_df.at[r,'proteome_occurence'].append(prot_occurence)
             
 
     
         # convert list to delimiter separated strings
-        MHCquant_out.at[r,'core_epitopes'] = delimiter.join(MHCquant_out.at[r,'core_epitopes'])
-        MHCquant_out.at[r,'whole_epitopes'] = delimiter.join(MHCquant_out.at[r,'whole_epitopes'])
+        evidence_file_df.at[r,'core_epitopes'] = delimiter.join(evidence_file_df.at[r,'core_epitopes'])
+        evidence_file_df.at[r,'whole_epitopes'] = delimiter.join(evidence_file_df.at[r,'whole_epitopes'])
+        evidence_file_df.at[r,'total_core_intensity'] = delimiter.join(evidence_file_df.at[r,'total_core_intensity'])
+        evidence_file_df.at[r,'relative_core_intensity'] = delimiter.join(evidence_file_df.at[r,'relative_core_intensity'])
+        evidence_file_df.at[r,'proteome_occurence'] = delimiter.join(evidence_file_df.at[r,'proteome_occurence'])
         
-    return MHCquant_out
+    return evidence_file_df
 
 
