@@ -216,20 +216,27 @@ def get_consensus_epitopes(protein_df, min_epi_len):
     return protein_df
 
 
-def reorder_peptides(row):
+def reorder_peptides(row, intensity_column):
     '''
     input:
         - row: row of pandas dataframe containing one protein per row and all peptide sequences mapped to the protein with start and end position
+        - intensity_column: parameter indicating if intensity column is provided or not
     output:
         - input row containing a reordered version of the row, the start positions are sorted in ascending order, the indices of the other columns are reordered in the same pattern
     '''
-    lists = list(zip(row['start'], row['end'], row['sequence'], row['intensity']))
-    sorted_lists = sorted(lists, key=lambda x: int(x[0]))
-    starts, ends, sequences, intensities = zip(*sorted_lists)
-    return list(starts), list(ends), list(sequences), list(intensities)
+    if intensity_column:
+        lists = list(zip(row['start'], row['end'], row['sequence'], row['intensity']))
+        sorted_lists = sorted(lists, key=lambda x: int(x[0]))
+        starts, ends, sequences, intensities = zip(*sorted_lists)
+        return list(starts), list(ends), list(sequences), list(intensities)
+    else:
+        lists = list(zip(row['start'], row['end'], row['sequence']))
+        sorted_lists = sorted(lists, key=lambda x: int(x[0]))
+        starts, ends, sequences = zip(*sorted_lists)
+        return list(starts), list(ends), list(sequences)
 
 
-def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column=None):
+def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column):
     '''
      input:
         - input_tsv: evidence file
@@ -237,11 +244,14 @@ def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_c
         - min_overlap: minimum overlap length of two epitopes for a consensus epitope
         - max_step_size: maximum distance between the start positions of two epitopes for a consensus epitope
         - min_epi_len: minimum length of an epitope
-        - intensity: parameter indicating if intensity column is provided or not
+        - intensity_column: parameter indicating if intensity column is provided or not
     output:
         - for each protein: list of core and whole peptides
     '''
-    protein_df[['start', 'end', 'sequence', 'intensity']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row)), axis=1)
+    if intensity_column:
+        protein_df[['start', 'end', 'sequence', 'intensity']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
+    else:
+        protein_df[['start', 'end', 'sequence']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     # group peptides 
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column)
     protein_df = gen_landscape(protein_df)
