@@ -16,6 +16,8 @@ def read_id_output(id_output, seq_column, protacc_column, intensity_column, star
         - seq_column: header of the column containing peptide sequence information in the evidence file
         - protacc_column: header of the column containing protein accession information in the evidence file
         - intensity_column: header of the column containing intensity information in the evidence file
+        - start_column: header of the column containing the start positions of peptides in proteins
+        - end_column: header of the column containing the end positions of peptides in proteins
         - delimiter: delimiter that separates multiple entries in one column in the evidence file
     output:
         - peptides_df: pandas dataframe containing the columns sequence, protein accession and peptide intensity (and optional start and stop column) of input file
@@ -31,7 +33,7 @@ def read_id_output(id_output, seq_column, protacc_column, intensity_column, star
     else:
         raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
 
-    # check that the mandatory headers are provided and if all provided column headers are part of the evidence file
+    # check that the mandatory headers are provided and all provided column headers are part of the evidence file
     if seq_column not in peptides_df.columns:
         if seq_column:
             raise Exception('The header {} does not exist in the provided evidence file. Please provide the correct header.'.format(seq_column))
@@ -52,12 +54,13 @@ def read_id_output(id_output, seq_column, protacc_column, intensity_column, star
         if end_column:
             raise Exception('The header {} does not exist in the provided evidence file. Please provide the correct header.'.format(end_column))
 
-    # read in evidence file (start and stop position only when provided)
+    # read in evidence file (start, stop position and intensity only when provided)
     if start_column and end_column:
         if intensity_column:
             peptides_df = peptides_df[[protacc_column,seq_column, intensity_column, start_column, end_column]]  
         else:
             peptides_df = peptides_df[[protacc_column,seq_column, start_column, end_column]]
+        # split if peptide occurs multiple times in proteome 
         peptides_df[start_column] = peptides_df[start_column].apply(lambda x: list(x.split(delimiter)))
         peptides_df[end_column] = peptides_df[end_column].apply(lambda x: list(x.split(delimiter)))
         peptides_df[protacc_column] = peptides_df[protacc_column].apply(lambda x: list(x.split(delimiter)))
@@ -66,13 +69,9 @@ def read_id_output(id_output, seq_column, protacc_column, intensity_column, star
             peptides_df = peptides_df[[protacc_column,seq_column, intensity_column]]
         else:
             peptides_df = peptides_df[[protacc_column,seq_column]]
+        # split accessions if peptide occurs multiple times in proteome
         peptides_df[protacc_column] = peptides_df[protacc_column].apply(lambda x: list(set(x.split(delimiter))))
 
-    # TODO: check for side effects when removing this statement
-    #peptides_df = peptides_df.astype(str)
-
-    # split accessions if peptide occurs in more than one protein 
-    #peptides_df[protacc_column] = peptides_df[protacc_column].apply(lambda x: list(x.split(delimiter)))
     return peptides_df
 
 
@@ -109,8 +108,8 @@ def get_prot_seq(accession, proteome_df):
 def compute_pep_pos(peptide, accession, proteome_df):
     '''
     input:
-        - peptide: sequence of the peptide
-        - accession: accession of the protein 
+        - peptide: sequence of peptide
+        - accession: accession of protein 
         - proteome_df: reference proteome used for the identification of the peptide as a pandas dataframe
     output:
         - start: start position(s) of the peptide in the protein
@@ -133,6 +132,7 @@ def compute_pep_pos(peptide, accession, proteome_df):
 
     return start, end
 
+
 def group_repetitive(starts, ends, peptide, accession):
     '''
     input:  
@@ -142,7 +142,7 @@ def group_repetitive(starts, ends, peptide, accession):
         - accession: protein accession
     output:
         - starts: input start positions, but only the smallest start position for each repetitive region
-        - ends: input end positions, but only the smallest end position for each repetitive region
+        - ends: input end positions, but only the highest end position for each repetitive region
     '''
     updated_starts = []
     updated_ends = []
@@ -156,21 +156,22 @@ def group_repetitive(starts, ends, peptide, accession):
     # add the last occurrences end position to the end positions
     updated_ends.append(ends[-1])
     if len(updated_starts) < len(starts): 
-        # TODO: find a better solution to inform the user 
+        # TODO: 
         print('CAUTION! The peptide sequence {} is part of repetitive region(s) in protein {} and will be used as evidence of the entire repetitive region.'.format(peptide, accession))        
         return updated_starts, updated_ends
     else:
         return starts, ends
 
 
-def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome, mod_delimiter):
+def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome, mod_delimiter):
     '''
     input:
         - peptides_df: pandas Dataframe, that contains one peptide per row
         - seq_column: header of the column containing peptide sequence information in the evidence file
         - protacc_column: header of the column containing protein accession information in the evidence file
         - intensity_column: header of the column containing intensity information in the evidence file
-        - delimiter: delimiter that separates multiple entries in one column in the evidence file
+        - start_column: header of the column containing the start positions of peptides in proteins
+        - end_column: header of the column containing the end positions of peptides in proteins
         - proteome: reference proteome used for the identification of the peptide as a pandas dataframe
         - mod_delimiter: comma separated string with delimiters for peptide modifications
     output:
@@ -264,6 +265,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
                         updated_peps.append(peptide)
                         if intensity_column:
                             updated_intens.append(intensity[n_p])
+                    # TODO: remove after testing
                     print('The peptide sequence {} occurs multiple times in {}. It will be used as evidence for all occurrences.'.format(peptide, accession))
                 
                 # collect all start and end positions of the peptide in the protein
@@ -296,27 +298,30 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
                     proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
                     if intensity_column:
                         proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
-                    proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [peptide[start_column][i]])
-                    proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [peptide[end_column][i]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [int(peptide[start_column][i])])
+                    proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [int(peptide[end_column][i])])
                     
                 else:
                     # create new row for accessions not seen before
                     if intensity_column:
                         protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'start':[int(pos) for pos in [peptide[start_column][i]]], 'end':[int(pos) for pos in [peptide[end_column][i]]]}
                     else:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[peptide[start_column][i]], 'end':[peptide[end_column][i]]}
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[int(peptide[start_column][i])], 'end':[int(peptide[end_column][i])]}
                     
                     proteins.loc[len(proteins)] = protein_entry
 
     return proteins
 
-def parse_input(input, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome, mod_delimiter):
+
+def parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome, mod_delimiter):
     '''
     input:input:
-        - peptides_df: pandas Dataframe, that contains one peptide per row
+        - evidence_file: input evidence_file
         - seq_column: header of the column containing peptide sequence information in the evidence file
         - protacc_column: header of the column containing protein accession information in the evidence file
         - intensity_column: header of the column containing intensity information in the evidence file
+        - start_column: header of the column containing the start positions of peptides in proteins
+        - end_column: header of the column containing the end positions of peptides in proteins
         - delimiter: delimiter that separates multiple entries in one column in the evidence file
         - proteome: reference proteome used for the identification of the peptide as a pandas dataframe
         - mod_delimiter: comma separated string with delimiters for peptide modifications
@@ -330,6 +335,6 @@ def parse_input(input, seq_column, protacc_column, intensity_column, start_colum
                 measured intensity of the peptide 
     '''
     
-    peptides_df = read_id_output(input, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter)
-    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome, mod_delimiter)
+    peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter)
+    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome, mod_delimiter)
     return protein_df

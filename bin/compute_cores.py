@@ -35,7 +35,7 @@ def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
         - protein_df: pandas DataFrame, one protein per row
         - min_overlap: minimum overlap length of two epitopes for a consensus epitope
         - max_step_size: maximum distance between the start positions of two epitopes for a consensus epitope
-        - intensity: parameter indicating if intensity column is provided or not
+        - intensity_column: parameter indicating if intensity column is provided or not
     output:
         - input DataFrame, with the start and end positions and peptide sequences grouped into consensus epitopes
     '''
@@ -69,7 +69,6 @@ def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
             core_intensity = 0
         n_jumps = 0
         mapping = []
-
 
         for i in range(len(start_pos)-1):
 
@@ -238,6 +237,7 @@ def get_consensus_epitopes(protein_df, min_epi_len):
 
     return protein_df
 
+
 def reorder_peptides(row):
     '''
     input:
@@ -245,10 +245,11 @@ def reorder_peptides(row):
     output:
         - input row containing a reordered version of the row, the start positions are sorted in ascending order, the indices of the other columns are reordered in the same pattern
     '''
-    lists = list(zip(row['start'], row['end'], row['sequence']))
+    lists = list(zip(row['start'], row['end'], row['sequence'], row['intensity']))
     sorted_lists = sorted(lists, key=lambda x: int(x[0]))
-    starts, ends, sequence = zip(*sorted_lists)
-    return list(starts), list(ends), list(sequence)
+    starts, ends, sequences, intensities = zip(*sorted_lists)
+    return list(starts), list(ends), list(sequences), list(intensities)
+
 
 def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column=None):
     '''
@@ -262,8 +263,7 @@ def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_c
     output:
         - for each protein: list of core and whole peptides
     '''
-    # TODO: add intensities here!
-    protein_df[['start', 'end', 'sequence']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row)), axis=1)
+    protein_df[['start', 'end', 'sequence', 'intensity']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row)), axis=1)
     # group peptides 
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column)
     protein_df = gen_landscape(protein_df)

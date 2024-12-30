@@ -25,7 +25,7 @@ def read_entire_id_output(id_output):
         raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
     return peptides_df
 
-def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_column, end_column, delimiter, mod_delimiter):
+def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_column, end_column, intensity_column, delimiter, mod_delimiter):
     '''
     input:
         - input_tsv: evidence file 
@@ -44,8 +44,9 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
     evidence_file_df['whole_epitopes'] = [[] for _ in range(len(evidence_file_df))]
     evidence_file_df['core_epitopes'] = [[] for _ in range(len(evidence_file_df))]
     evidence_file_df['proteome_occurence'] = [[] for _ in range(len(evidence_file_df))]
-    evidence_file_df['total_core_intensity'] = [[] for _ in range(len(evidence_file_df))]
-    evidence_file_df['relative_core_intensity'] = [[] for _ in range(len(evidence_file_df))]
+    if intensity_column:
+        evidence_file_df['total_core_intensity'] = [[] for _ in range(len(evidence_file_df))]
+        evidence_file_df['relative_core_intensity'] = [[] for _ in range(len(evidence_file_df))]
 
     for r, row in evidence_file_df.iterrows():
 
@@ -62,10 +63,10 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
 
                     # get protein row that contains the current peptide sequence and is associated with the protein from the evidence file
                     prot_row = protein_df[(protein_df['accession'] == accession) & protein_df['sequence'].map(lambda x: sequence in x)]
-
+                    
                     # indices of peptides that match the sequence of the peptide, the accession of the mapped protein and the start and end position in the protein
                     idx = [i for i, x in enumerate(zip(prot_row['start'].to_list()[0],prot_row['end'].to_list()[0])) if (x[0] == int(start) and x[1] == int(end))]
-
+                    
                     if len(idx) > 1: 
                         # TODO: integrate mod_delimiter
                         # check if multiple occurrence are due to modification
@@ -86,7 +87,7 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
                 
                     # indices of peptides that match the sequence of the peptide and the accession of the mapped protein
                     idx = [i for i, x in enumerate(prot_row['sequence'].to_list()[0]) if x == sequence]
-
+                    
                     if len(idx) > 1: # TODO update regex
                         # check if multiple occurrence due to modification
                         wo_mod = [re.sub(r"\(.*?\)","",prot_row['sequence'].to_list()[0][i]) for i in idx]
@@ -100,8 +101,9 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
                     mapped_group = prot_row['sequence_group_mapping'].to_list()[0][id]
                     evidence_file_df.at[r,'core_epitopes'].append(prot_row['consensus_epitopes'].to_list()[0][mapped_group])
                     evidence_file_df.at[r,'whole_epitopes'].append(prot_row['whole_epitopes'].to_list()[0][mapped_group])
-                    evidence_file_df.at[r,'total_core_intensity'].append(str(prot_row['core_epitopes_intensity'].to_list()[0][mapped_group]))
-                    evidence_file_df.at[r,'relative_core_intensity'].append(str(prot_row['relative_core_intensity'].to_list()[0][mapped_group]))
+                    if intensity_column:
+                        evidence_file_df.at[r,'total_core_intensity'].append(str(prot_row['core_epitopes_intensity'].to_list()[0][mapped_group]))
+                        evidence_file_df.at[r,'relative_core_intensity'].append(str(prot_row['relative_core_intensity'].to_list()[0][mapped_group]))
                     prot_occurence = accession +':'+ str(prot_row['core_epitopes_start'].to_list()[0][mapped_group]) + '-' + str(prot_row['core_epitopes_end'].to_list()[0][mapped_group])
                     evidence_file_df.at[r,'proteome_occurence'].append(prot_occurence)
             
@@ -110,8 +112,9 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
         # convert list to delimiter separated strings
         evidence_file_df.at[r,'core_epitopes'] = delimiter.join(evidence_file_df.at[r,'core_epitopes'])
         evidence_file_df.at[r,'whole_epitopes'] = delimiter.join(evidence_file_df.at[r,'whole_epitopes'])
-        evidence_file_df.at[r,'total_core_intensity'] = delimiter.join(evidence_file_df.at[r,'total_core_intensity'])
-        evidence_file_df.at[r,'relative_core_intensity'] = delimiter.join(evidence_file_df.at[r,'relative_core_intensity'])
+        if intensity_column:
+            evidence_file_df.at[r,'total_core_intensity'] = delimiter.join(evidence_file_df.at[r,'total_core_intensity'])
+            evidence_file_df.at[r,'relative_core_intensity'] = delimiter.join(evidence_file_df.at[r,'relative_core_intensity'])
         evidence_file_df.at[r,'proteome_occurence'] = delimiter.join(evidence_file_df.at[r,'proteome_occurence'])
         
     return evidence_file_df
