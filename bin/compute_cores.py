@@ -110,10 +110,11 @@ def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
     return protein_df
 
 
-def gen_landscape(protein_df):
+def gen_landscape(protein_df, mod_delimiter):
     '''
     input:
         - protein_df: pandas DataFrame, one protein per row
+        - mod_delimiter: comma separated string with delimiters for peptide modifications
     output:
         - protein DataFrame + epitope landscape for each epitope group + whole sequence of each group
     '''
@@ -131,13 +132,30 @@ def gen_landscape(protein_df):
             for pep_idx, pep_pos in enumerate(zip(pep_group_start, pep_group_end)):
                 pep_start = pep_pos[0]
                 pep_end = pep_pos[1]
+
+                current_seq = row['grouped_peptides_sequence'][group][pep_idx]
+                pattern = r'\(.*?\)'
+                current_seq = re.sub(pattern,"",current_seq)
+                pattern = r'\[.*?\]'
+                current_seq = re.sub(pattern,"",current_seq)
+                pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
+                current_seq = re.sub(pattern,"",current_seq)
+                y=False
+                if str(pep_start) + '-' + str(pep_end) in seen_pep: 
+                    seen_seq = seen_pep[str(pep_start) + '-' + str(pep_end)]
+                    check_repetitive = [(seq != current_seq) for seq in seen_seq] 
                 if str(pep_start) + '-' + str(pep_end) not in seen_pep:
-                    seen_pep[str(pep_start) + '-' + str(pep_end)] = [row['grouped_peptides_sequence'][group][pep_idx]]
+                    # positions not been seen before -> +1
+                    seen_pep[str(pep_start) + '-' + str(pep_end)] = [current_seq]
                     for pos in range(pep_start, pep_end+1):
-                        # TODO:only for identification, for quantification add intensity here
                         group_landscape[pos-start_idx] += 1
-                else: 
-                    seen_pep[str(pep_start) + '-' + str(pep_end)].append(row['grouped_peptides_sequence'][group][pep_idx])
+                elif all(check_repetitive):
+                    # positions seen before but sequence not -> repetitive region not +1
+                    seen_pep[str(pep_start) + '-' + str(pep_end)].append(current_seq)
+                else:
+                    # positions and sequence seen before -> +1
+                    for pos in range(pep_start, pep_end+1):
+                        group_landscape[pos-start_idx] += 1
             protein_df.at[r,'landscape'].append(group_landscape)
 
             # build whole group sequences
@@ -236,7 +254,7 @@ def reorder_peptides(row, intensity_column):
         return list(starts), list(ends), list(sequences)
 
 
-def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column):
+def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column, mod_delimiter):
     '''
      input:
         - input_tsv: evidence file
@@ -245,6 +263,7 @@ def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_c
         - max_step_size: maximum distance between the start positions of two epitopes for a consensus epitope
         - min_epi_len: minimum length of an epitope
         - intensity_column: parameter indicating if intensity column is provided or not
+        - mod_delimiter: comma separated string with delimiters for peptide modifications
     output:
         - for each protein: list of core and whole peptides
     '''
@@ -254,7 +273,7 @@ def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_c
         protein_df[['start', 'end', 'sequence']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     # group peptides 
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column)
-    protein_df = gen_landscape(protein_df)
+    protein_df = gen_landscape(protein_df,mod_delimiter)
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
 
     return protein_df

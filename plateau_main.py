@@ -66,7 +66,7 @@ def __main__():
                 exit()
         
         # compute core epitopes and map peptides to cores
-        protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length,intensity_column)
+        protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length, intensity_column, mod_delimiter)
         protein_df.to_csv(out_dir + '/plateau_result.csv')
         out_linked = map_pep_core(evidence_file,protein_df,seq_column,protacc_column,start_column,end_column,intensity_column,delimiter,mod_delimiter)
         out_linked.to_csv(out_dir + '/evidence_link_groups.csv')
