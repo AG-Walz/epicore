@@ -1,0 +1,11 @@
+name: localplateau
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - pyyaml=6.0.2
+  - python=3.12.8
+  - pandas=2.2.3
+  - matplotlib=3.10.0
+  - biopython=1.84
