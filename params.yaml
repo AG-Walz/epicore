@@ -1,14 +1,15 @@
 parameters:
   seq_column: sequence
   protacc_column: accessions
-  start_column: start
-  end_column: end
-  out_dir: Brain_class2_mhcquant
+  intensity_column: intensity_cf
+  start_column: 
+  end_column: 
+  out_dir: BD06_Esophagus:class2_1
   mod_delimiter: (,)
   delimiter: ;
-  prot_accession: sp|P10909|CLUS_HUMAN
+  prot_accession: sp|P31930|QCR1_HUMAN,sp|P62736|ACTA_HUMAN
   plateau_csv: 
   min_overlap: 11
   max_step_size: 5
-  min_epi_length: 9
+  min_epi_length: 11
 

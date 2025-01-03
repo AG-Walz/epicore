@@ -9,16 +9,31 @@ The tool can be used to identify and quantify shared consensus epitopes.
 2. Specify your input as described [here](#Input-files)
 3. Enter the following command:
     ```
-    python3 plateau_main.py -input_tsv <EVIDENCE_FILE> -proteome <PROTEOME>.fasta -params params.yaml
+    python3 plateau_main.py -input_tsv <EVIDENCE_FILE> -proteome <PROTEOME_FILE> -params params.yaml
     ```
+    Replace ```EVIDENCE_FILE``` with the path to your evidence file and ```PROTEOME_FILE``` with the path to the proteome fasta file that was used to generate the evidence file. You can find more detailed information about the input data [here](#input-files).  
 
 #### First time set up 
-1. In the command line go to the directory where you want to clone this github repository to. 
+##### Create a conda environment
+If miniconda is not installed on your system yet, install miniconda by running the following commands:
+```bash
+  mkdir -p ~/miniconda3
+  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+  bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+  rm ~/miniconda3/miniconda.sh
+  source .bashrc
+```
 
-2. Clone this repository with 
-    ```bash 
-    git clone git@github.com:AG-Walz/localplateau.git
-    ```    
+After a successful installation of miniconda the conda environment can be created and activated by executing the following commands. 
+```bash
+  conda create --name localplateau python pandas=2.2.3 pyyaml=6.0.2 matplotlib=3.10.0 biopython=1.84
+  conda activate localplateau
+```
+
+##### Clone the localplateau repository 
+```bash 
+  git clone git@github.com:AG-Walz/localplateau.git
+```
 
 ### Input files
 #### params.yaml
@@ -41,18 +56,18 @@ parameters:
 The description of each parameter can be found in the table below.
 | Parameter | Description |
 | --- | --- |
-| max_step_size | Defines the maximal step size of two peptdes to still be grouped to the same core. If the start positions of two peptides differ by that number the peptides are only grouped together if they overlap by a minimum of min_overlap amino acids. |
-| min_overlap | Defines the minimal overlap between two epitopes to still be grouped together if the start position between both epitopes differ more than max step size. |
+| max_step_size | Defines the maximal step size between two peptides to still be grouped to the same core. If the start positions of two peptides differ by that number the peptides are only grouped together if they overlap by a minimum of min_overlap amino acids.|
+| min_overlap | Defines the minimal overlap between two epitopes to still be grouped together if the start position between the epitopes differs more than max step size. |
 | min_epi_length | Defines the minimum epitope length. This is the minimal length a core epitope has to have. If for a group the whole sequence is shorter than the minimum epitope length the core will be defined as the whole sequence.| 
 | seq_column | Defines the column header in the input evidence file that contains the peptide sequences. |
 | protacc_column | Defines the column header in the input evidence file that contains the protein accessions of proteins that contain that peptide. |
 | out_dir | Defines the directory in which the results will be saved. |
 | mod_delimiter | Defines how modifications in the peptides are separated from the sequence. Put a comma separated string here, where the first element specifies the start of a modification and the second element defines the end of a modification. |
 | delimiter | Defines the delimiter that separates multiple values in one cell in the input evidence file. |
-| prot_accession | Defines proteins, for which the core epitopes and landscape should be visualized. |
-| plateau_csv | Defines the path to previous computed plateau results. If this parameter is not None the result will not be computed again. Only the defined proteins will get visualized. |
+| [prot_accession] | Defines proteins, for which the core epitopes and landscape should be visualized. Multiple parameters should be separated by commas. |
+| [plateau_csv] | Defines the path to previous computed plateau results. If this parameter is not None the result will not be computed again. Only the defined proteins will get visualized. |
 
- 
+Parameters in brackets are optional. An example params.yaml file can be found [here](params.yaml).
 
 #### evidence file
 The evidence file is the output file of a search engine. The following file types are supported: csv, tsv, xlsx.
@@ -75,7 +90,7 @@ The csv contains one protein per row. The different columns contain the followin
 | grouped peptides start | the start positions of all peptides grouped together for each core |
 | grouped peptides end | the end position of all peptides grouped together for each core | 
 | grouped peptides sequence | peptide sequences that contribute to the same core grouped together |
-| sequence group mapping | | 
+| sequence group mapping | the epitope core group of each peptide | 
 | landscape | landscape for each group | 
 | whole epitopes | whole peptide sequence of each group | 
 | core epitopes | core epitope sequence of each group | 

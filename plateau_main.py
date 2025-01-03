@@ -75,7 +75,7 @@ def __main__():
 
         if prot_accession is not None:
             for accession in prot_accession.split(','):
-                vis_prot(protein_df,accession,fasta_proteome,out_dir + '/' + accession + '.pdf')
+                vis_prot(protein_df,accession,proteome_df,out_dir + '/' + accession + '.pdf')
     
     else:
         for accession in prot_accession.split(','):
