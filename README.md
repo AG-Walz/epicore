@@ -62,7 +62,7 @@ The proteome file should contain the proteome used for the identification of the
 
 
 ### Output files
-There are two csv output files.
+There are two csv output files and optionally pdfs visualizing the landscape and core epitopes of a protein.
 
 #### plateau_result.csv
 The csv contains one protein per row. The different columns contain the following information: 
@@ -84,3 +84,9 @@ The csv contains one protein per row. The different columns contain the followin
 
 #### evidence_link_group.csv
 The evidence_link_group.csv contains all the information from the initial evidence file. In addition there are two more columns. The column **whole_epitopes** lists the whole sequence of each group associated with the peptide sequence of that row. The column **core_epitopes** lists the core sequences of each group associated with the peptide sequence of that row. 
+
+#### landscape visualization
+![An example landscape of the protein sp|P62736|ACTA_HUMAN](landscape_example.png)
+The script visualizes the landscape and core epitopes of each protein specified in the prot_accession input variable. 
+
+The more intense regions of the histogram represent the core epitopes of the protein. The different colors correspond to distinct core epitopes. Lighter areas correspond to the peptides associated with the respective core epitope.
