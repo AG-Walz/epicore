@@ -163,7 +163,7 @@ def group_repetitive(starts, ends, peptide, accession):
         return starts, ends
 
 
-def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome, mod_delimiter):
+def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_delimiter):
     '''
     input:
         - peptides_df: pandas Dataframe, that contains one peptide per row
@@ -172,7 +172,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
         - intensity_column: header of the column containing intensity information in the evidence file
         - start_column: header of the column containing the start positions of peptides in proteins
         - end_column: header of the column containing the end positions of peptides in proteins
-        - proteome: reference proteome used for the identification of the peptide as a pandas dataframe
+        - proteome_df: pandas dataframe containing one protein accession and its corresponding sequence per row
         - mod_delimiter: comma separated string with delimiters for peptide modifications
     output:
         - proteins: pandas DataFrame
@@ -188,7 +188,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
         # if the start and end positions of the peptides is not defined in the input evidence file 
         
         # load the proteome into a pandas dataframe
-        proteome_df = proteome_to_df(proteome)
+        #proteome_df = proteome_to_df(proteome)
 
         if intensity_column:
             proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity'])
@@ -313,7 +313,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
     return proteins
 
 
-def parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome, mod_delimiter):
+def parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_delimiter):
     '''
     input:input:
         - evidence_file: input evidence_file
@@ -323,7 +323,7 @@ def parse_input(evidence_file, seq_column, protacc_column, intensity_column, sta
         - start_column: header of the column containing the start positions of peptides in proteins
         - end_column: header of the column containing the end positions of peptides in proteins
         - delimiter: delimiter that separates multiple entries in one column in the evidence file
-        - proteome: reference proteome used for the identification of the peptide as a pandas dataframe
+        - proteome_df: pandas dataframe containing one protein accession and its corresponding sequence per row
         - mod_delimiter: comma separated string with delimiters for peptide modifications
     output:
         - pandas DataFrame: protein_df
@@ -336,5 +336,5 @@ def parse_input(evidence_file, seq_column, protacc_column, intensity_column, sta
     '''
     
     peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter)
-    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome, mod_delimiter)
+    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_delimiter)
     return protein_df

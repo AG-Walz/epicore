@@ -1,20 +1,23 @@
+"""
+Visualizes the landscape of a protein.
+"""
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tck
 from matplotlib.ticker import MaxNLocator
 
-from bin.compute_cores import get_prot_seg
+from bin.parse_input import get_prot_seq
 
-
-def vis_prot(protein_df, accession, proteome, plot_path=''):
+def vis_prot(protein_df, accession, proteome_df, plot_path=''):
     '''
     input:
         - protein_df: pandas DataFrame with one protein per row and all core and whole epitopes matched 
         - accession: accession of protein for visualization
-        - proteome: fasta file used for identification
+        - proteome_df: pandas dataframe containing one protein accession and its corresponding sequence per row
         - plot_path: location where plot gets saved  
     '''
     prot_row = protein_df[(protein_df['accession'] == accession)]
-    prot_seq = get_prot_seg(accession, proteome)
+    prot_seq = get_prot_seq(accession, proteome_df)
 
     prot_landscape = [0 for _ in prot_seq]
     

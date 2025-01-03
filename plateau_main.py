@@ -9,6 +9,7 @@ from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core
 from bin.visualize_protein import vis_prot
 from bin.parse_input import parse_input
+from bin.parse_input import proteome_to_df
 
 def __main__():
 
@@ -50,11 +51,12 @@ def __main__():
         raise Exception('The given evidence file does not exist.')
     if not os.path.isfile(fasta_proteome):
         raise Exception('The given proteome file does not exist.')
-
-    # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
-    protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, fasta_proteome, mod_delimiter)
+    
+    proteome_df = proteome_to_df(fasta_proteome)
 
     if plateau_csv is None:
+        # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
+        protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_delimiter)
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         else:
@@ -70,15 +72,6 @@ def __main__():
         protein_df.to_csv(out_dir + '/plateau_result.csv')
         out_linked = map_pep_core(evidence_file,protein_df,seq_column,protacc_column,start_column,end_column,intensity_column,delimiter,mod_delimiter)
         out_linked.to_csv(out_dir + '/evidence_link_groups.csv')
-        
-        # visualize result - examples
-        # class one 
-        #vis_prot(protein_df,'sp|P10909|CLUS_HUMAN',fasta_proteome)
-        #vis_prot(protein_df,'sp|P01024|CO3_HUMAN',fasta_proteome)
-        #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
-        # class two 
-        #vis_prot(protein_df,'sp|P02671|FIBA_HUMAN',fasta_proteome,'two_sp|P02671|FIBA_HUMAN.pdf') ### look at position 532 - 539 !!!
-        #vis_prot(protein_df,'sp|P04114|APOB_HUMAN',fasta_proteome,'sp|P04114|APOB_HUMAN.pdf')
 
         if prot_accession is not None:
             for accession in prot_accession.split(','):
@@ -94,7 +87,7 @@ def __main__():
             protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
             if prot_accession is not None:
                 for accession in prot_accession.split(','):
-                    vis_prot(protein_df,accession,fasta_proteome,out_dir + '/' + accession + '.pdf')       
+                    vis_prot(protein_df,accession,proteome_df,out_dir + '/' + accession + '.pdf')       
     
 
 
