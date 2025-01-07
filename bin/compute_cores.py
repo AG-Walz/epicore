@@ -162,8 +162,10 @@ def gen_landscape(protein_df, mod_delimiter):
             consensus_seq = ''
             consensus_pos = []
             for sequence, sequence_pos in zip(row['grouped_peptides_sequence'][group], row['grouped_peptides_start'][group]):
-                # TODO: update regex
                 sequence = re.sub(r"\(.*?\)","",sequence)
+                sequence = re.sub(r'\[.*?\]',"",sequence)
+                pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
+                sequence = re.sub(pattern,"",sequence)
                 sequence_pos = [i for i in range(sequence_pos, sequence_pos + len(sequence))]
                 for aa, aa_pos in zip(sequence, sequence_pos):
                     if aa_pos not in consensus_pos:

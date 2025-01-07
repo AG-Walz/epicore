@@ -60,12 +60,9 @@ def __main__():
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         else:
-            user_check = input('The output directory already exists and the results will be OVERWRITTEN. Enter "yes" to continue or "no" to stop.')
-            if user_check == 'yes':
-                shutil.rmtree(out_dir)
-                os.mkdir(out_dir)
-            else:
-                exit()
+            shutil.rmtree(out_dir)
+            os.mkdir(out_dir)
+            
         
         # compute core epitopes and map peptides to cores
         protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length, intensity_column, mod_delimiter)
