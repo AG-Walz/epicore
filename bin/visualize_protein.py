@@ -17,6 +17,9 @@ def vis_prot(protein_df, accession, proteome_df, plot_path=''):
         - plot_path: location where plot gets saved  
     '''
     prot_row = protein_df[(protein_df['accession'] == accession)]
+    if len(prot_row) == 0:
+        raise Exception('The accession {} is not in your input data.'.format(accession))
+
     prot_seq = get_prot_seq(accession, proteome_df)
 
     prot_landscape = [0 for _ in prot_seq]

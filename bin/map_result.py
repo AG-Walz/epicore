@@ -68,10 +68,10 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
                     idx = [i for i, x in enumerate(zip(prot_row['start'].to_list()[0],prot_row['end'].to_list()[0])) if (x[0] == int(start) and x[1] == int(end))]
                     
                     if len(idx) > 1: 
-                        # TODO: integrate mod_delimiter
                         # check if multiple occurrence are due to modification
                         wo_mod = [re.sub(r"[\[\(].*?[\]\)]","",prot_row['sequence'].to_list()[0][i]) for i in idx]
-                       
+                        pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
+                        wo_mod = wo_mod + [re.sub(pattern,"",prot_row['sequence'].to_list()[0][i]) for i in idx]
                         if len(set(wo_mod)) > 1:
                             raise Exception('Please check your evidence file. There are peptides with different sequences mapped to the same position in the protein.')
                 
@@ -88,10 +88,11 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
                     # indices of peptides that match the sequence of the peptide and the accession of the mapped protein
                     idx = [i for i, x in enumerate(prot_row['sequence'].to_list()[0]) if x == sequence]
                     
-                    if len(idx) > 1: # TODO update regex
+                    if len(idx) > 1:
                         # check if multiple occurrence due to modification
-                        wo_mod = [re.sub(r"\(.*?\)","",prot_row['sequence'].to_list()[0][i]) for i in idx]
-                        
+                        wo_mod = [re.sub(r"[\[\(].*?[\]\)]","",prot_row['sequence'].to_list()[0][i]) for i in idx]
+                        pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
+                        wo_mod = wo_mod + [re.sub(pattern,"",prot_row['sequence'].to_list()[0][i]) for i in idx]
                         if len(set(wo_mod)) > 1:
                             raise Exception('Please check your evidence file. There are peptides with different sequences mapped to the same position in the protein.')
                  
