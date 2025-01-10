@@ -57,6 +57,7 @@ def read_id_output(id_output, seq_column, protacc_column, intensity_column, star
     # read in evidence file (start, stop position and intensity only when provided)
     if start_column and end_column:
         if intensity_column:
+            # TODO check if intensity_column split necessary
             peptides_df = peptides_df[[protacc_column,seq_column, intensity_column, start_column, end_column]]  
         else:
             peptides_df = peptides_df[[protacc_column,seq_column, start_column, end_column]]
@@ -144,6 +145,7 @@ def group_repetitive(starts, ends, peptide, accession):
         - starts: input start positions, but only the smallest start position for each repetitive region
         - ends: input end positions, but only the highest end position for each repetitive region
     '''
+    #TODO: check that only sequences that are included completely in repetitive region are grouped to one repetitive region 
     updated_starts = []
     updated_ends = []
     # add the first occurrences start positions to the start positions
@@ -161,6 +163,31 @@ def group_repetitive(starts, ends, peptide, accession):
         return updated_starts, updated_ends
     else:
         return starts, ends
+
+
+def get_start_end_intensity(row, peptide):
+    '''
+    input:
+        - row: a row of the dataframe containing one protein per row and the peptides mapped to the protein with their start and end position and intensity
+        - peptide: the accession of a peptide
+    outpt:
+        - starts: the start positions of the peptide in the protein as defined in the input 
+        - ends: the end positions of the peptide in the protein as defined in the input
+        - intensity: the intensity of the peptide in the protein as defined in the input
+    '''
+    #TODO add correct headers and add intensity
+    all_starts = row['start']
+    all_ends = row['end']
+    #intensities = row['intensities']
+    peptides = row['sequence']
+    starts = []
+    ends = []
+    for n_pep in range(len(peptides)):
+        if peptide == peptides[n_pep]:
+            starts.append(all_starts[n_pep])
+            ends.append(all_ends[n_pep])
+    return starts, ends
+            
 
 
 def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_delimiter):
@@ -183,7 +210,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
                 end positions of peptide in protein
                 measured intensity of the peptide 
     '''
-
+    #TODO: check that only sequences that are included completely in repetitive region are grouped to one repetitive region 
     if not start_column and not end_column:
         # if the start and end positions of the peptides is not defined in the input evidence file 
         
@@ -280,8 +307,6 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
             if intensity_column:
                 proteins.at[p,'intensity'] = updated_intens
     else:
-        # if the start and end positions of the peptides is defined in the input evidence file
-
         if intensity_column:
             proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'start','end'])
         else:
@@ -307,8 +332,66 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
                         protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'start':[int(pos) for pos in [peptide[start_column][i]]], 'end':[int(pos) for pos in [peptide[end_column][i]]]}
                     else:
                         protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[int(peptide[start_column][i])], 'end':[int(peptide[end_column][i])]}
-                    
                     proteins.loc[len(proteins)] = protein_entry
+
+        
+        for p, protein in proteins.iterrows():
+
+            # get peptide sequence, protein accession and the measured intensity of the current row
+            peptides = protein['sequence']
+            accession = protein['accession']
+            if intensity_column:
+                intensity = protein['intensity']
+            starts = []
+            ends = []
+            
+            # updated_peps contains at each index the peptide associated with the start and end position in starts and ends at that index 
+            # updated_intens contains at each index the intensity associated with the peptide at that index in updated_intens
+            updated_peps = []
+            if intensity_column:
+                updated_intens = []
+
+            pep_pos_seen = []
+            for n_p, peptide in enumerate(peptides):
+                if peptide in pep_pos_seen:
+                    continue
+                else: 
+                    pep_pos_seen.append(peptide)
+
+                # add each peptide and intensity associated with the accession to updated_peps and updated_intens
+                updated_peps.append(peptide)
+                if intensity_column:
+                    updated_intens.append(intensity[n_p])
+                
+                # get all starts, ends and the intensity of that peptide in that row
+                pep_start, pep_end = get_start_end_intensity(protein, peptide)
+            
+                if len(pep_start) == 0:
+                    raise Exception('The peptide {} does not occur in the protein with accession {} in the proteome you specified, but your input file provides evidence for that! Please use the proteome that was used for the identification of the peptides.'.format(peptide, prot_accession))
+                if len(pep_start) > 1:
+                    pep_start, pep_end = group_repetitive(pep_start,pep_end, peptide, accession)
+                    
+                   
+                if len(pep_start) > 1:
+                    # if a peptide occurs multiple times in a protein
+                    for _ in pep_start[:-1]:
+                        updated_peps.append(peptide)
+                        if intensity_column:
+                            updated_intens.append(intensity[n_p])
+                    # TODO: remove after testing
+                    print('The peptide sequence {} occurs multiple times in {}. It will be used as evidence for all occurrences.'.format(peptide, accession))
+                
+                # collect all start and end positions of the peptide in the protein
+                for start in pep_start:
+                    starts.append(start)
+                for end in pep_end:
+                    ends.append(end)
+            
+            proteins.at[p, 'start'] = starts
+            proteins.at[p, 'end'] = ends
+            proteins.at[p, 'sequence'] = updated_peps
+            if intensity_column:
+                proteins.at[p,'intensity'] = updated_intens
 
     return proteins
 
