@@ -57,11 +57,7 @@ def __main__():
     if plateau_csv is None:
         # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
         protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_delimiter)
-        if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
-        else:
-            shutil.rmtree(out_dir)
-            os.mkdir(out_dir)
+        os.makedirs(out_dir,exist_ok=True)
             
         
         # compute core epitopes and map peptides to cores
@@ -92,8 +88,3 @@ def __main__():
 
 if __name__ == "__main__":
     __main__()
-
-
-
-#TODO: check if index for positions is correct for plotting etc.
-
