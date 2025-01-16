@@ -7,12 +7,18 @@ import re
 import os 
 
 def read_entire_id_output(id_output):
-    '''
-    input:
-        - id_output: evidence file
-    output:
-        - peptides_df: pandas dataframe containing the columns sequence, protein accession and peptide intensity (and optional start and stop column) of input file
-    '''
+    """Read in the entire evidence file.
+    
+    Args:
+        id_output: The string of the path to the evidence file.
+    
+    Returns:
+        A pandas dataframe containing the evidence file.
+
+    Raises:
+        Exception: If the file type of the provided evidence file is not 
+            supported.
+    """
     # determine the file type
     ext = os.path.splitext(id_output)[1]
     if ext == '.csv':
@@ -26,19 +32,34 @@ def read_entire_id_output(id_output):
     return peptides_df
 
 def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_column, end_column, intensity_column, delimiter, mod_delimiter):
-    '''
-    input:
-        - input_tsv: evidence file 
-        - protein_df: pandas DataFrame with one protein per row and all core and whole epitopes matched to that protein
-        - seq_column: header of the column containing peptide sequence information in the evidence file 
-        - protacc_column: header of the column containing protein accession information in the evidence file
-        - start_column: header of the column containing the start positions of peptides in proteins
-        - end_column: header of the column containing the end positions of peptides in proteins
-        - delimiter: delimiter that separates multiple entries in one column in the evidence file
-        - mod_delimiter: comma separated string with delimiters for peptide modifications
-    output:
-        - pandas DataFrame containing the input_tsv with four additional columns, for the whole and core epitope and the total and relative epitope intensity
-    '''
+    """Map computed consensus epitope groups to the input evidence_file.
+    
+    Args:
+        evidence_file: The string of the path to the evidence file.
+        protein_df: A pandas dataframe containing one protein per row.
+        seq_column: The string of the header of the column containing 
+            peptide sequence information in the evidence file.
+        protacc_column: The string of the header of the column containing 
+            protein accession information in the evidence file.
+        start_column: The string of the header of the column containing the 
+            start positions of peptides in proteins.
+        end_column: The string of the header of the column containing the end 
+            position of peptides in proteins.
+        intensity_column: The string of the header of the column containing 
+            intensity information in the evidence file.
+        delimiter: The delimiter that separates multiple entries in one column 
+            in the evidence file.
+        mod_delimiter: A comma separated string with delimiters for peptide
+            modifications
+
+    Returns:
+        The evidence_file with four additional columns containing the whole and 
+        core sequence and total and relative intensity of each consensus 
+        epitope group, to which the peptide of the row belongs.
+
+    Raises:
+        Exception: If the mappings are contradictory.
+    """
     # add the columns whole and core epitopes to the input evidence
     evidence_file_df = read_entire_id_output(evidence_file)
     evidence_file_df['whole_epitopes'] = [[] for _ in range(len(evidence_file_df))]
