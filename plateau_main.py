@@ -39,7 +39,7 @@ def __main__():
     protacc_column = params['parameters']['protacc_column']
     intensity_column = params['parameters']['intensity_column']
     delimiter = params['parameters']['delimiter']
-    mod_delimiter = params['parameters']['mod_delimiter']
+    mod_pattern = params['parameters']['mod_pattern']
     plateau_csv = params['parameters']['plateau_csv']
     out_dir = params['parameters']['out_dir']
     prot_accession = params['parameters']['prot_accession']
@@ -56,14 +56,14 @@ def __main__():
 
     if plateau_csv is None:
         # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
-        protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_delimiter)
+        protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_pattern)
         os.makedirs(out_dir,exist_ok=True)
             
         
         # compute core epitopes and map peptides to cores
-        protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length, intensity_column, mod_delimiter)
+        protein_df = gen_epitope(protein_df, min_overlap, max_step_size, min_epi_length, intensity_column, mod_pattern)
         protein_df.to_csv(out_dir + '/plateau_result.csv')
-        out_linked = map_pep_core(evidence_file,protein_df,seq_column,protacc_column,start_column,end_column,intensity_column,delimiter,mod_delimiter)
+        out_linked = map_pep_core(evidence_file,protein_df,seq_column,protacc_column,start_column,end_column,intensity_column,delimiter,mod_pattern)
         out_linked.to_csv(out_dir + '/evidence_link_groups.csv')
 
         if prot_accession is not None:

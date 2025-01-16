@@ -31,7 +31,7 @@ def read_entire_id_output(id_output):
         raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
     return peptides_df
 
-def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_column, end_column, intensity_column, delimiter, mod_delimiter):
+def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_column, end_column, intensity_column, delimiter, mod_pattern):
     """Map computed consensus epitope groups to the input evidence_file.
     
     Args:
@@ -49,7 +49,7 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
             intensity information in the evidence file.
         delimiter: The delimiter that separates multiple entries in one column 
             in the evidence file.
-        mod_delimiter: A comma separated string with delimiters for peptide
+        mod_pattern: A comma separated string with delimiters for peptide
             modifications
 
     Returns:
@@ -87,7 +87,7 @@ def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_co
                 if len(idx) > 1:
                     # check if multiple occurrence due to modification                        
                     wo_mod = [re.sub(r"[\[\(].*?[\]\)]","",prot_row['sequence'].to_list()[0][i]) for i in idx]
-                    pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
+                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
                     wo_mod = wo_mod + [re.sub(pattern,"",prot_row['sequence'].to_list()[0][i]) for i in idx]
                     if len(set(wo_mod)) > 1:
                         raise Exception('Please check your evidence file. There are peptides with different sequences mapped to the same position in the protein.')

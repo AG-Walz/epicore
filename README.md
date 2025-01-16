@@ -45,7 +45,7 @@ parameters:
   start_column: 
   end_column: 
   out_dir: 
-  mod_delimiter: 
+  mod_pattern: 
   delimiter: 
   prot_accession: 
   plateau_csv: 
@@ -62,7 +62,7 @@ The description of each parameter can be found in the table below.
 | seq_column | Defines the column header in the input evidence file that contains the peptide sequences. |
 | protacc_column | Defines the column header in the input evidence file that contains the protein accessions of proteins that contain that peptide. |
 | out_dir | Defines the directory in which the results will be saved. |
-| mod_delimiter | Defines how modifications in the peptides are separated from the sequence. Put a comma separated string here, where the first element specifies the start of a modification and the second element defines the end of a modification. |
+| mod_pattern | Defines how modifications in the peptides are separated from the sequence. Put a comma separated string here, where the first element specifies the start of a modification and the second element defines the end of a modification. |
 | delimiter | Defines the delimiter that separates multiple values in one cell in the input evidence file. |
 | [prot_accession] | Defines proteins, for which the core epitopes and landscape should be visualized. Multiple parameters should be separated by commas. |
 | [plateau_csv] | Defines the path to previous computed plateau results. If this parameter is not None the result will not be computed again. Only the defined proteins will get visualized. |
@@ -105,3 +105,8 @@ The evidence_link_group.csv contains all the information from the initial eviden
 The script visualizes the landscape and core epitopes of each protein specified in the prot_accession input variable. 
 
 The more intense regions of the histogram represent the core epitopes of the protein. The different colors correspond to distinct core epitopes. Lighter areas correspond to the peptides associated with the respective core epitope.
+
+
+## Workflow
+
+

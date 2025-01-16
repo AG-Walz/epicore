@@ -127,7 +127,7 @@ def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
     return protein_df
 
 
-def gen_landscape(protein_df, mod_delimiter):
+def gen_landscape(protein_df, mod_pattern):
     """Compute the landscape of consensus epitope groups.
     
     Args:
@@ -166,7 +166,7 @@ def gen_landscape(protein_df, mod_delimiter):
                 current_seq = re.sub(pattern,"",current_seq)
                 pattern = r'\[.*?\]'
                 current_seq = re.sub(pattern,"",current_seq)
-                pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
+                pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
                 current_seq = re.sub(pattern,"",current_seq)
                 y=False
                 if str(pep_start) + '-' + str(pep_end) in seen_pep: 
@@ -192,7 +192,7 @@ def gen_landscape(protein_df, mod_delimiter):
             for sequence, sequence_pos in zip(row['grouped_peptides_sequence'][group], row['grouped_peptides_start'][group]):
                 sequence = re.sub(r"\(.*?\)","",sequence)
                 sequence = re.sub(r'\[.*?\]',"",sequence)
-                pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
+                pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
                 sequence = re.sub(pattern,"",sequence)
                 sequence_pos = [i for i in range(sequence_pos, sequence_pos + len(sequence))]
                 for aa, aa_pos in zip(sequence, sequence_pos):
@@ -289,7 +289,7 @@ def reorder_peptides(row, intensity_column):
         return list(starts), list(ends), list(sequences)
 
 
-def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column, mod_delimiter):
+def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column, mod_pattern):
     """ Compute the core and whole sequence of all consensus epitope groups. 
     
     Args:
@@ -302,7 +302,7 @@ def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_c
         min_epi_len: An integer of the minimal length of a consensus epitope.
         intensity_column: The header of the column containing the intensities
             of the peptides.
-        mod_delimiter: A comma separated string with delimiters for peptide
+        mod_pattern: A comma separated string with delimiters for peptide
             modifications
 
     Returns:
@@ -314,7 +314,7 @@ def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_c
         protein_df[['start', 'end', 'sequence']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     # group peptides 
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column)
-    protein_df = gen_landscape(protein_df,mod_delimiter)
+    protein_df = gen_landscape(protein_df,mod_pattern)
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
 
     return protein_df

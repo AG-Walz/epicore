@@ -247,7 +247,7 @@ def get_start_end_intensity(row, peptide):
             
 
 
-def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_delimiter):
+def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_pattern):
     """Converts a dataframe from one peptide per row to one protein per row.
     
     Args:
@@ -264,7 +264,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
         end_column: The string of the header of the column containing the end 
             position of peptides in proteins.
         proteome_df: #TODO change
-        mod_delimiter: A comma separated string with delimiters for peptide
+        mod_pattern: A comma separated string with delimiters for peptide
             modifications
     
     Returns:
@@ -338,12 +338,12 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
                 if intensity_column:
                     updated_intens.append(intensity[n_p])
                 
-                # remove modifications in the sequence for the matching step (modifications are separated from the peptide by (), [] or by the user defined mod_delimiter)
+                # remove modifications in the sequence for the matching step (modifications are separated from the peptide by (), [] or by the user defined mod_pattern)
                 pattern = r'\(.*?\)'
                 peptide = re.sub(pattern,"",peptide)
                 pattern = r'\[.*?\]'
                 peptide = re.sub(pattern,"",peptide)
-                pattern = re.escape(mod_delimiter.split(',')[0]) + r'.*?' + re.escape(mod_delimiter.split(',')[1])
+                pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
                 peptide = re.sub(pattern,"",peptide)
                 pep_start, pep_end = compute_pep_pos(peptide, accession, proteome_df)
 
@@ -462,7 +462,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
     return proteins
 
 
-def parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_delimiter):
+def parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_pattern):
     """Parse the evidence file.
     
     Args:
@@ -480,7 +480,7 @@ def parse_input(evidence_file, seq_column, protacc_column, intensity_column, sta
         delimiter: The delimiter that separates multiple entries in one column 
             in the evidence file.
         proteome_df: #TODO change
-        mod_delimiter: A comma separated string with delimiters for peptide
+        mod_pattern: A comma separated string with delimiters for peptide
             modifications
     
     Returns:
@@ -489,5 +489,5 @@ def parse_input(evidence_file, seq_column, protacc_column, intensity_column, sta
         end position and intensity.
     """
     peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter)
-    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_delimiter)
+    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_pattern)
     return protein_df
