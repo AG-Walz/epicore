@@ -463,7 +463,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
 
 
 def parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_delimiter):
-    """
+    """Parse the evidence file.
     
     Args:
         evidence_file: The string of the path to the evidence file.

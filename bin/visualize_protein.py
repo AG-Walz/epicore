@@ -9,13 +9,14 @@ from matplotlib.ticker import MaxNLocator
 from bin.parse_input import get_prot_seq
 
 def vis_prot(protein_df, accession, proteome_df, plot_path=''):
-    '''
-    input:
-        - protein_df: pandas DataFrame with one protein per row and all core and whole epitopes matched 
-        - accession: accession of protein for visualization
-        - proteome_df: pandas dataframe containing one protein accession and its corresponding sequence per row
-        - plot_path: location where plot gets saved  
-    '''
+    """Visualize the landscape of a protein.
+
+    Args:
+        protein_df: A pandas dataframe containing one protein per row.
+        accession: The string of a protein accession.
+        proteome_df: TODO
+        plot_path: The location where the visualization gets saved to.
+    """
     prot_row = protein_df[(protein_df['accession'] == accession)]
     if len(prot_row) == 0:
         raise Exception('The accession {} is not in your input data.'.format(accession))

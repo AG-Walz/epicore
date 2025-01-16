@@ -8,16 +8,33 @@ import pandas as pd
 
 
 def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
-    '''
-    input:
-        - protein_df: pandas DataFrame, one protein per row
-        - min_overlap: minimum overlap length of two epitopes for a consensus epitope
-        - max_step_size: maximum distance between the start positions of two epitopes for a consensus epitope
-        - intensity_column: parameter indicating if intensity column is provided or not
-    output:
-        - input DataFrame, with the start and end positions and peptide sequences grouped into consensus epitopes
-    '''
+    """Group the peptides to consensus epitopes.
 
+    Args:
+        protein_df: A pandas dataframe containing one protein per row.
+        min_overlap: An integer of the minimal overlap between two epitopes     
+            to be grouped to the same consensus epitope.
+        max_step_size: An integer of the maximal distance between the start 
+            position of two epitopes to be grouped to the same consensus 
+            epitope.
+        intensity_column: The header of the column containing the intensities
+            of the peptides.
+
+    Returns:
+        The protein_df with the five additional columns: 
+        grouped_peptides_start, grouped_peptides_end, 
+        grouped_peptides_sequence, grouped peptides_intensity, 
+        core_epitopes_intensity, relative_core_intensity and 
+        sequence_group_mapping. The first five column contain the start
+        position, end position, sequence and intensity of the peptides grouped
+        to consensus epitopes. The column relative_core_intensity contains the 
+        relative core intensities of the consensus core epitopes. The column 
+        sequence group mapping contains for each peptide to which consensus 
+        epitope it is grouped.
+    """
+
+   
+    print(intensity_column)
     # start, end, sequence and intensity of peptides of one group grouped together
     protein_df['grouped_peptides_start'] = [[] for _ in range(len(protein_df))]
     protein_df['grouped_peptides_end'] = [[] for _ in range(len(protein_df))]
@@ -111,13 +128,24 @@ def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
 
 
 def gen_landscape(protein_df, mod_delimiter):
-    '''
-    input:
-        - protein_df: pandas DataFrame, one protein per row
-        - mod_delimiter: comma separated string with delimiters for peptide modifications
-    output:
-        - protein DataFrame + epitope landscape for each epitope group + whole sequence of each group
-    '''
+    """Compute the landscape of consensus epitope groups.
+    
+    Args:
+        protein_df: A pandas dataframe containing one protein per row.
+        mod:delimiter: A comma separated string with delimiters for peptide
+            modifications
+
+    Returns:
+        The protein_df with two additional columns (landscape, whole_epitopes).
+        The column landscape contains the landscapes of the consensus epitopes 
+        group. The height of the landscape of a consensus epitope group at a 
+        position is the number of peptides that contain that position. The 
+        column whole_epitopes contains the entire sequence of the consensus 
+        epitope group.
+
+    Raises:
+        Exception: If the mappings are contradictory.
+    """
 
     protein_df['landscape'] = [[] for _ in range(len(protein_df))]
     protein_df['whole_epitopes'] = [[] for _ in range(len(protein_df))]
@@ -180,13 +208,15 @@ def gen_landscape(protein_df, mod_delimiter):
 
 
 def get_consensus_epitopes(protein_df, min_epi_len):
-    '''
-    input:
-        - protein_df: pandas DataFrame, one protein per row
-        - min_epi_len: minimum length of an epitope
-    output:
-        - input DataFrame, with the consensus epitope of each epitope group
-    '''
+    """Compute the consensus epitope sequence of each consensus epitope group.
+    
+    Args:
+        protein_df: A pandas dataframe containing one protein per row.
+        min_epi_length: An integer of the minimal length of a consensus epitope.
+
+    Returns:
+        The protein_df with one additional column, that contains the consensus epitope sequence of each consensus epitope group.
+    """
     protein_df['consensus_epitopes'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_start'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_end'] = [[] for _ in range(len(protein_df))]
@@ -237,13 +267,16 @@ def get_consensus_epitopes(protein_df, min_epi_len):
 
 
 def reorder_peptides(row, intensity_column):
-    '''
-    input:
-        - row: row of pandas dataframe containing one protein per row and all peptide sequences mapped to the protein with start and end position
-        - intensity_column: parameter indicating if intensity column is provided or not
-    output:
-        - input row containing a reordered version of the row, the start positions are sorted in ascending order, the indices of the other columns are reordered in the same pattern
-    '''
+    """Reorder the peptides mapped to a protein by their position.
+    
+    Args:
+        row: A row of a pandas dataframe containing per row one protein, 
+            peptides mapped to the protein, start and end position of the peptide in the protein and the intensity of the peptide.
+        intensity_column: The header of the column containing the intensities
+            of the peptides.
+    Returns:
+        A reordered version of the input row, where the start positions are sorted in ascending order, the indices of the other columns are reordered in the same pattern. 
+    """
     if intensity_column:
         lists = list(zip(row['start'], row['end'], row['sequence'], row['intensity']))
         sorted_lists = sorted(lists, key=lambda x: int(x[0]))
@@ -257,18 +290,24 @@ def reorder_peptides(row, intensity_column):
 
 
 def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column, mod_delimiter):
-    '''
-     input:
-        - input_tsv: evidence file
-        - protein_df: pandas DataFrame, one protein per row
-        - min_overlap: minimum overlap length of two epitopes for a consensus epitope
-        - max_step_size: maximum distance between the start positions of two epitopes for a consensus epitope
-        - min_epi_len: minimum length of an epitope
-        - intensity_column: parameter indicating if intensity column is provided or not
-        - mod_delimiter: comma separated string with delimiters for peptide modifications
-    output:
-        - for each protein: list of core and whole peptides
-    '''
+    """ Compute the core and whole sequence of all consensus epitope groups. 
+    
+    Args:
+        protein_df: A pandas dataframe containing one protein per row.
+        min_overlap: An integer of the minimal overlap between two epitopes     
+            to be grouped to the same consensus epitope.
+        max_step_size: An integer of the maximal distance between the start 
+            position of two epitopes to be grouped to the same consensus 
+            epitope.
+        min_epi_len: An integer of the minimal length of a consensus epitope.
+        intensity_column: The header of the column containing the intensities
+            of the peptides.
+        mod_delimiter: A comma separated string with delimiters for peptide
+            modifications
+
+    Returns:
+        The protein_df containing for each protein the core and whole sequence of each of its consensus epitope groups.
+    """
     if intensity_column:
         protein_df[['start', 'end', 'sequence', 'intensity']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     else:
