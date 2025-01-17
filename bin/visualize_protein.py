@@ -5,10 +5,11 @@ Visualizes the landscape of a protein.
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tck
 from matplotlib.ticker import MaxNLocator
+import pandas as pd 
 
 from bin.parse_input import get_prot_seq
 
-def vis_prot(protein_df, accession, proteome_df, plot_path=''):
+def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_df:pd.DataFrame, plot_path=''):
     """Visualize the landscape of a protein.
 
     Args:

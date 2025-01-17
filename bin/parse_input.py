@@ -9,8 +9,8 @@ from Bio import SeqIO
 import os 
 
 
-def read_id_output(id_output, seq_column, protacc_column, intensity_column, 
-                   start_column, end_column, delimiter):
+def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensity_column: str, 
+                   start_column: str, end_column: str, delimiter: str) -> pd.DataFrame:
     """Read in the evidence file.
 
     Args:
@@ -151,7 +151,7 @@ def get_prot_seq(accession, proteome_df):
     return protein_seq    
 
 
-def compute_pep_pos(peptide, accession, proteome_df):
+def compute_pep_pos(peptide: str, accession: str, proteome_df: pd.DataFrame) -> tuple[list[int],list[int]]:
     """Compute the position of a peptide in a proteome.
 
     Args:
@@ -180,7 +180,7 @@ def compute_pep_pos(peptide, accession, proteome_df):
     return start, end
 
 
-def group_repetitive(starts, ends, peptide, accession):
+def group_repetitive(starts: list[int], ends: list[int], peptide: str, accession:str)->tuple[list[int],list[int]]:
     """Group peptide occurrences that belong to the same repetitive region.
 
     Args: 
@@ -217,7 +217,7 @@ def group_repetitive(starts, ends, peptide, accession):
         return starts, ends
 
 
-def get_start_end_intensity(row, peptide):
+def get_start_end_intensity(row: pd.Series, peptide: str) -> tuple[list[int],list[int],list[float]]:
     """Gets the starts, ends and intensity of a peptide.
     
     Args:
@@ -247,11 +247,11 @@ def get_start_end_intensity(row, peptide):
             
 
 
-def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_pattern):
+def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, proteome_df: pd.DataFrame, mod_pattern:str) -> pd.DataFrame:
     """Converts a dataframe from one peptide per row to one protein per row.
     
     Args:
-        peptides_df: A pandas dataframe containing the columns petide sequence,
+        peptides_df: A pandas dataframe containing the columns peptide sequence,
             protein accession, intensity, start position and end position.
         seq_column: The string of the header of the column containing 
             peptide sequence information in the evidence file.
@@ -362,10 +362,12 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
                     print('The peptide sequence {} occurs multiple times in {}. It will be used as evidence for all occurrences.'.format(peptide, accession))
                 
                 # collect all start and end positions of the peptide in the protein
-                for start in pep_start:
-                    starts.append(start)
-                for end in pep_end:
-                    ends.append(end)
+                starts.extend(pep_start)
+                ends.extend(pep_end)
+                #for start in pep_start:
+                #    starts.append(start)
+                #for end in pep_end:
+                #    ends.append(end)
             
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
@@ -448,10 +450,12 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
                     print('The peptide sequence {} occurs multiple times in {}. It will be used as evidence for all occurrences.'.format(peptide, accession))
                 
                 # collect all start and end positions of the peptide in the protein
-                for start in pep_start:
-                    starts.append(start)
-                for end in pep_end:
-                    ends.append(end)
+                starts.extend(pep_start)
+                ends.extend(pep_end)
+                #for start in pep_start:
+                #    starts.append(start)
+                #for end in pep_end:
+                #    ends.append(end)
             
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
@@ -462,7 +466,7 @@ def prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, sta
     return proteins
 
 
-def parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_pattern):
+def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, proteome_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
     """Parse the evidence file.
     
     Args:

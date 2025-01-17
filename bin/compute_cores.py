@@ -7,7 +7,7 @@ import re
 import pandas as pd
 
 
-def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
+def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str) -> pd.DataFrame:
     """Group the peptides to consensus epitopes.
 
     Args:
@@ -32,9 +32,6 @@ def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
         sequence group mapping contains for each peptide to which consensus 
         epitope it is grouped.
     """
-
-   
-    print(intensity_column)
     # start, end, sequence and intensity of peptides of one group grouped together
     protein_df['grouped_peptides_start'] = [[] for _ in range(len(protein_df))]
     protein_df['grouped_peptides_end'] = [[] for _ in range(len(protein_df))]
@@ -127,7 +124,7 @@ def group_peptides(protein_df, min_overlap, max_step_size, intensity_column):
     return protein_df
 
 
-def gen_landscape(protein_df, mod_pattern):
+def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
     """Compute the landscape of consensus epitope groups.
     
     Args:
@@ -207,7 +204,7 @@ def gen_landscape(protein_df, mod_pattern):
     return protein_df
 
 
-def get_consensus_epitopes(protein_df, min_epi_len):
+def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int):
     """Compute the consensus epitope sequence of each consensus epitope group.
     
     Args:
@@ -266,7 +263,7 @@ def get_consensus_epitopes(protein_df, min_epi_len):
     return protein_df
 
 
-def reorder_peptides(row, intensity_column):
+def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
     """Reorder the peptides mapped to a protein by their position.
     
     Args:
@@ -289,7 +286,7 @@ def reorder_peptides(row, intensity_column):
         return list(starts), list(ends), list(sequences)
 
 
-def gen_epitope(protein_df, min_overlap, max_step_size, min_epi_len, intensity_column, mod_pattern):
+def gen_epitope(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str) -> pd.DataFrame:
     """ Compute the core and whole sequence of all consensus epitope groups. 
     
     Args:

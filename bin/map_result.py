@@ -6,7 +6,7 @@ import pandas as pd
 import re
 import os 
 
-def read_entire_id_output(id_output):
+def read_entire_id_output(id_output: str) -> pd.DataFrame:
     """Read in the entire evidence file.
     
     Args:
@@ -31,7 +31,7 @@ def read_entire_id_output(id_output):
         raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
     return peptides_df
 
-def map_pep_core(evidence_file, protein_df, seq_column, protacc_column, start_column, end_column, intensity_column, delimiter, mod_pattern):
+def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, protacc_column: str, start_column: str, end_column: str, intensity_column: str, delimiter: str, mod_pattern: str) -> pd.DataFrame:
     """Map computed consensus epitope groups to the input evidence_file.
     
     Args:
