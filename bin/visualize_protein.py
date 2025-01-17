@@ -7,22 +7,22 @@ import matplotlib.ticker as tck
 from matplotlib.ticker import MaxNLocator
 import pandas as pd 
 
-from bin.parse_input import get_prot_seq
+#from bin.parse_input import get_prot_seq
 
-def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_df:pd.DataFrame, plot_path=''):
+def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,str], plot_path=''):
     """Visualize the landscape of a protein.
 
     Args:
         protein_df: A pandas dataframe containing one protein per row.
         accession: The string of a protein accession.
-        proteome_df: TODO
+        proteome_dict: A dictionary containing the reference proteome.
         plot_path: The location where the visualization gets saved to.
     """
     prot_row = protein_df[(protein_df['accession'] == accession)]
     if len(prot_row) == 0:
         raise Exception('The accession {} is not in your input data.'.format(accession))
 
-    prot_seq = get_prot_seq(accession, proteome_df)
+    prot_seq = proteome_dict[accession]
 
     prot_landscape = [0 for _ in prot_seq]
     

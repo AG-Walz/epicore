@@ -9,7 +9,7 @@ from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core
 from bin.visualize_protein import vis_prot
 from bin.parse_input import parse_input
-from bin.parse_input import proteome_to_df
+from bin.parse_input import proteome_to_dict
 
 def __main__():
 
@@ -52,11 +52,11 @@ def __main__():
     if not os.path.isfile(fasta_proteome):
         raise Exception('The given proteome file does not exist.')
     
-    proteome_df = proteome_to_df(fasta_proteome)
+    proteome_dict = proteome_to_dict(fasta_proteome)
 
     if plateau_csv is None:
         # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
-        protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_df, mod_pattern)
+        protein_df = parse_input(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, proteome_dict, mod_pattern)
         os.makedirs(out_dir,exist_ok=True)
             
         
@@ -68,7 +68,7 @@ def __main__():
 
         if prot_accession is not None:
             for accession in prot_accession.split(','):
-                vis_prot(protein_df,accession,proteome_df,out_dir + '/' + accession + '.pdf')
+                vis_prot(protein_df,accession,proteome_dict,out_dir + '/' + accession + '.pdf')
     
     else:
         for accession in prot_accession.split(','):
@@ -80,7 +80,7 @@ def __main__():
             protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
             if prot_accession is not None:
                 for accession in prot_accession.split(','):
-                    vis_prot(protein_df,accession,proteome_df,out_dir + '/' + accession + '.pdf')       
+                    vis_prot(protein_df,accession,proteome_dict,out_dir + '/' + accession + '.pdf')       
     
 
 

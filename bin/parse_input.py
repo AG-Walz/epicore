@@ -119,51 +119,35 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
     return peptides_df
 
 
-def proteome_to_df(proteome):
-    # TODO change to dictionary
-    '''
-    input:
-        - proteome: fasta file containing the proteome
-    output:
-        - proteome_df: pandas dataframe containing one protein accession and its corresponding sequence per row
-    '''
-    proteome_df = pd.DataFrame(columns=['accession', 'sequence'])
+def proteome_to_dict(proteome: str) -> dict[str,str]:
+    """Read reference proteome into dictionary.
+
+    Args:
+        proteome: The string of the path to the reference proteome.
+
+    Returns: 
+        The reference proteome as a dictionary.
+    """
+    proteome_dict = {}
     proteome = SeqIO.parse(open(proteome),'fasta')
     for protein in proteome:
-        protein_entry = {'accession':protein.id, 'sequence':str(protein.seq)}
-        proteome_df.loc[len(proteome_df)] = protein_entry
-    return proteome_df
+        proteome_dict[protein.id] = str(protein.seq)
+    return proteome_dict
 
 
-def get_prot_seq(accession, proteome_df):
-    # TODO: remove after changing o dictionary
-    '''
-    input:
-        - accession: accession of protein
-        - proteome_df: reference proteome used for the identification of the peptide as a pandas dataframe
-    output:
-        - protein_seq: protein sequence corresponding to accession 
-    '''
-    if (proteome_df['accession'] == accession).any():
-        protein_seq = proteome_df.loc[proteome_df['accession'] == accession,'sequence'].iloc[0]
-    else:
-        raise Exception('The protein with accession "{}" does not occur in the given proteome! Please use the proteome that was used for the identification of the peptides.'.format(accession))
-    return protein_seq    
-
-
-def compute_pep_pos(peptide: str, accession: str, proteome_df: pd.DataFrame) -> tuple[list[int],list[int]]:
+def compute_pep_pos(peptide: str, accession: str, proteome_dict: dict[str,str]) -> tuple[list[int],list[int]]:
     """Compute the position of a peptide in a proteome.
 
     Args:
         peptide: The string of a peptide sequence.
         accession: The string of a protein accession.
-        proteome_df: A pandas dataframe of a reference proteome.
+        proteome_dict: A dictionary containing the reference proteome.
 
     Returns:
         Returns a tuple (start,end), where start is a list of all start positions of the peptide in the protein and end is a list of all end positions of the peptide in the protein.
     """   
     
-    prot_seq = get_prot_seq(accession, proteome_df)
+    prot_seq = proteome_dict[accession]
 
     # regular expression for all occurrences of peptide in protein (also overlapping ones) 
     peptide_search = '(?=' + peptide + ')' 
@@ -247,7 +231,7 @@ def get_start_end_intensity(row: pd.Series, peptide: str) -> tuple[list[int],lis
             
 
 
-def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, proteome_df: pd.DataFrame, mod_pattern:str) -> pd.DataFrame:
+def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, proteome_dict: dict[str,str], mod_pattern:str) -> pd.DataFrame:
     """Converts a dataframe from one peptide per row to one protein per row.
     
     Args:
@@ -263,7 +247,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             start positions of peptides in proteins.
         end_column: The string of the header of the column containing the end 
             position of peptides in proteins.
-        proteome_df: #TODO change
+        proteome_dict: A dictionary containing the reference proteome.
         mod_pattern: A comma separated string with delimiters for peptide
             modifications
     
@@ -280,8 +264,6 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
     if not start_column and not end_column:
         # if the start and end positions of the peptides is not defined in the input evidence file 
         
-        # load the proteome into a pandas dataframe
-        #proteome_df = proteome_to_df(proteome)
 
         if intensity_column:
             proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity'])
@@ -345,7 +327,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                 peptide = re.sub(pattern,"",peptide)
                 pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
                 peptide = re.sub(pattern,"",peptide)
-                pep_start, pep_end = compute_pep_pos(peptide, accession, proteome_df)
+                pep_start, pep_end = compute_pep_pos(peptide, accession, proteome_dict)
 
                 if pep_start.size == 0:
                     raise Exception('The peptide {} does not occur in the protein with accession {} in the proteome you specified, but your input file provides evidence for that! Please use the proteome that was used for the identification of the peptides.'.format(peptide, prot_accession))
@@ -466,7 +448,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
     return proteins
 
 
-def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, proteome_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
+def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, proteome_dict: dict[str,str], mod_pattern: str) -> pd.DataFrame:
     """Parse the evidence file.
     
     Args:
@@ -483,7 +465,7 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
             position of peptides in proteins.
         delimiter: The delimiter that separates multiple entries in one column 
             in the evidence file.
-        proteome_df: #TODO change
+        proteome_dict: A dictionary containing the reference proteome.
         mod_pattern: A comma separated string with delimiters for peptide
             modifications
     
@@ -493,5 +475,5 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
         end position and intensity.
     """
     peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter)
-    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_df, mod_pattern)
+    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_dict, mod_pattern)
     return protein_df
