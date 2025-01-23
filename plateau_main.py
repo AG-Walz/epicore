@@ -42,11 +42,6 @@ def __main__(input_tsv, proteome, params_file):
     start_column = params['parameters']['start_column']
     end_column = params['parameters']['end_column']
 
-    # check if all input paths exist
-    if not os.path.isfile(evidence_file):
-        raise Exception('The given evidence file does not exist.')
-    if not os.path.isfile(fasta_proteome):
-        raise Exception('The given proteome file does not exist.')
     
     proteome_dict = proteome_to_dict(fasta_proteome)
 
