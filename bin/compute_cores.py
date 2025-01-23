@@ -129,7 +129,7 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
     
     Args:
         protein_df: A pandas dataframe containing one protein per row.
-        mod:delimiter: A comma separated string with delimiters for peptide
+        mod_pattern A comma separated string with delimiters for peptide
             modifications
 
     Returns:
