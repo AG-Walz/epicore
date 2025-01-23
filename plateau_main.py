@@ -4,6 +4,7 @@ import shutil
 import pandas as pd 
 import ast
 import yaml
+import click
 
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core
@@ -11,20 +12,15 @@ from bin.visualize_protein import vis_prot
 from bin.parse_input import parse_input
 from bin.parse_input import proteome_to_dict
 
-def __main__():
-
-    parser = argparse.ArgumentParser(description='Input File and Parameters')
-    parser.add_argument('-input_tsv', type=str,
-                        help='PATH to the evidence file.')
-    parser.add_argument('-proteome', type=str, 
-                        help='PATH to the fasta file of the proteome used for identification.')
-    parser.add_argument('-params_file', type=str, required=False, default=9,
-                        help='PATH to the params.yaml file.')
-    args = parser.parse_args()
-
-    evidence_file = args.input_tsv
-    fasta_proteome = args.proteome
-    params_file = args.params_file
+@click.command()
+@click.argument('input_tsv',type=click.Path(exists=True))
+@click.argument('proteome',type=click.Path(exists=True))
+@click.argument('params_file',type=click.Path(exists=True))
+def __main__(input_tsv, proteome, params_file):
+    
+    evidence_file = input_tsv
+    fasta_proteome = proteome
+    params_file = params_file
 
     # read parameters defined in yaml file 
     with open(params_file,'r') as yaml_file:
