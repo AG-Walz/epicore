@@ -30,7 +30,7 @@ def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,s
     fig_height = 3
 
 
-    _, ax = plt.subplots(figsize=(fig_width, fig_height), layout='constrained')
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), layout='constrained')
     ax.yaxis.set_major_locator(tck.MultipleLocator())
     ax.xaxis.set_major_locator(MaxNLocator(nbins=20))
 
@@ -52,8 +52,6 @@ def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,s
     ax.set_title('Number of peptides mapped to each amino acid position and core epitopes of protein {}'.format(accession))
     ax.set_xlabel('Position in protein {}'.format(accession))
     ax.set_ylabel('Number of mapped peptides')
-    if plot_path != '':
-        plt.savefig(plot_path)
     plt.show()
-
+    return fig
 

@@ -94,7 +94,8 @@ def plot_landscape(ctx,plateau_csv):
         protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
         if ctx.obj.prot_accession is not None:
-            vis_prot(protein_df,accession,ctx.obj.proteome_dict,ctx.obj.out_dir + '/' + accession + '.pdf') 
+            fig = vis_prot(protein_df,accession,ctx.obj.proteome_dict)
+            fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf') 
     
 main.add_command(generate_plateau_csv)
 main.add_command(plot_landscape)
