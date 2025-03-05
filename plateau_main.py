@@ -3,6 +3,7 @@ import pandas as pd
 import ast
 import yaml
 import click
+import logging
 
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core
@@ -10,6 +11,10 @@ from bin.visualize_protein import vis_prot
 from bin.parse_input import parse_input
 from bin.parse_input import proteome_to_dict
 
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='localplateau.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 class InputParameter(object):
     """This class contains parameters necessary for the plateau script.

@@ -7,6 +7,10 @@ import re
 import numpy as np 
 from Bio import SeqIO
 import os 
+import itertools
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensity_column: str, 
@@ -194,8 +198,6 @@ def group_repetitive(starts: list[int], ends: list[int], peptide: str, accession
     # add the last occurrences end position to the end positions
     updated_ends.append(ends[-1])
     if len(updated_starts) < len(starts): 
-        # TODO: 
-        print('CAUTION! The peptide sequence {} is part of repetitive region(s) in protein {} and will be used as evidence of the entire repetitive region.'.format(peptide, accession))        
         return updated_starts, updated_ends
     else:
         return starts, ends
@@ -340,8 +342,6 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                         updated_peps.append(peptide)
                         if intensity_column:
                             updated_intens.append(intensity[n_p])
-                    # TODO: remove after testing
-                    print('The peptide sequence {} occurs multiple times in {}. It will be used as evidence for all occurrences.'.format(peptide, accession))
                 
                 # collect all start and end positions of the peptide in the protein
                 starts.extend(pep_start)
@@ -424,16 +424,10 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                         updated_peps.append(peptide)
                         if intensity_column:
                             updated_intens.append(intensity[n_p])
-                    # TODO: remove after testing
-                    print('The peptide sequence {} occurs multiple times in {}. It will be used as evidence for all occurrences.'.format(peptide, accession))
                 
                 # collect all start and end positions of the peptide in the protein
                 starts.extend(pep_start)
                 ends.extend(pep_end)
-                #for start in pep_start:
-                #    starts.append(start)
-                #for end in pep_end:
-                #    ends.append(end)
             
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
@@ -471,5 +465,16 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
         end position and intensity.
     """
     peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter)
+
+    # get peptides/proteins with protein accessions that do not appear in the proteome
+    peptides = peptides_df.apply(lambda row: [prot for prot in row[protacc_column] if prot not in proteome_dict.keys()], axis=1).values
+    n_removed_proteins = set(itertools.chain.from_iterable(peptides))
+
+    # remove peptides with protein accessions that do not appear in the proteome
+    peptides_df[protacc_column] = peptides_df.apply(lambda row: [prot for prot in row[protacc_column] if prot in proteome_dict.keys()], axis=1)
+
+    logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file:{n_removed_proteins}.')
+
+
     protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_dict, mod_pattern)
     return protein_df
