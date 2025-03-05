@@ -7,11 +7,16 @@ The tool can be used to identify and quantify shared consensus epitopes.
 ### How to use
 1. In your command line go to the directory where this github repository is cloned to.
 2. Specify your input as described [here](#Input-files)
-3. Enter the following command:
+3. To compute the consensus epitopes enter the following command:
     ```
-    python3 plateau_main.py -input_tsv <EVIDENCE_FILE> -proteome <PROTEOME_FILE> -params params.yaml
+    python3 plateau_main.py <PROTEOME_FILE> params.yaml generate-plateau-csv <EVIDENCE_FILE>
     ```
     Replace ```EVIDENCE_FILE``` with the path to your evidence file and ```PROTEOME_FILE``` with the path to the proteome fasta file that was used to generate the evidence file. You can find more detailed information about the input data [here](#input-files).  
+
+   To visualize the landscape of one protein you can use the following command:
+    ```
+    python3 plateau_main.py <PROTEOME_FILE> params.yaml prot-landscape <PLATEAU_RESULT>
+    ```
 
 #### First time set up 
 ##### Create a conda environment
