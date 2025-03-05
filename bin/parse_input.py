@@ -346,10 +346,6 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                 # collect all start and end positions of the peptide in the protein
                 starts.extend(pep_start)
                 ends.extend(pep_end)
-                #for start in pep_start:
-                #    starts.append(start)
-                #for end in pep_end:
-                #    ends.append(end)
             
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
@@ -373,15 +369,15 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                     proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
                     if intensity_column:
                         proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
-                    proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [int(peptide[start_column][i])])
-                    proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [int(peptide[end_column][i])])
+                    proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [peptide[start_column][i]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [peptide[end_column][i]])
                     
                 else:
                     # create new row for accessions not seen before
                     if intensity_column:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'start':[int(pos) for pos in [peptide[start_column][i]]], 'end':[int(pos) for pos in [peptide[end_column][i]]]}
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'start':[peptide[start_column][i]], 'end':[peptide[end_column][i]]}
                     else:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[int(peptide[start_column][i])], 'end':[int(peptide[end_column][i])]}
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[peptide[start_column][i]], 'end':[peptide[end_column][i]]}
                     proteins.loc[len(proteins)] = protein_entry
 
         
