@@ -18,6 +18,7 @@ def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,s
         proteome_dict: A dictionary containing the reference proteome.
         plot_path: The location where the visualization gets saved to.
     """
+    print(protein_df['accession'].head(10))
     prot_row = protein_df[(protein_df['accession'] == accession)]
     if len(prot_row) == 0:
         raise Exception('The accession {} is not in your input data.'.format(accession))

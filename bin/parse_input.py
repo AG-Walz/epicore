@@ -98,7 +98,6 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
     # provided)
     if start_column and end_column:
         if intensity_column:
-            # TODO check if intensity_column split necessary
             peptides_df = peptides_df[[protacc_column,seq_column,       
                                        intensity_column, start_column, 
                                        end_column]]  
@@ -137,6 +136,7 @@ def proteome_to_dict(proteome: str) -> dict[str,str]:
     for protein in proteome:
         proteome_dict[protein.id] = str(protein.seq)
     return proteome_dict
+
 
 
 def compute_pep_pos(peptide: str, accession: str, proteome_dict: dict[str,str]) -> tuple[list[int],list[int]]:
@@ -185,7 +185,6 @@ def group_repetitive(starts: list[int], ends: list[int], peptide: str, accession
         end positions that are part of repetitive regions the lowest start 
         position and highest end position is kept for each repetitive region. 
     """
-    #TODO: check that only sequences that are included completely in repetitive region are grouped to one repetitive region 
     updated_starts = []
     updated_ends = []
     # add the first occurrences start positions to the start positions
@@ -262,7 +261,6 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         Exception: If a peptide does not occur in the protein to which it is 
             mapped.
     """
-    #TODO: check that only sequences that are included completely in repetitive region are grouped to one repetitive region 
     if not start_column and not end_column:
         # if the start and end positions of the peptides is not defined in the input evidence file 
         
@@ -277,21 +275,19 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             # get all proteins matched to the peptide
             prot_accessions = peptide[protacc_column]
             for i, prot_accession in enumerate(prot_accessions):
-                # TODO: remove this line! only for testing 
-                if 'DECOY' not in prot_accession:
-                    if prot_accession in proteins['accession'].values:
-                        # update row for accessions seen before
-                        proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
-                        if intensity_column:
-                            proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
+                if prot_accession in proteins['accession'].values:
+                    # update row for accessions seen before
+                    proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
+                    if intensity_column:
+                        proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
 
+                else:
+                    # create new row for accessions not seen before 
+                    if intensity_column:
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]]}
                     else:
-                        # create new row for accessions not seen before 
-                        if intensity_column:
-                            protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]]}
-                        else:
-                            protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]]}
-                        proteins.loc[len(proteins)] = protein_entry
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]]}
+                    proteins.loc[len(proteins)] = protein_entry
 
         # add the columns start and end
         proteins['start'] = [[] for _ in range(len(proteins))]
