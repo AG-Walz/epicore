@@ -134,12 +134,12 @@ def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
         A reordered version of protein_df were each row stores one epitope.
     """
 
-    cols = ['whole_epitopes', 'consensus_epitopes', 'core_epitopes_start', 'core_epitopes_end', 'landscape', 'grouped_peptides_sequence', 'grouped_peptides_start', 'grouped_peptides_end']
+    cols = ['whole_epitopes', 'consensus_epitopes','landscape', 'grouped_peptides_sequence']
     cols_acc = cols + ['accession']
-    protein_df_long = protein_df.explode(cols, ignore_index=True)
+    protein_df_long = protein_df.explode(cols)
     protein_df_long = protein_df_long.astype(str)
     epitopes_grouped_df = protein_df_long[cols_acc].groupby(cols)
-    epitopes_grouped_df = epitopes_grouped_df.agg({'accession':lambda x:','.join(x)})
+    epitopes_grouped_df = epitopes_grouped_df.agg({'accession':lambda x:','.join(x)}).reset_index()
     
     logger.info(f'{len(epitopes_grouped_df)} unique epitopes were computed.')
 

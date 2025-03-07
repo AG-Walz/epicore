@@ -10,43 +10,39 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 
-#from bin.parse_input import get_prot_seq
 
-def vis_pepdist(protein_df: pd.DataFrame, evidence_file: str, protacc_column: str, delimiter: str):
-    """Visualize the distribution of the epitopes length.
+def vis_pepdist(first_df: pd.DataFrame, second_df: pd.DataFrame, first_column: str, second_column: str, first_label: str, second_label: str) -> plt.figure:
+    """Visualize the distribution of lengths of sequences.
     
     Args:
-        protein_df: A pandas dataframe containing one protein per row.
-        evidence_file: The string of the path to the evidence file.
-        protacc_column: The string of the header of the column containing 
-            protein accession information in the evidence file.
+        first_df: A pandas dataframe.
+        second_df: A pandas dataframe.
+        first_column: The header of the column, that holds the sequences in 
+            first_df, for which the length distribution will be plotted. 
+        second_column: The header of the column, which holds the sequences in 
+            second_df, for which the length distribution will be plotted.  
+        first_label: Label for the values of first_column in the plot.
+        second_label: Label for the values of second_column in the plot.                
         delimiter: The delimiter that separates multiple entries in one column 
             in the evidence file.
         
     """
     
-    protein_df_long_whole = protein_df.explode('whole_epitopes')
-    protein_df_long_core = protein_df.explode('consensus_epitopes')
-
-    evidence_df = pd.read_csv(evidence_file,sep='\t')
-    evidence_df[protacc_column] = evidence_df[protacc_column].apply(lambda accessions: accessions.split(delimiter))
-    evidence_df_long = evidence_df.explode(protacc_column)
+    first_long = first_df.explode(first_column)
+    second_long = second_df.explode(second_column)
     
-    logger.info(f'{len(evidence_df_long)} peptides were reduced to {len(protein_df_long_whole)} epitopes.')
+    logger.info(f'{len(first_long)} peptides were reduced to {len(second_long)} epitopes.')
 
-    # compute a histogram of the peptides/core epitopes/whole epitopes lengths
+    # compute a histogram of the sequence lengths in first_column and second_column
     fig, ax = plt.subplots(layout='constrained')
-    peps_before = evidence_df_long['sequence']
-    core_after = protein_df_long_core['consensus_epitopes']
-    whole_after = protein_df_long_whole['whole_epitopes']
+    seq_first = first_long[first_column]
+    seq_second = second_long[second_column]
 
-    peps_len = peps_before.map(lambda pep: len(pep)).to_list()
-    core_len = core_after.map(lambda pep: len(pep)).to_list()
-    whole_len = whole_after.map(lambda pep: len(pep)).to_list()
+    first_len = seq_first.map(lambda pep: len(pep)).to_list()
+    second_len = seq_second.map(lambda pep: len(pep)).to_list()
     
-    ax.hist(peps_len, bins=np.arange(5,50,1), color='grey', label='peptides', alpha=0.4)
-    ax.hist(core_len, bins=np.arange(5,50,1), color='red', label='core_epitopes', alpha=0.7)
-    ax.hist(whole_len,bins=np.arange(5,50,1), color='blue', label='whole epitopes', alpha=0.7)
+    ax.hist(first_len, bins=np.arange(5,50,1), color='grey', label=first_label, alpha=0.6)
+    ax.hist(second_len, bins=np.arange(5,50,1), color='red', label=second_label, alpha=0.6)
 
     ax.legend()
     ax.set_xlabel('length')
@@ -55,7 +51,7 @@ def vis_pepdist(protein_df: pd.DataFrame, evidence_file: str, protacc_column: st
     return fig
 
 
-def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,str], plot_path=''):
+def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,str], plot_path='') -> plt.figure:
     """Visualize the landscape of a protein.
 
     Args:
