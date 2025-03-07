@@ -466,8 +466,9 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
     peptides = peptides_df.apply(lambda row: [prot for prot in row[protacc_column] if prot not in proteome_dict.keys()], axis=1).values
     n_removed_proteins = set(itertools.chain.from_iterable(peptides))
 
-    # remove peptides with protein accessions that do not appear in the proteome
+    # remove peptides with protein accessions that do not appear in the proteome 
     peptides_df[protacc_column] = peptides_df.apply(lambda row: [prot for prot in row[protacc_column] if prot in proteome_dict.keys()], axis=1)
+
 
     logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file:{n_removed_proteins}.')
 

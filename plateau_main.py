@@ -83,7 +83,7 @@ def generate_plateau_csv(ctx,evidence_file):
     # compute core epitopes and map peptides to cores
     protein_df = gen_epitope(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern)
     protein_df.to_csv(ctx.obj.out_dir + '/plateau_result.csv')
-    out_linked = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern)
+    out_linked = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
     out_linked.to_csv(ctx.obj.out_dir + '/evidence_link_groups.csv')
 
 @click.command()
