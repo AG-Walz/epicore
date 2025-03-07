@@ -5,6 +5,8 @@ Assigns each peptide in the evidence files its core epitopes, the total intensit
 import pandas as pd
 import re
 import os 
+import logging
+logger = logging.getLogger(__name__)
 
 def read_entire_id_output(id_output: str) -> pd.DataFrame:
     """Read in the entire evidence file.
@@ -122,3 +124,23 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     return evidence_file_df
 
 
+def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
+    """Generate dataframe that has one epitope per row.
+    
+    Args:
+        protein_df: A pandas dataframe containing one protein per row.
+
+    Returns:
+        A reordered version of protein_df were each row stores one epitope.
+    """
+
+    cols = ['whole_epitopes', 'consensus_epitopes', 'core_epitopes_start', 'core_epitopes_end', 'landscape', 'grouped_peptides_sequence', 'grouped_peptides_start', 'grouped_peptides_end']
+    cols_acc = cols + ['accession']
+    protein_df_long = protein_df.explode(cols, ignore_index=True)
+    protein_df_long = protein_df_long.astype(str)
+    epitopes_grouped_df = protein_df_long[cols_acc].groupby(cols)
+    epitopes_grouped_df = epitopes_grouped_df.agg({'accession':lambda x:','.join(x)})
+    
+    logger.info(f'{len(epitopes_grouped_df)} unique epitopes were computed.')
+
+    return epitopes_grouped_df

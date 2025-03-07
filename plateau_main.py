@@ -6,7 +6,7 @@ import click
 import logging
 
 from bin.compute_cores import gen_epitope
-from bin.map_result import map_pep_core
+from bin.map_result import map_pep_core, gen_epitope_df
 from bin.visualize_protein import vis_prot, vis_pepdist
 from bin.parse_input import parse_input
 from bin.parse_input import proteome_to_dict
@@ -82,9 +82,15 @@ def generate_plateau_csv(ctx,evidence_file):
      
     # compute core epitopes and map peptides to cores
     protein_df = gen_epitope(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern)
-    protein_df.to_csv(ctx.obj.out_dir + '/plateau_result.csv')
+    protein_df.to_csv(f'{ctx.obj.out_dir}/plateau_result.csv')
     out_linked = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
-    out_linked.to_csv(ctx.obj.out_dir + '/evidence_link_groups.csv')
+    out_linked.to_csv(f'{ctx.obj.out_dir}/evidence_link_groups.csv')
+
+    # generate file with one epitope in each row
+    epitope_df = gen_epitope_df(protein_df)
+    #todo' also generate distribution for unique epitopes
+
+    epitope_df.to_csv(f'{ctx.obj.out_dir}/epitopes.csv')
 
     # compute length distribution of peptides and epitopes
     fig = vis_pepdist(protein_df, evidence_file, ctx.obj.protacc_column, ctx.obj.delimiter)
