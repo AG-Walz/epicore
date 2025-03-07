@@ -88,16 +88,11 @@ def generate_plateau_csv(ctx,evidence_file):
 
     # generate file with one epitope in each row
     epitope_df = gen_epitope_df(protein_df)
-    #todo' also generate distribution for unique epitopes
-    print(epitope_df.columns)
     epitope_df.to_csv(f'{ctx.obj.out_dir}/epitopes.csv')
 
     # compute length distribution of peptides and epitopes
     evidence_df = pd.read_csv(evidence_file,sep='\t')
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
-
-    #fig = vis_pepdist(evidence_df, protein_df, ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole_epitopes')
-    #fig.savefig(f'{ctx.obj.out_dir}/length_distributions.pdf')
 
     fig = vis_pepdist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
     fig.savefig(f'{ctx.obj.out_dir}/length_distributions.pdf')

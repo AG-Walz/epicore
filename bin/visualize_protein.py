@@ -22,10 +22,7 @@ def vis_pepdist(first_df: pd.DataFrame, second_df: pd.DataFrame, first_column: s
         second_column: The header of the column, which holds the sequences in 
             second_df, for which the length distribution will be plotted.  
         first_label: Label for the values of first_column in the plot.
-        second_label: Label for the values of second_column in the plot.                
-        delimiter: The delimiter that separates multiple entries in one column 
-            in the evidence file.
-        
+        second_label: Label for the values of second_column in the plot.          
     """
     
     first_long = first_df.explode(first_column)
