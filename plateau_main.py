@@ -7,7 +7,7 @@ import logging
 
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core
-from bin.visualize_protein import vis_prot
+from bin.visualize_protein import vis_prot, vis_pepdist
 from bin.parse_input import parse_input
 from bin.parse_input import proteome_to_dict
 
@@ -85,6 +85,10 @@ def generate_plateau_csv(ctx,evidence_file):
     protein_df.to_csv(ctx.obj.out_dir + '/plateau_result.csv')
     out_linked = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
     out_linked.to_csv(ctx.obj.out_dir + '/evidence_link_groups.csv')
+
+    # compute length distribution of peptides and epitopes
+    fig = vis_pepdist(protein_df, evidence_file, ctx.obj.protacc_column, ctx.obj.delimiter)
+    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.pdf')
 
 @click.command()
 @click.argument('plateau_csv',type=click.Path(exists=True))
