@@ -7,7 +7,7 @@ import logging
 
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core, gen_epitope_df
-from bin.visualize_protein import vis_prot, vis_pepdist, vis_pepdist_sec
+from bin.visualize_protein import vis_prot, vis_pepdist
 from bin.parse_input import parse_input
 from bin.parse_input import proteome_to_dict
 
