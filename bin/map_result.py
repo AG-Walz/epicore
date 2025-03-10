@@ -133,9 +133,15 @@ def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         A reordered version of protein_df were each row stores one epitope.
     """
+    # include intensity columns if present
+    if ('core_epitopes_intensity' not in protein_df.columns) and ('relative_core_intensity' not in protein_df.columns):
+        cols = ['whole_epitopes', 'consensus_epitopes','landscape', 'grouped_peptides_sequence']
+    else:
+        cols = ['whole_epitopes', 'consensus_epitopes','landscape', 'grouped_peptides_sequence', 'relative_core_intensity', 'core_epitopes_intensity']
 
-    cols = ['whole_epitopes', 'consensus_epitopes','landscape', 'grouped_peptides_sequence']
     cols_acc = cols + ['accession']
+
+    # separate each epitope in one row
     protein_df_long = protein_df.explode(cols)
     protein_df_long = protein_df_long.astype(str)
     epitopes_grouped_df = protein_df_long[cols_acc].groupby(cols)

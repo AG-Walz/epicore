@@ -134,8 +134,8 @@ The csv contains one protein per row. The different columns contain the followin
 | grouped peptides end | The end positions of all peptides grouped together to epitopes. | 
 | grouped peptides sequence | The peptide sequences that contribute to the same epitope grouped together. |
 | sequence group mapping | A list mapping each peptide onto it's epitope.| 
-| core_epitopes_intensity | A list containing the intensity of each epitope.|
-| relative core_intensity | A list containing the relative intensity of each epitope.|
+| core_epitopes_intensity | A list containing the intensity of each epitope. The intensity of an epitope is computed as the sum of the intensities of peptides that contribute to that epitope.|
+| relative_core_intensity | A list containing the relative intensity of each epitope. The relative intensity of an epitope is the intensity of the epitope divided by the sum of all intensities in the provided evidence file. |
 | landscape | A list containing the landscapes of each epitope. | 
 | whole epitopes | A list containing the whole epitopes. | 
 | core epitopes | A list containing the core epitopes. | 
@@ -143,15 +143,17 @@ The csv contains one protein per row. The different columns contain the followin
 | core epitopes end |  A list containing the start positions of the cores in the protein. |
 
 #### evidence_link_group.csv
-The evidence_link_group.csv contains all the information from the initial evidence file. In addition there are two more columns. The column **whole_epitopes** lists the whole sequence of each group associated with the peptide sequence of that row. The column **core_epitopes** lists the core sequences of each group associated with the peptide sequence of that row. 
+The evidence_link_group.csv contains all the information from the initial evidence file. In addition there are two more columns. The column **whole_epitopes** lists the whole sequence of an epitope. The column **core_epitopes** lists the core sequences of an epitope. 
 
 #### landscape visualization
+An example landscape visualization of a protein generated with the prot-landscape command:
 ![An example landscape of the protein sp|P62736|ACTA_HUMAN](landscape_example.png)
-The script visualizes the landscape and core epitopes of each protein specified in the prot_accession input variable. 
-
-The more intense regions of the histogram represent the core epitopes of the protein. The different colors correspond to distinct core epitopes. Lighter areas correspond to the peptides associated with the respective core epitope.
+The hight indicates how many peptides are mapped to a position in the proteome. The different colors indicate different epitopes. Lighter areas of a color indicate how many peptides are associated with the epitope. The more intense region indicate the core epitope. 
 
 
 ## Workflow
-
+1. Identification of the location of all peptides in the proteome.
+2. Group peptides whose start position does not differ by more than max_step_size amino acids or whose overlap is larger than min_overlap. max_step_size and min_overlap are parameters that can be specified by the user.
+3. Identify epitope sequences, as the sequence of each peptide group.
+4. For each peptide sequence, identify the core epitope sequence. The core epitope sequence is defined as the sequence region that has the highest peptide mapping count while having a minimum length of min_epi_length amino acids.
 
