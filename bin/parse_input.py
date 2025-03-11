@@ -453,9 +453,11 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
             modifications
     
     Returns:
-        A pandas dataframe containing one protein per row and all peptides 
-        mapped to that protein in the peptides_df, with their start position, 
-        end position and intensity.
+        A tuple of a pandas dataframe and an integer. The dataframe contains 
+        one protein per row and all peptides mapped to that protein in the 
+        peptides_df, with their start position, end position and intensity.
+        The integer is the number of peptides that are removed due to their 
+        accession not appearing in the proteome file. 
     """
     peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter)
 
@@ -469,4 +471,4 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
     logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file.')#{n_removed_proteins}.')
 
     protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_dict, mod_pattern)
-    return protein_df
+    return protein_df, len(n_removed_proteins)

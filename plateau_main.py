@@ -7,7 +7,7 @@ import logging
 
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core, gen_epitope_df
-from bin.visualize_protein import vis_prot, vis_pepdist
+from bin.visualize_protein import vis_prot, vis_pepdist, gen_report, pep_core_hist
 from bin.parse_input import parse_input
 from bin.parse_input import proteome_to_dict
 
@@ -77,7 +77,7 @@ def main(ctx,params_file,proteome):
 def generate_plateau_csv(ctx,evidence_file):
         
     # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
-    protein_df = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
+    protein_df, n_removed_peps = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
      
     # compute core epitopes and map peptides to cores
@@ -94,9 +94,16 @@ def generate_plateau_csv(ctx,evidence_file):
     evidence_df = pd.read_csv(evidence_file,sep='\t')
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
-    fig = vis_pepdist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
-    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.pdf')
+    fig = pep_core_hist(epitope_df)
+    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.png')
 
+    #fig = vis_pepdist(evidence_df, protein_df, ctx.obj.protacc_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
+    #fig.savefig(f'{ctx.obj.out_dir}/length_distributions_all.png')
+
+    fig, peps, epitopes = vis_pepdist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
+    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.png')
+    
+    gen_report(f'{ctx.obj.out_dir}/length_distributions.png', f'{ctx.obj.out_dir}/length_distributions_all.png',f'{ctx.obj.out_dir}/epitope_intensity_hist.png', epitope_df, peps, epitopes, n_removed_peps, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length,evidence_file)
 
 
 @click.command()
@@ -107,6 +114,7 @@ def plot_landscape(ctx,plateau_csv):
 
         # read in precomputed protein coverage and epitope cores.
         protein_df = pd.read_csv(plateau_csv)
+        print(protein_df.columns)
         protein_df['grouped_peptides_start'] = protein_df['grouped_peptides_start'].apply(ast.literal_eval)
         protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(ast.literal_eval)
         protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
