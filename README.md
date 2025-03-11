@@ -107,9 +107,9 @@ The proteome file should contain the proteome used for the identification of the
 
 
 ### Output files
-The generate-plateau-csv command results in three csv files ([epitopes.csv](####epitopes.csv), [plateau_result.csv](####plateau_result.csv), [evidence_link_group.csv](####evidence_link_group.csv)) and one html report. 
+The generate-plateau-csv command results in three csv files ([epitopes.csv](#epitopes.csv), [plateau_result.csv](#plateau_result.csv), [evidence_link_group.csv](#evidence_link_group.csv)) and one html report. 
 
-The plot-landscape command results in protein landscape visualizations. One example can be found [here](####landscape-visualization). The number of plots is defined by the number of accessions provided in the params.yaml file.
+The plot-landscape command results in protein landscape visualizations. One example can be found [here](#landscape-visualization). The number of plots is defined by the number of accessions provided in the params.yaml file.
 
 #### epitopes.csv
 The csv contains one epitope per row. 
@@ -155,7 +155,7 @@ The evidence_link_group.csv contains all the information from the initial eviden
 | relative_core_intensity | A list containing the relative intensity of each epitope. The relative intensity of an epitope is the intensity of the epitope divided by the sum of all intensities in the provided evidence file.|
 
 #### report.html
-The report file summarizes some of the results. Among other things it includes two histograms visualizing the peptide and epitope length distribution and shows the ten epitopes with the highest number of mapped peptides. An example file can pe found [here](report.html).
+The report file summarizes some of the results. Among other things it includes two histograms visualizing the peptide and epitope length distribution and shows the ten epitopes with the highest number of mapped peptides.
 
 #### landscape visualization
 An example landscape visualization of a protein generated with the plot-landscape command:
