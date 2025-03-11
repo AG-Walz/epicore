@@ -95,26 +95,25 @@ def generate_plateau_csv(ctx,evidence_file):
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
     fig = pep_core_hist(epitope_df)
-    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.png')
-
-    #fig = vis_pepdist(evidence_df, protein_df, ctx.obj.protacc_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
-    #fig.savefig(f'{ctx.obj.out_dir}/length_distributions_all.png')
+    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.pdf')
 
     fig, peps, epitopes = vis_pepdist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
-    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.png')
+    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.pdf')
     
-    gen_report(f'{ctx.obj.out_dir}/length_distributions.png', f'{ctx.obj.out_dir}/length_distributions_all.png',f'{ctx.obj.out_dir}/epitope_intensity_hist.png', epitope_df, peps, epitopes, n_removed_peps, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length,evidence_file)
+    gen_report(f'{ctx.obj.out_dir}/length_distributions.pdf', f'{ctx.obj.out_dir}/epitope_intensity_hist.pdf', epitope_df, peps, epitopes, n_removed_peps, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length,evidence_file)
 
 
 @click.command()
 @click.argument('plateau_csv',type=click.Path(exists=True))
 @click.pass_context
 def plot_landscape(ctx,plateau_csv):
+    if not ctx.obj.prot_accession:
+        raise Exception('No protein accession was provided. Please provide a protein accession')
     for accession in ctx.obj.prot_accession.split(','):
 
         # read in precomputed protein coverage and epitope cores.
         protein_df = pd.read_csv(plateau_csv)
-        print(protein_df.columns)
+        
         protein_df['grouped_peptides_start'] = protein_df['grouped_peptides_start'].apply(ast.literal_eval)
         protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(ast.literal_eval)
         protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)

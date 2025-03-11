@@ -189,14 +189,14 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
                         <body>
                             <h1>Localplateau report</h1>
                             <div class="row">
-                                <div class="column"><p> The histogram shows the number of peptides/epitopes of a certain length. {peps} peptides were reduced to {epitopes} epitopes.</p><img src="{length_distribution}" alt="peptide length distribution"></div>
-                                <div class="column"><p> The histogram visualizes how many peptides contributed to the different epitopes.<br></p><img src="{intensity_hist}" alt="peptide length distribution"></div>
+                                <div class="column"><p> The histogram shows the number of peptides/epitopes of a certain length. {peps} peptides were reduced to {epitopes} epitopes.</p><iframe src="{length_distribution}", style="width:600px; height:500px;" frameborder="0"></iframe></div>
+                                <div class="column"><p> The histogram visualizes how many peptides contribute to the different epitopes.<br></p><iframe src="{intensity_hist}", style="width:600px; height:500px;" frameborder="0"></iframe></div>
                             </div>
                             <p> The average length of an epitope core sequence is {mean_core_length}. <br> The average length of an epitope sequence is {mean_whole_length}.</p><br>
-                            <p> The ten epitopes with the highest number of mapped peptides:<br>{epitope_df_sort}</p>
                             <p>{n_removed_peps} peptides were removed, since they do not appear in the provided evidence file.</p>
                             <p> The above results were achieved with the following parameters:<br> - min_epi_length:{min_epi_length}<br> - min_overlap:{min_overlap}<br> - max_step_size:{max_step_size}<br>The input evidence file: {evidence_file}</p>
-                        </body>
+                            <p> The ten epitopes with the highest number of mapped peptides:<br>{epitope_df_sort}</p>
+                            </body>
                         </html>'''
     report_f.write(html_content)
     report_f.close()

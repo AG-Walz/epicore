@@ -74,7 +74,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     # add the columns whole and core epitopes to the input evidence
     evidence_file_df['whole_epitopes'] = [[] for _ in range(len(evidence_file_df))]
     evidence_file_df['core_epitopes'] = [[] for _ in range(len(evidence_file_df))]
-    evidence_file_df['proteome_occurence'] = [[] for _ in range(len(evidence_file_df))]
+    evidence_file_df['proteome_occurrence'] = [[] for _ in range(len(evidence_file_df))]
     if intensity_column:
         evidence_file_df['total_core_intensity'] = [[] for _ in range(len(evidence_file_df))]
         evidence_file_df['relative_core_intensity'] = [[] for _ in range(len(evidence_file_df))]
@@ -94,8 +94,9 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
             if len(idx) > 1:
                 # check if multiple occurrence due to modification                        
                 wo_mod = [re.sub(r"[\[\(].*?[\]\)]","",prot_row['sequence'].to_list()[0][i]) for i in idx]
-                pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
-                wo_mod = wo_mod + [re.sub(pattern,"",prot_row['sequence'].to_list()[0][i]) for i in idx]
+                if mod_pattern:
+                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
+                    wo_mod = wo_mod + [re.sub(pattern,"",prot_row['sequence'].to_list()[0][i]) for i in idx]
                 if len(set(wo_mod)) > 1:
                     raise Exception('Please check your evidence file. There are peptides with different sequences mapped to the same position in the protein.')
                 
@@ -109,18 +110,18 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
                     evidence_file_df.at[r,'total_core_intensity'].append(str(prot_row['core_epitopes_intensity'].to_list()[0][mapped_group]))
                     evidence_file_df.at[r,'relative_core_intensity'].append(str(prot_row['relative_core_intensity'].to_list()[0][mapped_group]))
                 prot_occurence = accession +':'+ str(prot_row['core_epitopes_start'].to_list()[0][mapped_group]) + '-' + str(prot_row['core_epitopes_end'].to_list()[0][mapped_group])
-                evidence_file_df.at[r,'proteome_occurence'].append(prot_occurence)
-            
+                evidence_file_df.at[r,'proteome_occurrence'].append(prot_occurence)
 
-    
+        
         # convert list to delimiter separated strings
         evidence_file_df.at[r,'core_epitopes'] = delimiter.join(evidence_file_df.at[r,'core_epitopes'])
         evidence_file_df.at[r,'whole_epitopes'] = delimiter.join(evidence_file_df.at[r,'whole_epitopes'])
         if intensity_column:
             evidence_file_df.at[r,'total_core_intensity'] = delimiter.join(evidence_file_df.at[r,'total_core_intensity'])
             evidence_file_df.at[r,'relative_core_intensity'] = delimiter.join(evidence_file_df.at[r,'relative_core_intensity'])
-        evidence_file_df.at[r,'proteome_occurence'] = delimiter.join(evidence_file_df.at[r,'proteome_occurence'])
-        
+        evidence_file_df.at[r,'proteome_occurrence'] = delimiter.join(evidence_file_df.at[r,'proteome_occurrence'])
+
+    evidence_file_df = evidence_file_df.drop(columns='indices') 
     return evidence_file_df
 
 
