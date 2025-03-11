@@ -107,7 +107,7 @@ The proteome file should contain the proteome used for the identification of the
 
 
 ### Output files
-The generate-plateau-csv command results in three csv files ([epitopes.csv](#epitopes.csv), [plateau_result.csv](#plateau_result.csv), [evidence_link_group.csv](#evidence_link_group.csv)) and one html report. 
+The generate-plateau-csv command results in three csv files ([epitopes.csv](#epitopescsv), [plateau_result.csv](#plateau_resultcsv), [evidence_link_group.csv](#evidence_link_groupcsv)) and one html report. 
 
 The plot-landscape command results in protein landscape visualizations. One example can be found [here](#landscape-visualization). The number of plots is defined by the number of accessions provided in the params.yaml file.
 
