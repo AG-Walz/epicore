@@ -320,8 +320,9 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                 peptide = re.sub(pattern,"",peptide)
                 pattern = r'\[.*?\]'
                 peptide = re.sub(pattern,"",peptide)
-                pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
-                peptide = re.sub(pattern,"",peptide)
+                if mod_pattern:
+                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
+                    peptide = re.sub(pattern,"",peptide)
                 pep_start, pep_end = compute_pep_pos(peptide, accession, proteome_dict)
 
                 if pep_start.size == 0:

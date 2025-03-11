@@ -21,7 +21,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             of the peptides.
 
     Returns:
-        The protein_df with the five additional columns: 
+        The protein_df with the five to seven additional columns: 
         grouped_peptides_start, grouped_peptides_end, 
         grouped_peptides_sequence, grouped peptides_intensity, 
         core_epitopes_intensity, relative_core_intensity and 
@@ -163,9 +163,9 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
                 current_seq = re.sub(pattern,"",current_seq)
                 pattern = r'\[.*?\]'
                 current_seq = re.sub(pattern,"",current_seq)
-                pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
-                current_seq = re.sub(pattern,"",current_seq)
-                y=False
+                if mod_pattern:
+                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
+                    current_seq = re.sub(pattern,"",current_seq)
                 if str(pep_start) + '-' + str(pep_end) in seen_pep: 
                     seen_seq = seen_pep[str(pep_start) + '-' + str(pep_end)]
                     check_repetitive = [(seq != current_seq) for seq in seen_seq] 
@@ -189,8 +189,9 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
             for sequence, sequence_pos in zip(row['grouped_peptides_sequence'][group], row['grouped_peptides_start'][group]):
                 sequence = re.sub(r"\(.*?\)","",sequence)
                 sequence = re.sub(r'\[.*?\]',"",sequence)
-                pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
-                sequence = re.sub(pattern,"",sequence)
+                if mod_pattern:
+                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
+                    sequence = re.sub(pattern,"",sequence)
                 sequence_pos = [i for i in range(sequence_pos, sequence_pos + len(sequence))]
                 for aa, aa_pos in zip(sequence, sequence_pos):
                     if aa_pos not in consensus_pos:
