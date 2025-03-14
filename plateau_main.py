@@ -7,9 +7,9 @@ import logging
 
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core, gen_epitope_df
-from bin.visualize_protein import vis_prot, vis_pepdist, gen_report, pep_core_hist
-from bin.parse_input import parse_input
-from bin.parse_input import proteome_to_dict
+from bin.visualize_protein import vis_prot, vis_pepdist, pep_core_hist
+from bin.parse_input import parse_input, proteome_to_dict
+from bin.generate_report import gen_report
 
 import logging
 
@@ -95,12 +95,14 @@ def generate_plateau_csv(ctx,evidence_file):
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
     fig = pep_core_hist(epitope_df)
-    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.pdf')
+    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.png')
 
     fig, peps, epitopes = vis_pepdist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
-    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.pdf')
+    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.png')
     
-    gen_report(f'{ctx.obj.out_dir}/length_distributions.pdf', f'{ctx.obj.out_dir}/epitope_intensity_hist.pdf', epitope_df, peps, epitopes, n_removed_peps, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length,evidence_file)
+    # summarize some results
+    #gen_report(f'./{ctx.obj.out_dir}/length_distributions.png', f'{ctx.obj.out_dir}/epitope_intensity_hist.png', epitope_df, peps, epitopes, n_removed_peps, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length,evidence_file, f'{ctx.obj.out_dir}/plateau_result.csv', ctx.obj.proteome_dict)
+    gen_report(f'./{ctx.obj.out_dir}/length_distributions.png', f'{ctx.obj.out_dir}/epitope_intensity_hist.png', epitope_df, peps, epitopes, n_removed_peps, ctx,evidence_file,  f'{ctx.obj.out_dir}/plateau_result.csv')
 
 
 @click.command()
