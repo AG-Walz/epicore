@@ -82,6 +82,7 @@ parameters:
   min_overlap: 
   max_step_size: 
   min_epi_length: 
+  report:
 ```
 The description of each parameter can be found in the table below. Parameters enclosed in square brackets are optional.  Parameters highlighted with 🟢 are necessary for the plot-landscape command. Parameters highlighted with 🔴 are necessary for the generate-plateau-csv command. An example params.yaml file can be found [here](params.yaml).
 | Parameter | Description |
@@ -97,6 +98,7 @@ The description of each parameter can be found in the table below. Parameters en
 | 🔴 out_dir | Defines the directory in which the results will be saved. |
 | [mod_pattern] | Defines how modifications in the peptides are separated from the sequence. Provide a comma-separated string here, where the first element specifies the start of a modification and the second element defines the end of a modification. Everything inside () and [] is interpreted as a modification by default.|
 | 🔴 delimiter | Defines the delimiter that separates multiple values in one cell in the input evidence file. |
+| 🔴 report | If set to True a [report](#reporthtml) gets generated.|
 | 🟢 prot_accession | Defines the proteins for which the core epitopes and landscape should be visualized. Separate multiple parameters with commas. |
 
 #### evidence file

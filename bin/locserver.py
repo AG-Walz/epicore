@@ -7,7 +7,7 @@ from urllib.parse import parse_qs
 from bin.visualize_protein import vis_prot
 import pandas as pd
 import ast
-
+import time
 
 
 class MyHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -21,10 +21,10 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_response(200,message='well')
         self.end_headers()
              
-        if self.path == '/prot_lan.png':
-            with open('prot_lan.png', 'rb') as f:
+        if self.path == '/prot_lan.svg':
+            with open('prot_lan.svg', 'rb') as f:
                 self.wfile.write(f.read())
-        elif 'png' in self.path:
+        elif 'svg' in self.path:
             with open(self.path[1:], 'rb') as f:
                 self.wfile.write(f.read())
         else:
@@ -51,13 +51,14 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
         protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
 
+        img_url = f'prot_lan{str(int(time.time()))}.svg'
         # compute protein landscape
         fig = vis_prot(protein_df, accession, proteome_dict)
-        fig.savefig('prot_lan.png')
+        fig.savefig(img_url,bbox_inches='tight')
         
         self.send_response(200,message=accession)
         self.end_headers()
-        self.wfile.write('/prot_lan.png'.encode("utf-8"))
+        self.wfile.write(img_url.encode("utf-8"))
         
 
     def do_OPTIONS(self):
@@ -83,5 +84,4 @@ def run(port,report, server_class=HTTPServer,handler_class=MyHTTPRequestHandler)
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
     httpd.report = report 
-    httpd.serve_forever()   
-
+    httpd.serve_forever()

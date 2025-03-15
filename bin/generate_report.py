@@ -43,7 +43,12 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
     len_whole_epitopes = epitope_df['whole_epitopes'].apply(lambda sequence: len(sequence))
     mean_whole_length = sum(len_whole_epitopes) / len(len_whole_epitopes)
 
-    epitope_df_sort = epitope_df.sort_values(by='landscape', key=lambda landscapes: landscapes.apply(lambda landscape: max(ast.literal_eval(landscape))), ascending=False).head(10).to_html()
+    epitope_df_sort = epitope_df.sort_values(by='landscape', key=lambda landscapes: landscapes.apply(lambda landscape: max(ast.literal_eval(landscape))), ascending=False).head(10)
+    epitope_df_sort_html = epitope_df_sort.to_html()
+
+    # get accession of top ten epitopes to add them as options to the combobox
+    epitope_df_sort['accession'] = epitope_df_sort['accession'].apply(lambda row: row.split(','))
+    epitope_df_sort_accessions = epitope_df_sort['accession'].explode().tolist() 
 
     html_content = f''' <!DOCTYPE html>
                         <html>
@@ -75,15 +80,17 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
                             <script type="text/python">
                                 from browser import document, bind, ajax, html
 
+                                select_element = document["exampleList"]
+                                for item in {epitope_df_sort_accessions}:
+                                    option = html.OPTION(value=item)
+                                    select_element <= option
+
                                 def on_complete(req):
                                     if req.status == 200 or req.status == 0:
-                                        image_url = req.text  # Should return 'prot_lan.png'
+                                        image_url = req.text  
                                         img_element = document["image_container"]
                                         img_element.clear()
-                                        img_element <= html.IMG(src=image_url, alt="Protein Landscape", style="width: 900px;")
-                                        document['output'].html = 'fine' + req.text
-                                    else:
-                                        document['output'].html = 'error' + req.text
+                                        img_element <= html.IMG(src=image_url, alt="The accession you selected is not in your input data. Try a different accession.", style="width: 1400px;")
 
                                 @bind('#subm','click')
                                 def welcome(event):
@@ -98,8 +105,10 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
 
                             <form id="prot_landscape">
                                 <label for="fname">Protein accession: </label>
-                                <input type="text" id="fname" name="fname"><br>
-                                <button id="subm">Plot protein_landscape</button>
+                                <input type="text" id="fname" name="fname" list="exampleList"><br>
+                                <datalist id="exampleList">
+                                </datalist>
+                                <button id="subm">Plot protein landscape</button>
                             </form> 
                             <div id="image_container"></div>
                             <p id="output"></p>
@@ -110,7 +119,7 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
                             - protacc_column:{ctx.obj.protacc_column} <br> - intensity_column:{ctx.obj.intensity_column} <br> - start_column: {ctx.obj.start_column} <br>
                             - end_column: {ctx.obj.end_column} <br> - out_dir: {ctx.obj.out_dir} <br> - mod_pattern: {ctx.obj.mod_pattern} <br> - delimiter: {ctx.obj.delimiter} <br>
                             The input evidence file: {evidence_file}</p>
-                            <p> The ten epitopes with the highest number of mapped peptides:<br>{epitope_df_sort}</p>
+                            <p> The ten epitopes with the highest number of mapped peptides:<br>{epitope_df_sort_html}</p>
                             
 
                         </body>

@@ -59,6 +59,7 @@ class InputParameter(object):
         self.prot_accession = params['parameters']['prot_accession']
         self.start_column = params['parameters']['start_column']
         self.end_column = params['parameters']['end_column']
+        self.report = params['parameters']['report']
         self.proteome_dict = None
 
 @click.group()
@@ -95,14 +96,14 @@ def generate_plateau_csv(ctx,evidence_file):
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
     fig = pep_core_hist(epitope_df)
-    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.png')
+    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
 
     fig, peps, epitopes = vis_pepdist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
-    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.png')
+    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
     
     # summarize some results
-    #gen_report(f'./{ctx.obj.out_dir}/length_distributions.png', f'{ctx.obj.out_dir}/epitope_intensity_hist.png', epitope_df, peps, epitopes, n_removed_peps, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length,evidence_file, f'{ctx.obj.out_dir}/plateau_result.csv', ctx.obj.proteome_dict)
-    gen_report(f'./{ctx.obj.out_dir}/length_distributions.png', f'{ctx.obj.out_dir}/epitope_intensity_hist.png', epitope_df, peps, epitopes, n_removed_peps, ctx,evidence_file,  f'{ctx.obj.out_dir}/plateau_result.csv')
+    if ctx.obj.report:
+        gen_report(f'./{ctx.obj.out_dir}/length_distributions.svg', f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx,evidence_file,  f'{ctx.obj.out_dir}/plateau_result.csv')
 
 
 @click.command()
