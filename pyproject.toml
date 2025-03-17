@@ -18,6 +18,7 @@ description = 'Compute epitopes from multiple overlapping peptides.'
 readme = 'README.md'
 license = {text = 'MIT License'}
 keywords = ['peptides', 'epitopes', 'core epitopes']
+authors = [{name='Jana Hoffmann', email='localplateau_jana@family-hoffmann.de'}]
 classifier = [
     'Private::Nicht hochladen',
     'Programming Language :: Python'
