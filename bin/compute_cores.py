@@ -205,7 +205,7 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
     return protein_df
 
 
-def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int):
+def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.DataFrame:
     """Compute the consensus epitope sequence of each consensus epitope group.
     
     Args:

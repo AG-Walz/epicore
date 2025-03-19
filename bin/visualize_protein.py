@@ -88,7 +88,7 @@ def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,s
     ax.yaxis.set_major_locator(tck.MultipleLocator())
     ax.xaxis.set_major_locator(MaxNLocator(nbins=20))
 
-    for group, landscape in enumerate(prot_row['landscape'].to_list()[0]):
+    for group, landscape in enumerate(prot_row['landscape'].iloc[0]):
 
         if group % 3 == 0:
             color = 'red'
@@ -97,10 +97,10 @@ def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,s
         else: 
             color = 'green'
 
-        group_start = min(prot_row['grouped_peptides_start'].to_list()[0][group])
+        group_start = min(prot_row['grouped_peptides_start'].iloc[0][group])
         for idx, position in enumerate(landscape):
             ax.bar(group_start+int(idx),position,width=1, alpha=0.4, color=color)
-        for pos in range(prot_row['core_epitopes_start'].to_list()[0][group],prot_row['core_epitopes_end'].to_list()[0][group]):
+        for pos in range(prot_row['core_epitopes_start'].iloc[0][group],prot_row['core_epitopes_end'].iloc[0][group]):
             ax.bar(pos,0.5,width=1,color=color)
 
     ax.set_title('Number of peptides mapped to each amino acid position and core epitopes of protein {}'.format(accession))

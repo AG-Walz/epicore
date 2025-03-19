@@ -63,17 +63,17 @@ class InputParameter(object):
         self.proteome_dict = None
 
 @click.group()
-@click.argument('proteome',type=click.Path(exists=True))
-@click.argument('params_file',type=click.Path(exists=True))
+@click.option('--reference_proteome',type=click.Path(exists=True), required=True)
+@click.option('--params_file',type=click.Path(exists=True), required=True)
 @click.pass_context
-def main(ctx,params_file,proteome):
+def main(ctx,params_file,reference_proteome):
     with open(params_file,'r') as yaml_file:
         params = yaml.safe_load(yaml_file)
     ctx.obj = InputParameter(params)
-    ctx.obj.proteome_dict = proteome_to_dict(proteome)
+    ctx.obj.proteome_dict = proteome_to_dict(reference_proteome)
 
 @click.command()
-@click.argument('evidence_file',type=click.Path(exists=True))
+@click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
 def generate_plateau_csv(ctx,evidence_file):
         
@@ -107,7 +107,7 @@ def generate_plateau_csv(ctx,evidence_file):
 
 
 @click.command()
-@click.argument('plateau_csv',type=click.Path(exists=True))
+@click.option('--plateau_csv',type=click.Path(exists=True), required=True)
 @click.pass_context
 def plot_landscape(ctx,plateau_csv):
     if not ctx.obj.prot_accession:
