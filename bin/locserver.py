@@ -4,7 +4,7 @@ Runs server for the protein landscape computation.
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs
-from bin.visualize_protein import vis_prot
+from bin.visualize_protein import plot_protein_landscape
 import pandas as pd
 import ast
 import time
@@ -53,7 +53,7 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
 
         img_url = f'prot_lan{str(int(time.time()))}.svg'
         # compute protein landscape
-        fig = vis_prot(protein_df, accession, proteome_dict)
+        fig = plot_protein_landscape(protein_df, accession, proteome_dict)
         fig.savefig(img_url,bbox_inches='tight')
         
         self.send_response(200,message=accession)

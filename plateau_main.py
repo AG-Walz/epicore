@@ -7,7 +7,7 @@ import logging
 
 from bin.compute_cores import gen_epitope
 from bin.map_result import map_pep_core, gen_epitope_df
-from bin.visualize_protein import vis_prot, vis_pepdist, pep_core_hist
+from bin.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist
 from bin.parse_input import parse_input, proteome_to_dict
 from bin.generate_report import gen_report
 
@@ -95,10 +95,10 @@ def generate_plateau_csv(ctx,evidence_file):
     evidence_df = pd.read_csv(evidence_file,sep='\t')
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
-    fig = pep_core_hist(epitope_df)
+    fig = plot_core_mapping_peptides_hist(epitope_df)
     fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
 
-    fig, peps, epitopes = vis_pepdist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
+    fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
     fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
     
     # summarize some results
@@ -122,7 +122,7 @@ def plot_landscape(ctx,plateau_csv):
         protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
         if ctx.obj.prot_accession is not None:
-            fig = vis_prot(protein_df,accession,ctx.obj.proteome_dict)
+            fig = plot_protein_landscape(protein_df,accession,ctx.obj.proteome_dict)
             fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf') 
     
 main.add_command(generate_plateau_csv)

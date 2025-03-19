@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def vis_pepdist(first_df: pd.DataFrame, second_df: pd.DataFrame, first_explode: str, second_explode: str, first_column: str, second_column: str, first_label: str, second_label: str) -> tuple[plt.figure,int,int]:
+def plot_peptide_length_dist(first_df: pd.DataFrame, second_df: pd.DataFrame, first_explode: str, second_explode: str, first_column: str, second_column: str, first_label: str, second_label: str) -> tuple[plt.figure,int,int]:
     """Visualize the distribution of lengths of sequences.
     
     Args:
@@ -58,7 +58,7 @@ def vis_pepdist(first_df: pd.DataFrame, second_df: pd.DataFrame, first_explode: 
     return fig, len(first_long), len(second_long)
 
 
-def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,str]) -> plt.figure:
+def plot_protein_landscape(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,str]) -> plt.figure:
     """Visualize the landscape of a protein.
 
     Args:
@@ -110,7 +110,7 @@ def vis_prot(protein_df: pd.DataFrame, accession: str, proteome_dict: dict[str,s
 
 
 
-def pep_core_hist(epitope_df: pd.DataFrame) ->  plt.figure:
+def plot_core_mapping_peptides_hist(epitope_df: pd.DataFrame) ->  plt.figure:
     """A histogram of the number of peptides mapped to each epitope. 
     
     Args:
