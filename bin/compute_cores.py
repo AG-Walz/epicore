@@ -287,7 +287,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         return list(starts), list(ends), list(sequences)
 
 
-def gen_epitope(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str) -> pd.DataFrame:
+def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str) -> pd.DataFrame:
     """ Compute the core and whole sequence of all consensus epitope groups. 
     
     Args:

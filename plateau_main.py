@@ -5,7 +5,7 @@ import yaml
 import click
 import logging
 
-from bin.compute_cores import gen_epitope
+from bin.compute_cores import compute_consensus_epitopes
 from bin.map_result import map_pep_core, gen_epitope_df
 from bin.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist
 from bin.parse_input import parse_input, proteome_to_dict
@@ -46,7 +46,7 @@ class InputParameter(object):
             containing the end position of peptides in proteins.
 
     """
-    def __init__(self,params=None):
+    def __init__(self,reference_proteome, params=None):
         self.min_epi_length = params['parameters']['min_epi_length']
         self.min_overlap = params['parameters']['min_overlap']
         self.max_step_size = params['parameters']['max_step_size']
@@ -60,7 +60,7 @@ class InputParameter(object):
         self.start_column = params['parameters']['start_column']
         self.end_column = params['parameters']['end_column']
         self.report = params['parameters']['report']
-        self.proteome_dict = None
+        self.proteome_dict = proteome_to_dict(reference_proteome)
 
 @click.group()
 @click.option('--reference_proteome',type=click.Path(exists=True), required=True)
@@ -69,8 +69,7 @@ class InputParameter(object):
 def main(ctx,params_file,reference_proteome):
     with open(params_file,'r') as yaml_file:
         params = yaml.safe_load(yaml_file)
-    ctx.obj = InputParameter(params)
-    ctx.obj.proteome_dict = proteome_to_dict(reference_proteome)
+    ctx.obj = InputParameter(reference_proteome, params)
 
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
@@ -82,10 +81,10 @@ def generate_plateau_csv(ctx,evidence_file):
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
      
     # compute core epitopes and map peptides to cores
-    protein_df = gen_epitope(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern)
+    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern)
     protein_df.to_csv(f'{ctx.obj.out_dir}/plateau_result.csv')
-    out_linked = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
-    out_linked.to_csv(f'{ctx.obj.out_dir}/evidence_link_groups.csv')
+    pep_cores_mapping = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
+    pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.csv')
 
     # generate file with one epitope in each row
     epitope_df = gen_epitope_df(protein_df)

@@ -109,7 +109,7 @@ The proteome file should contain the proteome used for the identification of the
 
 
 ### Output files
-The generate-plateau-csv command results in three csv files ([epitopes.csv](#epitopescsv), [plateau_result.csv](#plateau_resultcsv), [evidence_link_group.csv](#evidence_link_groupcsv)) and one html report. 
+The generate-plateau-csv command results in three csv files ([epitopes.csv](#epitopescsv), [plateau_result.csv](#plateau_resultcsv), [pep_cores_mapping.csv](#pep_cores_mappingcsv)) and one html report. 
 
 The plot-landscape command results in protein landscape visualizations. One example can be found [here](#landscape-visualization). The number of plots is defined by the number of accessions provided in the params.yaml file.
 
@@ -146,8 +146,8 @@ The csv contains one protein per row. The different columns contain the followin
 | core epitopes start | A list containing the start positions of the cores in the protein. |
 | core epitopes end |  A list containing the start positions of the cores in the protein. |
 
-#### evidence_link_group.csv
-The evidence_link_group.csv contains all the information from the initial evidence file. In addition there the following columns:
+#### pep_cores_mapping.csv
+The pep_cores_mapping.csv contains all the information from the initial evidence file. In addition there the following columns:
 | column | description |
 | --- | --- |
 | whole_epitopes | A list of all sequences of epitopes to which the peptide of the row contributes.|
