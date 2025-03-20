@@ -76,16 +76,25 @@ def main(ctx,params_file,reference_proteome):
 @click.pass_context
 def generate_plateau_csv(ctx,evidence_file):
         
-    # parse input and compute start and end positions of peptides in proteins if search engine output does not provide position
+    # ----------------------
+    #    Parse input file
+    # ----------------------
     protein_df, n_removed_peps = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
      
-    # compute core epitopes and map peptides to cores
+
+    # ----------------------
+    # compute core epitopes, map peptides to cores
+    # ----------------------
     protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern)
     protein_df.to_csv(f'{ctx.obj.out_dir}/plateau_result.csv')
     pep_cores_mapping = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
     pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.csv')
 
+
+    # ----------------------
+    # Reformat data and generate multiple plots
+    # ----------------------
     # generate file with one epitope in each row
     epitope_df = gen_epitope_df(protein_df)
     epitope_df.to_csv(f'{ctx.obj.out_dir}/epitopes.csv')

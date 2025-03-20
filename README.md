@@ -45,7 +45,7 @@ python3 -m venv plateau
 source plateau/bin/activate
 
 # install all dependencies of localplateau
-pip install pyproject.toml
+pip install -r requirements.txt
 ```
 
 ###### Create a conda environment
@@ -96,7 +96,7 @@ The description of each parameter can be found in the table below. Parameters en
 | [end_column] | This is an optional parameter. It defines the column header in the input evidence file that contains the end position of the peptide in the different proteins. Setting this parameter reduces the runtime.|
 | [intensity_column] | This is an optional parameter. It defines the column header in the input evidence file of the column that contains the intensity of a peptide sequence. |
 | 🔴 out_dir | Defines the directory in which the results will be saved. |
-| [mod_pattern] | Defines how modifications in the peptides are separated from the sequence. Provide a comma-separated string here, where the first element specifies the start of a modification and the second element defines the end of a modification. Everything inside () and [] is interpreted as a modification by default.|
+| [mod_pattern] | Defines how modifications of a peptide are separated from the sequence in the sequence column. Provide a comma-separated string here, where the element before the comma specifies the start of a modification and the element after the comma defines the end of a modification in the sequences of the sequence column. If the sequences in the sequence column include modifications they are separated by delimiters. In AAAPAIM/+15.99\SY for example the modification is separated by / and \ . The mod_pattern parameter should be  ```/,\``` in that case. All parts of a sequence inside () and [] are interpreted as modifications by default. If these delimiters are used in your input file, you do not need to provide a mod_delimiter parameter.|
 | 🔴 delimiter | Defines the delimiter that separates multiple values in one cell in the input evidence file. |
 | 🔴 report | If set to True a [report](#reporthtml) gets generated.|
 | 🟢 prot_accession | Defines the proteins for which the core epitopes and landscape should be visualized. Separate multiple parameters with commas. |

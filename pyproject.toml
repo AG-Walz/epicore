@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 name = 'localplateau'
 version = '0.1.0'
 dependencies = [
-    'biopython>=1.85',
-    'click>=8.1.8',
-    'matplotlib>=3.10.1',
-    'numpy>=2.2.3',
-    'pandas>=2.2.3',
+    'biopython>=1.80',
+    'click>=8.1',
+    'matplotlib>=3.4',
+    'numpy>=2',
+    'pandas>=2',
     'pyyaml>=6.0.2'
 ]
 requires-python = '>= 3.12'
@@ -19,10 +19,7 @@ readme = 'README.md'
 license = {text = 'MIT License'}
 keywords = ['peptides', 'epitopes', 'core epitopes']
 authors = [{name='Jana Hoffmann', email='localplateau_jana@family-hoffmann.de'}]
-classifier = [
-    'Private::Nicht hochladen',
-    'Programming Language :: Python'
-]
+classifier = ['Private::Nicht hochladen','Programming Language :: Python']
 
 [project.urls]
 Repository='https://github.com/AG-Walz/localplateau'
