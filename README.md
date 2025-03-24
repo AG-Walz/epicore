@@ -84,7 +84,7 @@ parameters:
   min_epi_length: 
   report:
 ```
-The description of each parameter can be found in the table below. Parameters enclosed in square brackets are optional.  Parameters highlighted with 🟢 are necessary for the plot-landscape command. Parameters highlighted with 🔴 are necessary for the generate-plateau-csv command. An example params.yaml file can be found [here](params.yaml).
+The description of each parameter can be found in the table below. Parameters enclosed in square brackets are optional. Parameters highlighted with 🟢 are necessary for the plot-landscape command. Parameters highlighted with 🔴 are necessary for the generate-plateau-csv command. The tool supports any output that contains a sequence and a protein accession column. An example params.yaml file can be found [here](params.yaml). 
 | Parameter | Description |
 | --- | --- |
 | 🔴 max_step_size | Defines the maximal step size between two peptides to still be grouped to the same epitope. If the start positions of two peptides differ by that number, the peptides are only grouped together if they overlap by a minimum of min_overlap amino acids.|
