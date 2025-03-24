@@ -1,15 +1,14 @@
 parameters:
   seq_column: sequence
   protacc_column: accessions
-  intensity_column: 
-  start_column: start
-  end_column: end
-  out_dir: DN02_Brain_class_2
-  mod_pattern: (,)
+  intensity_column: intensity_cf
+  start_column: 
+  end_column: 
+  out_dir: BD06_esophagus_class2_test
+  mod_pattern: 
   delimiter: ;
-  prot_accession: 
-  plateau_csv: 
+  prot_accession: sp|P60709|ACTB_HUMAN,sp|P63261|ACTG_HUMAN
   min_overlap: 11
   max_step_size: 5
   min_epi_length: 11
-
+  report: True
