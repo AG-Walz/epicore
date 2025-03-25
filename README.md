@@ -171,3 +171,6 @@ The height indicates how many peptides are mapped to a position in the proteome.
 3. Identify epitope sequences,V as the sequence of each peptide group.
 4. For each peptide sequence, identify the core epitope sequence. The core epitope sequence is defined as the sequence region that has the highest peptide mapping count while having a minimum length of min_epi_length amino acids.
 
+## Citation
+Epicore is an adaption from the tool developed by Álvaro-Benito et al.[1].<br>
+[1] Álvaro-Benito, Miguel, et al. "Quantification of HLA-DM-dependent major histocompatibility complex of class II immunopeptidomes by the peptide landscape antigenic epitope alignment utility." Frontiers in immunology 9 (2018): 872.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'epicore'
-version = '0.1.0'
+dynamic = ["version"]
 dependencies = [
     'biopython>=1.80',
     'click>=8.1',
@@ -28,3 +28,5 @@ epicore = "epicore_utils.epicore_main:main"
 [tool.setuptools.packages.find]
 include = ["epicore_utils*"]
 
+[tool.setuptools.dynamic]
+version = { attr = "epicore_utils.__version__" }
