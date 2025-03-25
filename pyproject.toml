@@ -22,4 +22,4 @@ authors = [{name='Jana Hoffmann', email='epicore_jana@family-hoffmann.de'}]
 classifier = ['Private::Nicht hochladen','Programming Language :: Python']
 
 [project.urls]
-Repository='https://github.com/AG-Walz/localplateau'
+Repository='https://github.com/AG-Walz/epicore'

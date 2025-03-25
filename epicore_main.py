@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(filename='epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 class InputParameter(object):
-    """This class contains parameters necessary for the plateau script.
+    """This class contains parameters necessary for the epicore script.
 
     Attributes:
         min_epi_length (int, optional): An integer of the minimal length of a 
@@ -74,7 +74,7 @@ def main(ctx,params_file,reference_proteome):
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
-def generate_plateau_csv(ctx,evidence_file):
+def generate_epicore_csv(ctx,evidence_file):
         
     # ----------------------
     #    Parse input file
@@ -87,7 +87,7 @@ def generate_plateau_csv(ctx,evidence_file):
     # compute core epitopes, map peptides to cores
     # ----------------------
     protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern)
-    protein_df.to_csv(f'{ctx.obj.out_dir}/plateau_result.csv')
+    protein_df.to_csv(f'{ctx.obj.out_dir}/epicore_result.csv')
     pep_cores_mapping = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
     pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.csv')
 
@@ -111,19 +111,19 @@ def generate_plateau_csv(ctx,evidence_file):
     
     # summarize some results
     if ctx.obj.report:
-        gen_report(f'./{ctx.obj.out_dir}/length_distributions.svg', f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx,evidence_file,  f'{ctx.obj.out_dir}/plateau_result.csv')
+        gen_report(f'./{ctx.obj.out_dir}/length_distributions.svg', f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx,evidence_file,  f'{ctx.obj.out_dir}/epicore_result.csv')
 
 
 @click.command()
-@click.option('--plateau_csv',type=click.Path(exists=True), required=True)
+@click.option('--epicore_csv',type=click.Path(exists=True), required=True)
 @click.pass_context
-def plot_landscape(ctx,plateau_csv):
+def plot_landscape(ctx,epicore_csv):
     if not ctx.obj.prot_accession:
         raise Exception('No protein accession was provided. Please provide a protein accession')
     for accession in ctx.obj.prot_accession.split(','):
 
         # read in precomputed protein coverage and epitope cores.
-        protein_df = pd.read_csv(plateau_csv)
+        protein_df = pd.read_csv(epicore_csv)
         
         protein_df['grouped_peptides_start'] = protein_df['grouped_peptides_start'].apply(ast.literal_eval)
         protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(ast.literal_eval)
@@ -133,7 +133,7 @@ def plot_landscape(ctx,plateau_csv):
             fig = plot_protein_landscape(protein_df,accession,ctx.obj.proteome_dict)
             fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf',bbox_inches='tight')
     
-main.add_command(generate_plateau_csv)
+main.add_command(generate_epicore_csv)
 main.add_command(plot_landscape)
 
 if __name__ == '__main__':

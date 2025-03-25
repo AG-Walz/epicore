@@ -9,7 +9,7 @@ import threading
 import bin.locserver
 
 
-def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.DataFrame, peps: int, epitopes: int, n_removed_peps: int, ctx, evidence_file: str, plateau_csv: str):
+def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.DataFrame, peps: int, epitopes: int, n_removed_peps: int, ctx, evidence_file: str, epicore_csv: str):
     """ Generates a report including the most important information of the results. 
 
     Args:
@@ -25,7 +25,7 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
             to the absence of their accessions in the proteome.
         ctx: Object containing the input parameters.
         evidence_file: Path to the evidence file.
-        plateau_csv: Path to the plateau result csv.
+        epicore_csv: Path to the epicore result csv.
 
     Returns:
         Open a html report summarizing some information of the epicore 
@@ -99,7 +99,7 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
                                     req.bind('complete', on_complete)
                                     accession = document['fname'].value
                                     req.open('POST','http://localhost:8000/', True)
-                                    req.send({{'accession': accession, 'plateau_csv':'{plateau_csv}','proteome_dict':{ctx.obj.proteome_dict}}})
+                                    req.send({{'accession': accession, 'epicore_csv':'{epicore_csv}','proteome_dict':{ctx.obj.proteome_dict}}})
  
                             </script>
 
