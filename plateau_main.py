@@ -14,7 +14,7 @@ from bin.generate_report import gen_report
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='localplateau.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logging.basicConfig(filename='epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 class InputParameter(object):
     """This class contains parameters necessary for the plateau script.
@@ -131,7 +131,7 @@ def plot_landscape(ctx,plateau_csv):
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
         if ctx.obj.prot_accession is not None:
             fig = plot_protein_landscape(protein_df,accession,ctx.obj.proteome_dict)
-            fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf') 
+            fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf',bbox_inches='tight')
     
 main.add_command(generate_plateau_csv)
 main.add_command(plot_landscape)

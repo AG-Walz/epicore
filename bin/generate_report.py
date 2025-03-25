@@ -1,5 +1,5 @@
 '''
-Generates a report for the results of localplateau.
+Generates a report for the results of epicore.
 '''
 
 import webbrowser 
@@ -28,7 +28,7 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
         plateau_csv: Path to the plateau result csv.
 
     Returns:
-        Open a html report summarizing some information of the localplateau 
+        Open a html report summarizing some information of the epicore 
         result. For example the report includes a figure of the peptide/epitope 
         length distribution, a histogram of the number of peptides mapped to 
         each epitope and the ten epitopes with the highest number of mapped 
@@ -68,10 +68,10 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
                                 }}
                                 h1{{text-align: center;}}
                             </style>
-                            <title>Localplateau report</title>
+                            <title>Epicore report</title>
                         </head>
                         <body>
-                            <h1>Localplateau report</h1>
+                            <h1>Epicore report</h1>
                             <div class="row">
                                 <div class="column"><p> The histogram shows the number of peptides/epitopes of a certain length. {peps} peptides were reduced to {epitopes} epitopes.</p><img src="{length_distribution}"></div>
                                 <div class="column"><p> The histogram visualizes how many peptides contribute to the different epitopes.<br></p><img src="{intensity_hist}"></div>
