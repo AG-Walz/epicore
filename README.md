@@ -30,7 +30,7 @@ The tool can be used to identify and quantify shared consensus epitopes.
 ### First time set up 
 #### Clone the epicore repository 
 ```bash 
-git clone git@github.com:AG-Walz/localplateau.git
+git clone git@github.com:AG-Walz/epicore.git
 ```
 #### Create an environment for epicore
 You can either set up a python or a conda environment. 
