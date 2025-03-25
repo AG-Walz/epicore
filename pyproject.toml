@@ -16,10 +16,15 @@ dependencies = [
 requires-python = '>= 3.12'
 description = 'Compute epitopes from multiple overlapping peptides.'
 readme = 'README.md'
-license = {text = 'MIT License'}
 keywords = ['peptides', 'epitopes', 'core epitopes']
 authors = [{name='Jana Hoffmann', email='epicore_jana@family-hoffmann.de'}]
-classifier = ['Private::Nicht hochladen','Programming Language :: Python']
 
 [project.urls]
 Repository='https://github.com/AG-Walz/epicore'
+
+[project.scripts]
+epicore = "epicore_utils.epicore_main:main"
+
+[tool.setuptools.packages.find]
+include = ["epicore_utils*"]
+
