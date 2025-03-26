@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools >= 61.0"]
+requires = ["setuptools >= 61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = 'localplateau'
-version = '0.1.0'
+name = 'epicore'
+dynamic = ["version"]
 dependencies = [
     'biopython>=1.80',
     'click>=8.1',
@@ -14,12 +14,21 @@ dependencies = [
     'pyyaml>=6.0.2'
 ]
 requires-python = '>= 3.12'
-description = 'Compute epitopes from multiple overlapping peptides.'
+description = 'Compute core epitopes from multiple overlapping peptides.'
 readme = 'README.md'
-license = {text = 'MIT License'}
+license= {text = 'MIT license'}
 keywords = ['peptides', 'epitopes', 'core epitopes']
-authors = [{name='Jana Hoffmann', email='localplateau_jana@family-hoffmann.de'}]
-classifier = ['Private::Nicht hochladen','Programming Language :: Python']
+authors = [{name='Jana Hoffmann', email='epicore_jana@family-hoffmann.de'}]
+classifiers = ['Private::Nicht hochladen','Programming Language :: Python :: 3', 'Programming Language :: Python :: 3.12']
 
 [project.urls]
-Repository='https://github.com/AG-Walz/localplateau'
+Repository='https://github.com/AG-Walz/epicore'
+
+[project.scripts]
+epicore = "epicore_utils.epicore_main:main"
+
+[tool.setuptools.packages.find]
+include = ["epicore_utils*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "epicore_utils.__version__" }

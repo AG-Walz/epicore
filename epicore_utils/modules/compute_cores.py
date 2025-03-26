@@ -314,5 +314,4 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column)
     protein_df = gen_landscape(protein_df,mod_pattern)
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
-
     return protein_df

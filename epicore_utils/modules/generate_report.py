@@ -1,15 +1,15 @@
 '''
-Generates a report for the results of localplateau.
+Generates a report for the results of epicore.
 '''
 
 import webbrowser 
 import ast
 import pandas as pd
 import threading
-import bin.locserver
+import epicore_utils.modules.locserver
 
 
-def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.DataFrame, peps: int, epitopes: int, n_removed_peps: int, ctx, evidence_file: str, plateau_csv: str):
+def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.DataFrame, peps: int, epitopes: int, n_removed_peps: int, ctx, evidence_file: str, epicore_csv: str):
     """ Generates a report including the most important information of the results. 
 
     Args:
@@ -25,10 +25,10 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
             to the absence of their accessions in the proteome.
         ctx: Object containing the input parameters.
         evidence_file: Path to the evidence file.
-        plateau_csv: Path to the plateau result csv.
+        epicore_csv: Path to the epicore result csv.
 
     Returns:
-        Open a html report summarizing some information of the localplateau 
+        Open a html report summarizing some information of the epicore 
         result. For example the report includes a figure of the peptide/epitope 
         length distribution, a histogram of the number of peptides mapped to 
         each epitope and the ten epitopes with the highest number of mapped 
@@ -68,10 +68,10 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
                                 }}
                                 h1{{text-align: center;}}
                             </style>
-                            <title>Localplateau report</title>
+                            <title>Epicore report</title>
                         </head>
                         <body>
-                            <h1>Localplateau report</h1>
+                            <h1>Epicore report</h1>
                             <div class="row">
                                 <div class="column"><p> The histogram shows the number of peptides/epitopes of a certain length. {peps} peptides were reduced to {epitopes} epitopes.</p><img src="{length_distribution}"></div>
                                 <div class="column"><p> The histogram visualizes how many peptides contribute to the different epitopes.<br></p><img src="{intensity_hist}"></div>
@@ -99,7 +99,7 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
                                     req.bind('complete', on_complete)
                                     accession = document['fname'].value
                                     req.open('POST','http://localhost:8000/', True)
-                                    req.send({{'accession': accession, 'plateau_csv':'{plateau_csv}','proteome_dict':{ctx.obj.proteome_dict}}})
+                                    req.send({{'accession': accession, 'epicore_csv':'{epicore_csv}','proteome_dict':{ctx.obj.proteome_dict}}})
  
                             </script>
 
@@ -125,5 +125,5 @@ def gen_report(length_distribution: str, intensity_hist: str, epitope_df: pd.Dat
                         </body>
                         </html>'''
     
-    threading.Thread(target=bin.locserver.run, args=(8000,html_content)).start()
+    threading.Thread(target=epicore_utils.modules.locserver.run, args=(8000,html_content)).start()
     webbrowser.open_new_tab('http://localhost:8000/report.html')

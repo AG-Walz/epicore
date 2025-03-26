@@ -7,8 +7,6 @@ import matplotlib.ticker as tck
 from matplotlib.ticker import MaxNLocator
 import pandas as pd 
 import numpy as np
-import webbrowser 
-import ast
 import logging
 logger = logging.getLogger(__name__)
 
@@ -83,10 +81,9 @@ def plot_protein_landscape(protein_df: pd.DataFrame, accession: str, proteome_di
     fig_width = max(1,round(len(prot_landscape)/50))
     fig_height = 3
 
+    max_intens = 0
 
     fig, ax = plt.subplots(figsize=(fig_width, fig_height), layout='constrained')
-    ax.yaxis.set_major_locator(tck.MultipleLocator())
-    ax.xaxis.set_major_locator(MaxNLocator(nbins=20))
 
     for group, landscape in enumerate(prot_row['landscape'].iloc[0]):
 
@@ -102,6 +99,12 @@ def plot_protein_landscape(protein_df: pd.DataFrame, accession: str, proteome_di
             ax.bar(group_start+int(idx),position,width=1, alpha=0.4, color=color)
         for pos in range(prot_row['core_epitopes_start'].iloc[0][group],prot_row['core_epitopes_end'].iloc[0][group]):
             ax.bar(pos,0.5,width=1,color=color)
+
+        max_intens = max(max_intens, max(landscape))
+
+    ybins=max_intens/10
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=max(ybins, 5)))
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=max(fig_width/10, 15)))
 
     ax.set_title('Number of peptides mapped to each amino acid position and core epitopes of protein {}'.format(accession))
     ax.set_xlabel('Position in protein {}'.format(accession))

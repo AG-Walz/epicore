@@ -4,10 +4,11 @@ Runs server for the protein landscape computation.
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs
-from bin.visualize_protein import plot_protein_landscape
+from epicore_utils.modules.visualize_protein import plot_protein_landscape
 import pandas as pd
 import ast
 import time
+import numpy as np
 
 
 class MyHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -34,21 +35,22 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         ''' POST method of the HTTPRequestHandler.
         '''
-        # get accession, plateau result and proteome dictionary
+        # get accession, epicore result and proteome dictionary
         content_length = int(self.headers.get('Content-Length', 0))
         post_data = self.rfile.read(content_length) 
         parsed_data = parse_qs(post_data.decode('utf-8'))
         accession = parsed_data.get('accession', [''])[0]
-        plateau_csv = parsed_data.get('plateau_csv', [''])[0]
+        epicore_csv = parsed_data.get('epicore_csv', [''])[0]
         proteome_dict = parsed_data.get('proteome_dict', [''])[0]
 
         proteome_dict = ast.literal_eval(proteome_dict)
 
-        # read in plateau_result
-        protein_df = pd.read_csv(plateau_csv)
+        # read in epicore result
+        protein_df = pd.read_csv(epicore_csv)
+    
         protein_df['grouped_peptides_start'] = protein_df['grouped_peptides_start'].apply(ast.literal_eval)
-        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(ast.literal_eval)
-        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
+        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(lambda cell: eval(cell, {"np": np}))
+        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(lambda cell: eval(cell, {"np": np}))
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
 
         img_url = f'prot_lan{str(int(time.time()))}.svg'
