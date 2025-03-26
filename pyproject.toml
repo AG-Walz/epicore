@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 61.0"]
+requires = ["setuptools >= 61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,10 +14,12 @@ dependencies = [
     'pyyaml>=6.0.2'
 ]
 requires-python = '>= 3.12'
-description = 'Compute epitopes from multiple overlapping peptides.'
+description = 'Compute core epitopes from multiple overlapping peptides.'
 readme = 'README.md'
+license= {text = 'MIT license'}
 keywords = ['peptides', 'epitopes', 'core epitopes']
 authors = [{name='Jana Hoffmann', email='epicore_jana@family-hoffmann.de'}]
+classifiers = ['Private::Nicht hochladen','Programming Language :: Python :: 3', 'Programming Language :: Python :: 3.12']
 
 [project.urls]
 Repository='https://github.com/AG-Walz/epicore'
