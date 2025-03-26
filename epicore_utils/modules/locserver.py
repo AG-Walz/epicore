@@ -8,6 +8,7 @@ from epicore_utils.modules.visualize_protein import plot_protein_landscape
 import pandas as pd
 import ast
 import time
+import numpy as np
 
 
 class MyHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -46,9 +47,10 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # read in epicore result
         protein_df = pd.read_csv(epicore_csv)
+    
         protein_df['grouped_peptides_start'] = protein_df['grouped_peptides_start'].apply(ast.literal_eval)
-        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(ast.literal_eval)
-        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
+        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(lambda cell: eval(cell, {"np": np}))
+        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(lambda cell: eval(cell, {"np": np}))
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
 
         img_url = f'prot_lan{str(int(time.time()))}.svg'

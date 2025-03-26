@@ -4,6 +4,7 @@ import ast
 import yaml
 import click
 import logging
+import numpy as np 
 
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
@@ -84,7 +85,6 @@ def generate_epicore_csv(ctx,evidence_file):
     # ----------------------
     protein_df, n_removed_peps = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
-     
 
     # ----------------------
     # compute core epitopes, map peptides to cores
@@ -127,14 +127,16 @@ def plot_landscape(ctx,epicore_csv):
 
         # read in precomputed protein coverage and epitope cores.
         protein_df = pd.read_csv(epicore_csv)
-        
+
         protein_df['grouped_peptides_start'] = protein_df['grouped_peptides_start'].apply(ast.literal_eval)
-        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(ast.literal_eval)
-        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
+        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(lambda cell: eval(cell, {"np": np}))
+        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(lambda cell: eval(cell, {"np": np}))
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
+
         if ctx.obj.prot_accession is not None:
             fig = plot_protein_landscape(protein_df,accession,ctx.obj.proteome_dict)
             fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf',bbox_inches='tight')
+            
 
 main.add_command(generate_epicore_csv)
 main.add_command(plot_landscape)
