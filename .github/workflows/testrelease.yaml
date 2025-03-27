@@ -1,13 +1,8 @@
 name: testrelease
 
 on:
-  push:
-    tags:
-      -"[0-9]+.[0-9]+.[0-9]+"
-      -"[0-9]+.[0-9]+.[0-9]+a[0-9]+"
-      -"[0-9]+.[0-9]+.[0-9]+b[0-9]+"
-      -"[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
-  
+  release:
+    types: [published]  
 
 jobs:
   setup_and_build:
