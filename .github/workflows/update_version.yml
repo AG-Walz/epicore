@@ -20,8 +20,7 @@ jobs:
       run: |
         VERSION=$(git describe --tags --abbrev=0)
         echo "Updating version to $VERSION in __init__.py"
-        sed -i "s/__version__=.*/__version__='$VERSION'/" epicore_utils/__init__.py
-        head epicore_utils/__init__.py
+        sed -i "s/__version__ = '.*'/__version__='0.0.3'/" epicore_utils/__init__.py
 
     - name: Commit changes
       run: |
