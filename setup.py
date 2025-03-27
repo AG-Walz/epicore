@@ -17,9 +17,7 @@ setup(
     install_requires=requirements,
     packages=find_packages(),
     classifiers = [
-        'Private::Nicht hochladen',
         'Programming Language :: Python :: 3', 
         'Programming Language :: Python :: 3.12'
     ]
 )
-

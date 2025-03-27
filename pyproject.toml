@@ -19,7 +19,7 @@ readme = 'README.md'
 license= {text = 'MIT license'}
 keywords = ['peptides', 'epitopes', 'core epitopes']
 authors = [{name='Jana Hoffmann', email='epicore_jana@family-hoffmann.de'}]
-classifiers = ['Private::Nicht hochladen','Programming Language :: Python :: 3', 'Programming Language :: Python :: 3.12']
+classifiers = ['Programming Language :: Python :: 3', 'Programming Language :: Python :: 3.12']
 
 [project.urls]
 Repository='https://github.com/AG-Walz/epicore'
