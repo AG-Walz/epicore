@@ -34,3 +34,4 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
           skip_existing: true
+          verbose: true
