@@ -24,6 +24,8 @@ jobs:
 
     - name: Commit changes
       run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add epicore_utils/__init__.py
         git commit -m 'update version in __init__.py with new release version'
         git push 
