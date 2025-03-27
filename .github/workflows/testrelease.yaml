@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
 
       - name: python dependencies
-        run: >-
+        run: |
           python -m pip install --upgrade pip build
           pip install .
 
