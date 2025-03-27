@@ -9,8 +9,7 @@ jobs:
     name: Build and publish package on testpypi
     runs-on: ubuntu-latest
     environment:
-      name: pypi
-      url: https://test.pypi.org/p/epicore
+      name: testrelease
     permissions:
       id-token: write
 
