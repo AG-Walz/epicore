@@ -1,8 +1,5 @@
 from setuptools import find_packages, setup
 
-with open('requirements.txt') as f:
-    requirements = f.read().splitlines()
-
 setup(
     author='Jana Hoffmann', 
     author_email='epicore_jana@family-hoffmann.de', 
@@ -14,7 +11,14 @@ setup(
     entry_points={
         'console_scripts': ['epicore=epicore_utils.epicore_main:main']
     },
-    install_requires=requirements,
+    install_requires=[
+        'biopython>=1.80',
+        'click>=8.1',
+        'matplotlib>=3.4',
+        'numpy>=2',
+        'pandas>=2',
+        'pyyaml>=6.0.2'
+    ],
     packages=find_packages(),
     classifiers = [
         'Programming Language :: Python :: 3', 
