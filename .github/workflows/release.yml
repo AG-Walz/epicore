@@ -1,6 +1,11 @@
 name: Release
 
 on:
+  workflow_run:
+    workflows: ["Update version in epicore_utils/__init__.py"]
+    types:
+      - complete
+on:
   release:
     types: [published]
 
