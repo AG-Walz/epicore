@@ -103,7 +103,13 @@ def generate_epicore_csv(ctx,evidence_file):
     epitope_df.to_csv(f'{ctx.obj.out_dir}/epitopes.csv')
 
     # compute length distribution of peptides and epitopes
-    evidence_df = pd.read_csv(evidence_file,sep='\t')
+    ext = os.path.splitext(evidence_file)[1]
+    if ext == '.csv':
+        evidence_df = pd.read_csv(evidence_file, delimiter=',')
+    elif ext == '.tsv':
+        evidence_df = pd.read_csv(evidence_file, delimiter='\t')
+    elif ext == '.xlsx':
+        evidence_df = pd.read_excel(evidence_file)
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
     fig = plot_core_mapping_peptides_hist(epitope_df)
@@ -114,7 +120,7 @@ def generate_epicore_csv(ctx,evidence_file):
     
     # summarize some results
     if ctx.obj.report:
-        gen_report(f'./{ctx.obj.out_dir}/length_distributions.svg', f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx,evidence_file,  f'{ctx.obj.out_dir}/epicore_result.csv')
+        gen_report(f'./{ctx.obj.out_dir}/length_distributions.svg', f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx, evidence_file,  f'{ctx.obj.out_dir}/epicore_result.csv')
 
 
 @click.command()

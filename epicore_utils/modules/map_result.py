@@ -67,7 +67,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     # remove accessions from evidence file that do not occur in the proteome 
     evidence_file_df = read_entire_id_output(evidence_file)
     idx_cols = evidence_file_df.columns[evidence_file_df.map(lambda cell: delimiter in str(cell)).any()]
-    evidence_file_df[idx_cols] = evidence_file_df[idx_cols].map(lambda cell: cell.split(delimiter))
+    evidence_file_df[idx_cols] = evidence_file_df[idx_cols].map(lambda cell: str(cell).split(delimiter))
     evidence_file_df['indices'] = evidence_file_df.apply(lambda row: [idx for idx, prot in enumerate(row[protacc_column]) if prot in proteome_dict.keys()], axis=1)
     evidence_file_df.apply(lambda row: [[row[col][idx] for idx in row['indices']] for col in idx_cols], axis=1).to_csv('evidence_file.csv')
     evidence_file_df[idx_cols] = pd.DataFrame(evidence_file_df.apply(lambda row: [[row[col][idx] for idx in row['indices']] for col in idx_cols], axis=1).to_list(), index=evidence_file_df.index)

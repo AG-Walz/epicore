@@ -101,6 +101,7 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
         else:
             peptides_df = peptides_df[[protacc_column,seq_column, start_column, 
                                        end_column]]
+        peptides_df = peptides_df.astype(str)
         # split if peptide occurs multiple times in proteome 
         peptides_df[start_column] = peptides_df[start_column].apply(
             lambda x: list(x.split(delimiter)))
@@ -353,7 +354,6 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             proteins = pd.DataFrame(columns=['accession', 'sequence', 'start','end'])
 
         for _, peptide in peptides_df.iterrows():
-
             # get all proteins associated with the peptide
             prot_accessions = peptide[protacc_column]
             for i, prot_accession in enumerate(prot_accessions):
@@ -467,6 +467,9 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
     n_removed_proteins = set(itertools.chain.from_iterable(peptides))
 
     # remove peptides with protein accessions that do not appear in the proteome 
+    if start_column and end_column:
+        peptides_df[start_column] = peptides_df.apply(lambda row: [start for start, prot in zip(row[start_column],row[protacc_column]) if prot in proteome_dict.keys()], axis=1)
+        peptides_df[end_column] = peptides_df.apply(lambda row: [end for end, prot in zip(row[end_column],row[protacc_column]) if prot in proteome_dict.keys()], axis=1)
     peptides_df[protacc_column] = peptides_df.apply(lambda row: [prot for prot in row[protacc_column] if prot in proteome_dict.keys()], axis=1)
 
     logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file: {n_removed_proteins}.')
