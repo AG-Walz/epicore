@@ -3,19 +3,22 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v0.1.3 - 2025/04/14
+## v0.1.3 - 2025/04/24
 
 ### Added
 - Add CHANGELOG.md
 
 ### Fixed
 - Fix handling of provided start and end position of peptides in the proteome sequence. 
+- Fix mapping error of core epitopes and input peptides
+- Decrease runtime
 
 ### Changed
 - Update epicore commands in README.
 - Update conda installation command in README.   
 
 ### Removed
+- Workflow for automatic version update for each release
 
 ## v0.1.2 - 2025/04/07
 

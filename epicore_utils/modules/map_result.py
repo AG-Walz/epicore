@@ -1,12 +1,14 @@
 """
 Assigns each peptide in the evidence files its core epitopes, the total intensity of that core epitope and the relative core intensity. 
 """
-
+import warnings
 import pandas as pd
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 import re
 import os 
 from itertools import repeat
 import logging
+import time
 logger = logging.getLogger(__name__)
 
 def read_entire_id_output(id_output: str) -> pd.DataFrame:
@@ -64,72 +66,30 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
         Exception: If the mappings are contradictory.
     """
 
-    # remove accessions from evidence file that do not occur in the proteome 
+    # read in entire evidence file
     evidence_file_df = read_entire_id_output(evidence_file)
-    idx_cols = evidence_file_df.columns[evidence_file_df.map(lambda cell: delimiter in str(cell)).any()]
-    evidence_file_df[idx_cols] = evidence_file_df[idx_cols].map(lambda cell: str(cell).split(delimiter))
-    evidence_file_df['indices'] = evidence_file_df.apply(lambda row: [idx for idx, prot in enumerate(row[protacc_column]) if prot in proteome_dict.keys()], axis=1)
-    evidence_file_df.apply(lambda row: [[row[col][idx] for idx in row['indices']] for col in idx_cols], axis=1).to_csv('evidence_file.csv')
-    evidence_file_df[idx_cols] = pd.DataFrame(evidence_file_df.apply(lambda row: [[row[col][idx] for idx in row['indices']] for col in idx_cols], axis=1).to_list(), index=evidence_file_df.index)
 
-    # add the columns whole and core epitopes to the input evidence
-    evidence_file_df = evidence_file_df.assign(
-        whole_epitopes = list(repeat([], len(evidence_file_df))),
-        core_epitopes = list(repeat([], len(evidence_file_df))),
-        proteome_occurrence = list(repeat([], len(evidence_file_df)))
-    )
-    if intensity_column:
-        evidence_file_df = evidence_file_df.assign(
-            total_core_intensity = list(repeat([], len(evidence_file_df))),
-            relative_core_intensity = list(repeat([], len(evidence_file_df)))
-        )
+    protein_df = protein_df[[seq_column, 'accession', 'whole_epitopes_all','consensus_epitopes_all']]#, 'sequence_group_mapping']]
 
-    for r, row in evidence_file_df.iterrows():
+    # reformat protein_df so every peptide sequence is represented by one row
+    protein_df = protein_df.explode([seq_column, 'whole_epitopes_all','consensus_epitopes_all'])
 
-        # loop over all proteins mapped to the peptide in the evidence file 
-        for mapping, accession in enumerate(row[protacc_column]):
-            sequence = row[seq_column]
-                    
-            # get protein row that contains the current peptide sequence and is associated with the protein from the evidence file
-            prot_row = protein_df[(protein_df['accession'] == accession) & protein_df['sequence'].map(lambda x: sequence in x)]
-                
-            # indices of peptides that match the sequence of the peptide and the accession of the mapped protein
-            idx = [i for i, seq in enumerate(prot_row['sequence'].iloc[0]) if seq == sequence]
-                
-            if len(idx) > 1:
-                # check if multiple occurrence due to modification                        
-                wo_mod = [re.sub(r"[\[\(].*?[\]\)]","",prot_row['sequence'].iloc[0][i]) for i in idx]
-                if mod_pattern:
-                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
-                    wo_mod = wo_mod + [re.sub(pattern,"",prot_row['sequence'].iloc[0][i]) for i in idx]
-                if len(set(wo_mod)) > 1:
-                    raise Exception('Please check your evidence file. There are peptides with different sequences mapped to the same position in the protein.')
-                
-                
-            # get core and whole epitope associated with the peptide in the evidence file
-            for id in idx:
-                mapped_group = prot_row['sequence_group_mapping'].iloc[0][id]
-                evidence_file_df.at[r,'core_epitopes'].append(prot_row['consensus_epitopes'].iloc[0][mapped_group])
-                evidence_file_df.at[r,'whole_epitopes'].append(prot_row['whole_epitopes'].iloc[0][mapped_group])
-                if intensity_column:
-                    evidence_file_df.at[r,'total_core_intensity'].append(str(prot_row['core_epitopes_intensity'].iloc[0][mapped_group]))
-                    evidence_file_df.at[r,'relative_core_intensity'].append(str(prot_row['relative_core_intensity'].iloc[0][mapped_group]))
-                prot_occurence = accession +':'+ str(prot_row['core_epitopes_start'].iloc[0][mapped_group]) + '-' + str(prot_row['core_epitopes_end'].iloc[0][mapped_group])
-                evidence_file_df.at[r,'proteome_occurrence'].append(prot_occurence)
+    # reformat evidence file so each protein accession is represented by one row
+    evidence_file_df[protacc_column] = evidence_file_df[protacc_column].str.split(delimiter)
+    evidence_file_df = evidence_file_df.explode([protacc_column])
 
-        
-        # convert list to delimiter separated strings
-        evidence_file_df.at[r,'core_epitopes'] = delimiter.join(evidence_file_df.at[r,'core_epitopes'])
-        evidence_file_df.at[r,'whole_epitopes'] = delimiter.join(evidence_file_df.at[r,'whole_epitopes'])
-        if intensity_column:
-            evidence_file_df.at[r,'total_core_intensity'] = delimiter.join(evidence_file_df.at[r,'total_core_intensity'])
-            evidence_file_df.at[r,'relative_core_intensity'] = delimiter.join(evidence_file_df.at[r,'relative_core_intensity'])
-        evidence_file_df.at[r,'proteome_occurrence'] = delimiter.join(evidence_file_df.at[r,'proteome_occurrence'])
+    # merge protein and evidence df to map each core epitope to the peptides that contribute to it 
+    evidence_file_df = evidence_file_df.merge(protein_df, left_on=[seq_column, protacc_column], right_on=[seq_column, 'accession'])
+    
+    # group the rows which belong to the same peptide together (adds a list of all core epitopes belonging to that peptide)
+    exclude_cols = ['whole_epitopes_all', 'consensus_epitopes_all', 'accession', protacc_column]
+    group_cols = [col for col in evidence_file_df.columns if col not in exclude_cols]
+    evidence_file_df[['whole_epitopes_all', 'consensus_epitopes_all', 'accession']] = evidence_file_df[['whole_epitopes_all', 'consensus_epitopes_all', 'accession']].astype(str)
+    grouped_evidence_file_df = evidence_file_df.groupby(group_cols, as_index=False).agg(lambda x: list(x))
+    grouped_evidence_file_df = grouped_evidence_file_df.drop('accession', axis=1)
 
-    evidence_file_df = evidence_file_df.drop(columns='indices') 
-    return evidence_file_df
-
-
+    return grouped_evidence_file_df
+    
 def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
     """Generate dataframe that has one epitope per row.
     

@@ -146,6 +146,7 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
 
     protein_df['landscape'] = [[] for _ in range(len(protein_df))]
     protein_df['whole_epitopes'] = [[] for _ in range(len(protein_df))]
+    protein_df['whole_epitopes_all'] = [[] for _ in range(len(protein_df))]
 
     for r, row in protein_df.iterrows():
         seen_pep={}
@@ -200,6 +201,8 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
                     else:
                         if consensus_seq[consensus_pos.index(aa_pos)] != aa:
                             raise Exception('Something with the mapping went wrong! If you provided the start and end column please try again without providing the column header for these columns.')
+            for _ in row['grouped_peptides_sequence'][group]:
+                protein_df.at[r,'whole_epitopes_all'].append(consensus_seq)
             protein_df.at[r,'whole_epitopes'].append(consensus_seq) 
         
     return protein_df
@@ -216,8 +219,11 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
         The protein_df with one additional column, that contains the consensus epitope sequence of each consensus epitope group.
     """
     protein_df['consensus_epitopes'] = [[] for _ in range(len(protein_df))]
+    protein_df['consensus_epitopes_all'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_start'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_end'] = [[] for _ in range(len(protein_df))]
+    protein_df['core_epitopes_start_all'] = [[] for _ in range(len(protein_df))]
+    protein_df['core_epitopes_end_all'] = [[] for _ in range(len(protein_df))]
 
     for r, row in protein_df.iterrows():
         for group,landscape in enumerate(row['landscape']):
@@ -247,9 +253,13 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
 
                     # get consensus epitopes
                     whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
+                    for _ in row['grouped_peptides_sequence'][group]:
+                        protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
+                        protein_df.at[r,'core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
+                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group])) 
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group])) 
+                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
                     break
                 
                 # if no core with length > min_epi_length
@@ -257,9 +267,14 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
                     pep_in_prot_start = ce_start_pos
                     pep_in_prot_end = pep_in_prot_start + current_pep_length
                     whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
+                    for _ in row['grouped_peptides_sequence'][group]:
+                        protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
+                        protein_df.at[r,'core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
+                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
                     protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
+                    
 
     return protein_df
 
