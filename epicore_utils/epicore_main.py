@@ -16,7 +16,7 @@ from epicore_utils.modules.generate_report import gen_report
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+#logging.basicConfig(filename='epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 class InputParameter(object):
     """This class contains parameters necessary for the epicore script.
@@ -79,6 +79,7 @@ def main(ctx,params_file,reference_proteome):
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
 def generate_epicore_csv(ctx,evidence_file):
+    logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
         
     # ----------------------
     #    Parse input file

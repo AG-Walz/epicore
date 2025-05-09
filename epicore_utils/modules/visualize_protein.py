@@ -126,7 +126,7 @@ def plot_core_mapping_peptides_hist(epitope_df: pd.DataFrame) ->  plt.figure:
     """
     fig, ax = plt.subplots(layout='constrained')
     n_peps = epitope_df['grouped_peptides_sequence'].apply(lambda sequences: len(sequences.split(',')))
-    ax.hist(n_peps,bins=np.arange(0,max(n_peps),1))
+    ax.hist(n_peps,bins=np.arange(1,max(n_peps)+1,1))
     ax.set_yscale('log')
     ax.set_xlabel('number of peptides contributing to epitope')
     ax.set_ylabel('count')
