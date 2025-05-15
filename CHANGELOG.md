@@ -3,6 +3,18 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.4dev - [date]
+
+### Fixed 
+- Fix bin range for number of peptides mapped to one core in plot.
+- Fix landscape computation.
+
+### Changed
+- Move location of log file from current directory to result directory. 
+- Change output format.
+- Change input parameters file to command line parameters. 
+
+
 ## v0.1.3 - 2025/04/24
 
 ### Added
