@@ -68,28 +68,37 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
 
     # read in entire evidence file
     evidence_file_df = read_entire_id_output(evidence_file)
-
-    protein_df = protein_df[[seq_column, 'accession', 'whole_epitopes_all','consensus_epitopes_all']]#, 'sequence_group_mapping']]
+    protein_df = protein_df[['sequence', 'accession', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all']]
 
     # reformat protein_df so every peptide sequence is represented by one row
-    protein_df = protein_df.explode([seq_column, 'whole_epitopes_all','consensus_epitopes_all'])
+    protein_df = protein_df.explode(['sequence', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all'])
 
     # reformat evidence file so each protein accession is represented by one row
     evidence_file_df[protacc_column] = evidence_file_df[protacc_column].str.split(delimiter)
     evidence_file_df = evidence_file_df.explode([protacc_column])
 
     # merge protein and evidence df to map each core epitope to the peptides that contribute to it 
-    evidence_file_df = evidence_file_df.merge(protein_df, left_on=[seq_column, protacc_column], right_on=[seq_column, 'accession'])
+    evidence_file_df = evidence_file_df.merge(protein_df, left_on=[seq_column, protacc_column], right_on=['sequence', 'accession'])
+    #evidence_file_df = evidence_file_df.drop(['sequence', 'accession'], axis=1)
     
     # group the rows which belong to the same peptide together (adds a list of all core epitopes belonging to that peptide)
-    exclude_cols = ['whole_epitopes_all', 'consensus_epitopes_all', 'accession', protacc_column]
+    exclude_cols = ['whole_epitopes_all', 'consensus_epitopes_all']
     group_cols = [col for col in evidence_file_df.columns if col not in exclude_cols]
-    evidence_file_df[['whole_epitopes_all', 'consensus_epitopes_all', 'accession']] = evidence_file_df[['whole_epitopes_all', 'consensus_epitopes_all', 'accession']].astype(str)
-    grouped_evidence_file_df = evidence_file_df.groupby(group_cols, as_index=False).agg(lambda x: list(x))
-    grouped_evidence_file_df = grouped_evidence_file_df.drop('accession', axis=1)
+    evidence_file_df[['start', 'end','whole_epitopes_all', 'consensus_epitopes_all', protacc_column]] = evidence_file_df[['start', 'end', 'whole_epitopes_all', 'consensus_epitopes_all', protacc_column]].astype(str)
 
+    # create dictionary for aggregation 
+    all_cols = evidence_file_df.columns
+    agg_dict = {}
+    for col in all_cols:
+        if col in [protacc_column,'whole_epitopes_all','consensus_epitopes_all','start','end']:
+            agg_dict[col] = lambda x: ','.join(x) if len(x) != 1 else x
+        else:
+            agg_dict[col] = 'first'
+
+    grouped_evidence_file_df = evidence_file_df.groupby([seq_column], as_index=False).agg(agg_dict)
+                                                                                                                           
     return grouped_evidence_file_df
-    
+
 def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
     """Generate dataframe that has one epitope per row.
     

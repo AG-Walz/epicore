@@ -79,6 +79,8 @@ def main(ctx,params_file,reference_proteome):
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
 def generate_epicore_csv(ctx,evidence_file):
+    if not os.path.exists(ctx.obj.out_dir):
+        os.mkdir(ctx.obj.out_dir)
     logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
         
     # ----------------------
