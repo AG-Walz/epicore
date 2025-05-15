@@ -149,9 +149,9 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
     protein_df['whole_epitopes_all'] = [[] for _ in range(len(protein_df))]
 
     for r, row in protein_df.iterrows():
-        seen_pep={}
+        #seen_pep={}
         for group, [pep_group_start, pep_group_end] in enumerate(zip(row['grouped_peptides_start'], row['grouped_peptides_end'])):
-    
+            seen_pep={}
             start_idx = pep_group_start[0]
             group_landscape = [0 for _ in range(max(pep_group_end)+1-min(pep_group_start))]#np.zeros(max(pep_group_end)+1-min(pep_group_start)) 
             
@@ -167,21 +167,18 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
                 if mod_pattern:
                     pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
                     current_seq = re.sub(pattern,"",current_seq)
-                if str(pep_start) + '-' + str(pep_end) in seen_pep: 
+
+                if str(pep_start) + '-' + str(pep_end) in seen_pep:
                     seen_seq = seen_pep[str(pep_start) + '-' + str(pep_end)]
-                    check_repetitive = [(seq != current_seq) for seq in seen_seq] 
-                if str(pep_start) + '-' + str(pep_end) not in seen_pep:
-                    # positions not been seen before -> +1
+                    check_seen = [(seq == current_seq) for seq in seen_seq]
+                    # current_seq not in list for repetitive regions (dont increase landscape value for repetitive regions)
+                    seen_pep[str(pep_start) + '-' + str(pep_end)].append(current_seq)
+                else: 
+                    # if sequence and position not seen before add the sequence to the landscape
                     seen_pep[str(pep_start) + '-' + str(pep_end)] = [current_seq]
                     for pos in range(pep_start, pep_end+1):
                         group_landscape[pos-start_idx] += 1
-                elif all(check_repetitive):
-                    # positions seen before but sequence not -> repetitive region not +1
-                    seen_pep[str(pep_start) + '-' + str(pep_end)].append(current_seq)
-                else:
-                    # positions and sequence seen before -> +1
-                    for pos in range(pep_start, pep_end+1):
-                        group_landscape[pos-start_idx] += 1
+
             protein_df.at[r,'landscape'].append(group_landscape)
 
             # build whole group sequences
@@ -203,7 +200,7 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
                             raise Exception('Something with the mapping went wrong! If you provided the start and end column please try again without providing the column header for these columns.')
             for _ in row['grouped_peptides_sequence'][group]:
                 protein_df.at[r,'whole_epitopes_all'].append(consensus_seq)
-            protein_df.at[r,'whole_epitopes'].append(consensus_seq) 
+            protein_df.at[r,'whole_epitopes'].append(consensus_seq)
         
     return protein_df
 
