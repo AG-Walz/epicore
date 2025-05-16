@@ -5,6 +5,8 @@ import yaml
 import click
 import logging
 import numpy as np 
+import matplotlib.pyplot as plt, mpld3
+import warnings
 
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
@@ -47,7 +49,7 @@ class InputParameter(object):
             containing the end position of peptides in proteins.
 
     """
-    def __init__(self,reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report):
+    def __init__(self,reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report, html):
         self.min_epi_length = min_epi_length
         self.min_overlap = min_overlap
         self.max_step_size = max_step_size
@@ -61,6 +63,7 @@ class InputParameter(object):
         self.start_column = start_column
         self.end_column = end_column
         self.report = report
+        self.html = html
         self.proteome_dict = proteome_to_dict(reference_proteome)
 
 @click.version_option(__version__, "--version", "-V")
@@ -80,9 +83,10 @@ class InputParameter(object):
 @click.option('--start_column', type=click.STRING)
 @click.option('--end_column', type=click.STRING)
 @click.option('--report', is_flag=True)
+@click.option('--html', is_flag=True)
 @click.pass_context
-def main(ctx, reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report):
-    ctx.obj = InputParameter(reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report)
+def main(ctx, reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report, html):
+    ctx.obj = InputParameter(reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report, html)
 
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
@@ -125,10 +129,21 @@ def generate_epicore_csv(ctx,evidence_file):
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
     fig = plot_core_mapping_peptides_hist(epitope_df)
-    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
-
+    if ctx.obj.html:
+        fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
+        html = f'<!DOCTYPE html> <html> <body><img src=\'epitope_intensity_hist.svg\' alt=\'something went wrong\'></body></html>'
+        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.html','w') as f:
+            f.write(html)
+    else:
+        fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
     fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
-    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
+    if ctx.obj.html:
+        fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
+        html = f'<!DOCTYPE html> <html> <body><img src=\'length_distribution.svg\' alt=\'something went wrong\'></body></html>'
+        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.html','w') as f:
+            f.write(html)
+    else:
+        fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
     
     # summarize some results
     if ctx.obj.report:
