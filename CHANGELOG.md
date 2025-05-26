@@ -5,6 +5,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.1.4dev - [date]
 
+### Added
+- Add optional --html flag for html images
+
 ### Fixed 
 - Fix bin range for number of peptides mapped to one core in plot.
 - Fix landscape computation.

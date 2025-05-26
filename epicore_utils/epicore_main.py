@@ -49,7 +49,7 @@ class InputParameter(object):
             containing the end position of peptides in proteins.
 
     """
-    def __init__(self,reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report, html):
+    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None):
         self.min_epi_length = min_epi_length
         self.min_overlap = min_overlap
         self.max_step_size = max_step_size
@@ -65,11 +65,17 @@ class InputParameter(object):
         self.report = report
         self.html = html
         self.proteome_dict = proteome_to_dict(reference_proteome)
+        self.reference_proteome = reference_proteome
 
 @click.version_option(__version__, "--version", "-V")
 
 @click.group()
 @click.option('--reference_proteome',type=click.Path(exists=True), required=True)
+@click.option('--out_dir', type=click.Path(), required=True)
+@click.pass_context
+def main(ctx, reference_proteome, out_dir):
+    ctx.obj = InputParameter(reference_proteome=reference_proteome, out_dir=out_dir)
+    
 @click.option('--min_epi_length', type=click.INT, default=11)
 @click.option('--min_overlap', type=click.INT, default=11)
 @click.option('--max_step_size', type=click.INT, required=5)
@@ -78,20 +84,16 @@ class InputParameter(object):
 @click.option('--intensity_column', type=click.STRING)
 @click.option('--delimiter', type=click.STRING, required=True)
 @click.option('--mod_pattern', type=click.STRING)
-@click.option('--out_dir', type=click.Path(), required=True)
 @click.option('--prot_accession', type=click.STRING)
 @click.option('--start_column', type=click.STRING)
 @click.option('--end_column', type=click.STRING)
 @click.option('--report', is_flag=True)
 @click.option('--html', is_flag=True)
-@click.pass_context
-def main(ctx, reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report, html):
-    ctx.obj = InputParameter(reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, out_dir, prot_accession, start_column, end_column, report, html)
-
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
-def generate_epicore_csv(ctx,evidence_file):
+def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html):
+    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html)
     if not os.path.exists(ctx.obj.out_dir):
         os.mkdir(ctx.obj.out_dir)
     logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -139,8 +141,8 @@ def generate_epicore_csv(ctx,evidence_file):
     fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
     if ctx.obj.html:
         fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
-        html = f'<!DOCTYPE html> <html> <body><img src=\'length_distribution.svg\' alt=\'something went wrong\'></body></html>'
-        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.html','w') as f:
+        html = f'<!DOCTYPE html> <html> <body><img src=\'length_distributions.svg\' alt=\'something went wrong\'></body></html>'
+        with open(f'{ctx.obj.out_dir}/length_distributions.html','w') as f:
             f.write(html)
     else:
         fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
@@ -152,11 +154,12 @@ def generate_epicore_csv(ctx,evidence_file):
 
 @click.command()
 @click.option('--epicore_csv',type=click.Path(exists=True), required=True)
+@click.option('--protacc', type=click.STRING, required=True)
 @click.pass_context
-def plot_landscape(ctx,epicore_csv):
-    if not ctx.obj.prot_accession:
+def plot_landscape(ctx,epicore_csv, protacc):
+    if not protacc:
         raise Exception('No protein accession was provided. Please provide a protein accession')
-    for accession in ctx.obj.prot_accession.split(','):
+    for accession in protacc.split(','):
 
         # read in precomputed protein coverage and epitope cores.
         protein_df = pd.read_csv(epicore_csv)
@@ -166,7 +169,7 @@ def plot_landscape(ctx,epicore_csv):
         protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(lambda cell: eval(cell, {"np": np}))
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
 
-        if ctx.obj.prot_accession is not None:
+        if accession is not None:
             fig = plot_protein_landscape(protein_df,accession,ctx.obj.proteome_dict)
             fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf',bbox_inches='tight')
             
