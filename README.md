@@ -43,8 +43,8 @@ The description of each parameter can be found in the table below. Parameters en
 | 🔴 out_dir | Defines the directory in which the results will be saved. |
 | [mod_pattern] | Defines how modifications of a peptide are separated from the sequence in the sequence column. Provide a comma-separated string here, where the element before the comma specifies the start of a modification and the element after the comma defines the end of a modification in the sequences of the sequence column. If the sequences in the sequence column include modifications they are separated by delimiters. In AAAPAIM/+15.99\SY for example the modification is separated by / and \ . The mod_pattern parameter should be  ```/,\``` in that case. All parts of a sequence inside () and [] are interpreted as modifications by default. If these delimiters are used in your input file, you do not need to provide a mod_delimiter parameter.|
 | 🔴 delimiter | Defines the delimiter that separates multiple values in one cell in the input evidence file. |
-| 🔴 report | If set to True a [report](#reporthtml) gets generated.|
-| 🔴 html | If set to True a html version of the generated plots gets computed.|
+| [report] | If set a [report](#reporthtml) gets generated.|
+| [html] | If set to a html version of the generated plots gets computed.|
 | 🟢 protacc | Defines the proteins for which the core epitopes and landscape should be visualized. Separate multiple parameters with commas. |
 
 #### evidence file

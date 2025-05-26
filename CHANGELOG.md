@@ -3,10 +3,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v0.1.4dev - [date]
+## v0.1.4 - 2025/05/26
 
 ### Added
-- Add optional --html flag for html images
+- Add optional --html flag for html images.
 
 ### Fixed 
 - Fix bin range for number of peptides mapped to one core in plot.
