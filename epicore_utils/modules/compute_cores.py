@@ -38,8 +38,6 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     protein_df['grouped_peptides_sequence'] = [[] for _ in range(len(protein_df))]
     if intensity_column:
         protein_df['grouped_peptides_intensity'] = [[] for _ in range(len(protein_df))]
-        #protein_df['core_epitopes_intensity_all'] = [[] for _ in range(len(protein_df))]
-        #protein_df['relative_core_intensity_all'] = [[] for _ in range(len(protein_df))]
         # for each peptide group the total and relative intensity of the entire group
         protein_df['core_epitopes_intensity'] = [[] for _ in range(len(protein_df))]
         protein_df['relative_core_intensity'] = [[] for _ in range(len(protein_df))]
