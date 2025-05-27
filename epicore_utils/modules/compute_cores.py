@@ -127,7 +127,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     if intensity_column:
         protein_df['core_epitopes_intensity_all'] = protein_df.apply(lambda row: [row['core_epitopes_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
         protein_df['relative_core_intensity_all'] = protein_df.apply(lambda row: [row['relative_core_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
-    protein_df['proteome_occurence'] = protein_df.apply(lambda row: [row['accession']+':'+str(row['start'][i])+'-'+str(row['end'][i]) for i in range(len(row['start']))],axis=1)
+    protein_df['proteome_occurrence'] = protein_df.apply(lambda row: [row['accession']+':'+str(row['start'][i])+'-'+str(row['end'][i]) for i in range(len(row['start']))],axis=1)
     return protein_df
 
 
