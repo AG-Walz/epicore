@@ -107,7 +107,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     all_cols = evidence_file_df.columns
     agg_dict = {}
     for col in all_cols:
-        if col in [protacc_column,'whole_epitopes_all','consensus_epitopes_all','start','end', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence', 'proteome_occurrence']:
+        if col in [protacc_column,'whole_epitopes_all','consensus_epitopes_all','start','end', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence']:
             agg_dict[col] = lambda x: ','.join(x)
         else:
             agg_dict[col] = 'first'
