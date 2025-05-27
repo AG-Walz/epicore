@@ -38,6 +38,8 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     protein_df['grouped_peptides_sequence'] = [[] for _ in range(len(protein_df))]
     if intensity_column:
         protein_df['grouped_peptides_intensity'] = [[] for _ in range(len(protein_df))]
+        #protein_df['core_epitopes_intensity_all'] = [[] for _ in range(len(protein_df))]
+        #protein_df['relative_core_intensity_all'] = [[] for _ in range(len(protein_df))]
         # for each peptide group the total and relative intensity of the entire group
         protein_df['core_epitopes_intensity'] = [[] for _ in range(len(protein_df))]
         protein_df['relative_core_intensity'] = [[] for _ in range(len(protein_df))]
@@ -90,6 +92,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
                 grouped_peptides_end = []
                 grouped_peptides_start = []
                 grouped_peptides_sequence = []
+                grouped_peptides_intensity = []
                 if intensity_column:
                     core_intensity = 0
 
@@ -121,6 +124,10 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
         protein_df.at[r,'sequence_group_mapping'] = mapping
     if intensity_column:
         protein_df['relative_core_intensity'] = protein_df['core_epitopes_intensity'].apply(lambda x: [float(ints)/total_file_intensity for ints in x])
+    if intensity_column:
+        protein_df['core_epitopes_intensity_all'] = protein_df.apply(lambda row: [row['core_epitopes_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
+        protein_df['relative_core_intensity_all'] = protein_df.apply(lambda row: [row['relative_core_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
+    protein_df['proteome_occurence'] = protein_df.apply(lambda row: [row['accession']+':'+str(row['start'][i])+'-'+str(row['end'][i]) for i in range(len(row['start']))],axis=1)
     return protein_df
 
 

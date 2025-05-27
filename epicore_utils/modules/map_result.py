@@ -68,30 +68,47 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
 
     # read in entire evidence file
     evidence_file_df = read_entire_id_output(evidence_file)
-    protein_df = protein_df[['sequence', 'accession', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all']]
+    if intensity_column:
+        protein_df = protein_df[['sequence', 'accession', 'start', 'end', 'intensity', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurence']]
+    else:
+        protein_df = protein_df[['sequence', 'accession', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'proteome_occurence']]
 
     # reformat protein_df so every peptide sequence is represented by one row
-    protein_df = protein_df.explode(['sequence', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all'])
+    if intensity_column:
+        protein_df = protein_df.explode(['sequence', 'start', 'end', 'intensity', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurence'])
+    else:
+        protein_df = protein_df.explode(['sequence', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'proteome_occurence'])
 
     # reformat evidence file so each protein accession is represented by one row
     evidence_file_df[protacc_column] = evidence_file_df[protacc_column].str.split(delimiter)
     evidence_file_df = evidence_file_df.explode([protacc_column])
 
+
+    evidence_merge_cols = [seq_column,protacc_column]
+    if intensity_column:
+        evidence_merge_cols.append(intensity_column)
+    protein_merge_cols = ['sequence', 'accession']
+    if 'intensity' in protein_df.columns:
+        protein_merge_cols.append('intensity')
+
     # merge protein and evidence df to map each core epitope to the peptides that contribute to it 
-    evidence_file_df = evidence_file_df.merge(protein_df, left_on=[seq_column, protacc_column], right_on=['sequence', 'accession'])
-    #evidence_file_df = evidence_file_df.drop(['sequence', 'accession'], axis=1)
+    evidence_file_df = evidence_file_df.merge(protein_df, left_on=evidence_merge_cols, right_on=protein_merge_cols)
+    evidence_file_df = evidence_file_df.drop(protein_merge_cols, axis=1)
     
     # group the rows which belong to the same peptide together (adds a list of all core epitopes belonging to that peptide)
-    exclude_cols = ['whole_epitopes_all', 'consensus_epitopes_all']
-    group_cols = [col for col in evidence_file_df.columns if col not in exclude_cols]
-    evidence_file_df[['start', 'end','whole_epitopes_all', 'consensus_epitopes_all', protacc_column]] = evidence_file_df[['start', 'end', 'whole_epitopes_all', 'consensus_epitopes_all', protacc_column]].astype(str)
+    ev_cols = ['whole_epitopes_all', 'consensus_epitopes_all', 'start','end', protacc_column, 'proteome_occurence']
+    if intensity_column:
+        ev_cols.append(intensity_column)
+        ev_cols.append('core_epitopes_intensity_all')
+        ev_cols.append('relative_core_intensity_all')
+    evidence_file_df[ev_cols] = evidence_file_df[ev_cols].astype(str)
 
     # create dictionary for aggregation 
     all_cols = evidence_file_df.columns
     agg_dict = {}
     for col in all_cols:
-        if col in [protacc_column,'whole_epitopes_all','consensus_epitopes_all','start','end']:
-            agg_dict[col] = lambda x: ','.join(x) if len(x) != 1 else x
+        if col in [protacc_column,'whole_epitopes_all','consensus_epitopes_all','start','end', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurence', 'proteome_occurence']:
+            agg_dict[col] = lambda x: ','.join(x)
         else:
             agg_dict[col] = 'first'
 
