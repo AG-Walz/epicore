@@ -5,6 +5,8 @@ import yaml
 import click
 import logging
 import numpy as np 
+import matplotlib.pyplot as plt, mpld3
+import warnings
 
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
@@ -16,7 +18,6 @@ from epicore_utils.modules.generate_report import gen_report
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 class InputParameter(object):
     """This class contains parameters necessary for the epicore script.
@@ -48,37 +49,54 @@ class InputParameter(object):
             containing the end position of peptides in proteins.
 
     """
-    def __init__(self,reference_proteome, params=None):
-        self.min_epi_length = params['parameters']['min_epi_length']
-        self.min_overlap = params['parameters']['min_overlap']
-        self.max_step_size = params['parameters']['max_step_size']
-        self.seq_column = params['parameters']['seq_column']
-        self.protacc_column = params['parameters']['protacc_column']
-        self.intensity_column = params['parameters']['intensity_column']
-        self.delimiter = params['parameters']['delimiter']
-        self.mod_pattern = params['parameters']['mod_pattern']
-        self.out_dir = params['parameters']['out_dir']
-        self.prot_accession = params['parameters']['prot_accession']
-        self.start_column = params['parameters']['start_column']
-        self.end_column = params['parameters']['end_column']
-        self.report = params['parameters']['report']
+    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None):
+        self.min_epi_length = min_epi_length
+        self.min_overlap = min_overlap
+        self.max_step_size = max_step_size
+        self.seq_column = seq_column
+        self.protacc_column = protacc_column
+        self.intensity_column = intensity_column
+        self.delimiter = delimiter
+        self.mod_pattern = mod_pattern
+        self.out_dir = out_dir
+        self.prot_accession = prot_accession
+        self.start_column = start_column
+        self.end_column = end_column
+        self.report = report
+        self.html = html
         self.proteome_dict = proteome_to_dict(reference_proteome)
+        self.reference_proteome = reference_proteome
 
 @click.version_option(__version__, "--version", "-V")
 
 @click.group()
 @click.option('--reference_proteome',type=click.Path(exists=True), required=True)
-@click.option('--params_file',type=click.Path(exists=True), required=True)
+@click.option('--out_dir', type=click.Path(), required=True)
 @click.pass_context
-def main(ctx,params_file,reference_proteome):
-    with open(params_file,'r') as yaml_file:
-        params = yaml.safe_load(yaml_file)
-    ctx.obj = InputParameter(reference_proteome, params)
-
+def main(ctx, reference_proteome, out_dir):
+    ctx.obj = InputParameter(reference_proteome=reference_proteome, out_dir=out_dir)
+    
+@click.option('--min_epi_length', type=click.INT, default=11)
+@click.option('--min_overlap', type=click.INT, default=11)
+@click.option('--max_step_size', type=click.INT, required=5)
+@click.option('--seq_column', type=click.STRING, required=True)
+@click.option('--protacc_column', type=click.STRING, required=True)
+@click.option('--intensity_column', type=click.STRING)
+@click.option('--delimiter', type=click.STRING, required=True)
+@click.option('--mod_pattern', type=click.STRING)
+@click.option('--prot_accession', type=click.STRING)
+@click.option('--start_column', type=click.STRING)
+@click.option('--end_column', type=click.STRING)
+@click.option('--report', is_flag=True)
+@click.option('--html', is_flag=True)
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
-def generate_epicore_csv(ctx,evidence_file):
+def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html):
+    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html)
+    if not os.path.exists(ctx.obj.out_dir):
+        os.mkdir(ctx.obj.out_dir)
+    logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
         
     # ----------------------
     #    Parse input file
@@ -113,10 +131,21 @@ def generate_epicore_csv(ctx,evidence_file):
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
     fig = plot_core_mapping_peptides_hist(epitope_df)
-    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
-
+    if ctx.obj.html:
+        fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
+        html = f'<!DOCTYPE html> <html> <body><img src=\'epitope_intensity_hist.svg\' alt=\'something went wrong\'></body></html>'
+        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.html','w') as f:
+            f.write(html)
+    else:
+        fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
     fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
-    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
+    if ctx.obj.html:
+        fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
+        html = f'<!DOCTYPE html> <html> <body><img src=\'length_distributions.svg\' alt=\'something went wrong\'></body></html>'
+        with open(f'{ctx.obj.out_dir}/length_distributions.html','w') as f:
+            f.write(html)
+    else:
+        fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
     
     # summarize some results
     if ctx.obj.report:
@@ -125,11 +154,12 @@ def generate_epicore_csv(ctx,evidence_file):
 
 @click.command()
 @click.option('--epicore_csv',type=click.Path(exists=True), required=True)
+@click.option('--protacc', type=click.STRING, required=True)
 @click.pass_context
-def plot_landscape(ctx,epicore_csv):
-    if not ctx.obj.prot_accession:
+def plot_landscape(ctx,epicore_csv, protacc):
+    if not protacc:
         raise Exception('No protein accession was provided. Please provide a protein accession')
-    for accession in ctx.obj.prot_accession.split(','):
+    for accession in protacc.split(','):
 
         # read in precomputed protein coverage and epitope cores.
         protein_df = pd.read_csv(epicore_csv)
@@ -139,7 +169,7 @@ def plot_landscape(ctx,epicore_csv):
         protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(lambda cell: eval(cell, {"np": np}))
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
 
-        if ctx.obj.prot_accession is not None:
+        if accession is not None:
             fig = plot_protein_landscape(protein_df,accession,ctx.obj.proteome_dict)
             fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf',bbox_inches='tight')
             

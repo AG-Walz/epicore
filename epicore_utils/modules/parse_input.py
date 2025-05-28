@@ -160,8 +160,8 @@ def compute_pep_pos(peptide: str, accession: str, proteome_dict: dict[str,str]) 
         raise Exception('The peptide {} does not occur in the protein with accession "{}"! Please use the proteome that was used for the identification of the peptides.'.format(peptide, accession))
     
     pos_list = np.array(pos_list)
-    start = pos_list[:,0]
-    end = pos_list[:,1]
+    start = pos_list[:,0].astype(str).tolist()
+    end = pos_list[:,1].astype(str).tolist()
 
     return start, end
 
@@ -326,9 +326,9 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                     peptide = re.sub(pattern,"",peptide)
                 pep_start, pep_end = compute_pep_pos(peptide, accession, proteome_dict)
 
-                if pep_start.size == 0:
+                if len(pep_start) == 0:
                     raise Exception('The peptide {} does not occur in the protein with accession {} in the proteome you specified, but your input file provides evidence for that! Please use the proteome that was used for the identification of the peptides.'.format(peptide, prot_accession))
-                if pep_start.size > 1:
+                if len(pep_start) > 1:
                     pep_start, pep_end = group_repetitive(pep_start,pep_end, peptide, accession)
                    
                 if len(pep_start) > 1:
@@ -423,12 +423,12 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                 starts.extend(pep_start)
                 ends.extend(pep_end)
             
+
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
             proteins.at[p, 'sequence'] = updated_peps
             if intensity_column:
                 proteins.at[p,'intensity'] = updated_intens
-
     return proteins
 
 

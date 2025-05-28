@@ -90,6 +90,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
                 grouped_peptides_end = []
                 grouped_peptides_start = []
                 grouped_peptides_sequence = []
+                grouped_peptides_intensity = []
                 if intensity_column:
                     core_intensity = 0
 
@@ -121,6 +122,10 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
         protein_df.at[r,'sequence_group_mapping'] = mapping
     if intensity_column:
         protein_df['relative_core_intensity'] = protein_df['core_epitopes_intensity'].apply(lambda x: [float(ints)/total_file_intensity for ints in x])
+    if intensity_column:
+        protein_df['core_epitopes_intensity_all'] = protein_df.apply(lambda row: [row['core_epitopes_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
+        protein_df['relative_core_intensity_all'] = protein_df.apply(lambda row: [row['relative_core_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
+    
     return protein_df
 
 
@@ -149,9 +154,9 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
     protein_df['whole_epitopes_all'] = [[] for _ in range(len(protein_df))]
 
     for r, row in protein_df.iterrows():
-        seen_pep={}
+        #seen_pep={}
         for group, [pep_group_start, pep_group_end] in enumerate(zip(row['grouped_peptides_start'], row['grouped_peptides_end'])):
-    
+            seen_pep={}
             start_idx = pep_group_start[0]
             group_landscape = [0 for _ in range(max(pep_group_end)+1-min(pep_group_start))]#np.zeros(max(pep_group_end)+1-min(pep_group_start)) 
             
@@ -167,21 +172,18 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
                 if mod_pattern:
                     pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
                     current_seq = re.sub(pattern,"",current_seq)
-                if str(pep_start) + '-' + str(pep_end) in seen_pep: 
+
+                if str(pep_start) + '-' + str(pep_end) in seen_pep:
                     seen_seq = seen_pep[str(pep_start) + '-' + str(pep_end)]
-                    check_repetitive = [(seq != current_seq) for seq in seen_seq] 
-                if str(pep_start) + '-' + str(pep_end) not in seen_pep:
-                    # positions not been seen before -> +1
+                    check_seen = [(seq == current_seq) for seq in seen_seq]
+                    # current_seq not in list for repetitive regions (dont increase landscape value for repetitive regions)
+                    seen_pep[str(pep_start) + '-' + str(pep_end)].append(current_seq)
+                else: 
+                    # if sequence and position not seen before add the sequence to the landscape
                     seen_pep[str(pep_start) + '-' + str(pep_end)] = [current_seq]
                     for pos in range(pep_start, pep_end+1):
                         group_landscape[pos-start_idx] += 1
-                elif all(check_repetitive):
-                    # positions seen before but sequence not -> repetitive region not +1
-                    seen_pep[str(pep_start) + '-' + str(pep_end)].append(current_seq)
-                else:
-                    # positions and sequence seen before -> +1
-                    for pos in range(pep_start, pep_end+1):
-                        group_landscape[pos-start_idx] += 1
+
             protein_df.at[r,'landscape'].append(group_landscape)
 
             # build whole group sequences
@@ -203,7 +205,7 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
                             raise Exception('Something with the mapping went wrong! If you provided the start and end column please try again without providing the column header for these columns.')
             for _ in row['grouped_peptides_sequence'][group]:
                 protein_df.at[r,'whole_epitopes_all'].append(consensus_seq)
-            protein_df.at[r,'whole_epitopes'].append(consensus_seq) 
+            protein_df.at[r,'whole_epitopes'].append(consensus_seq)
         
     return protein_df
 
@@ -256,10 +258,10 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
                     for _ in row['grouped_peptides_sequence'][group]:
                         protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                         protein_df.at[r,'core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group])) 
+                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1) 
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
+                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
                     break
                 
                 # if no core with length > min_epi_length
@@ -270,12 +272,12 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
                     for _ in row['grouped_peptides_sequence'][group]:
                         protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                         protein_df.at[r,'core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
+                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
+                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
                     
-
+    protein_df['proteome_occurrence'] = protein_df.apply(lambda row: [row['accession']+':'+str(row['consensus_epitopes_all'][i])+':'+str(row['core_epitopes_start_all'][i])+'-'+str(row['core_epitopes_end_all'][i]) for i in range(len(row['core_epitopes_start_all']))],axis=1)
     return protein_df
 
 
