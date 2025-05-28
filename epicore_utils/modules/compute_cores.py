@@ -125,7 +125,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     if intensity_column:
         protein_df['core_epitopes_intensity_all'] = protein_df.apply(lambda row: [row['core_epitopes_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
         protein_df['relative_core_intensity_all'] = protein_df.apply(lambda row: [row['relative_core_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
-    protein_df['proteome_occurrence'] = protein_df.apply(lambda row: [row['accession']+':'+str(row['start'][i])+'-'+str(row['end'][i]) for i in range(len(row['start']))],axis=1)
+    
     return protein_df
 
 
@@ -258,10 +258,10 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
                     for _ in row['grouped_peptides_sequence'][group]:
                         protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                         protein_df.at[r,'core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group])) 
+                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1) 
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
+                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
                     break
                 
                 # if no core with length > min_epi_length
@@ -272,12 +272,12 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
                     for _ in row['grouped_peptides_sequence'][group]:
                         protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                         protein_df.at[r,'core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
+                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]))
+                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
                     
-
+    protein_df['proteome_occurrence'] = protein_df.apply(lambda row: [row['accession']+':'+str(row['consensus_epitopes_all'][i])+':'+str(row['core_epitopes_start_all'][i])+'-'+str(row['core_epitopes_end_all'][i]) for i in range(len(row['core_epitopes_start_all']))],axis=1)
     return protein_df
 
 
