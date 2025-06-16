@@ -7,6 +7,7 @@ import logging
 import numpy as np 
 import matplotlib.pyplot as plt, mpld3
 import warnings
+import re
 
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
@@ -133,7 +134,11 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     fig = plot_core_mapping_peptides_hist(epitope_df)
     if ctx.obj.html:
         fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
-        html = f'<!DOCTYPE html> <html> <body><img src=\'epitope_intensity_hist.svg\' alt=\'something went wrong\'></body></html>'
+        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', 'r') as svg_file:
+            svg_content = svg_file.read()
+        svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
+        svg_content = re.sub(r'<!DOCTYPE[^>]+>', '', svg_content)
+        html = f'<!DOCTYPE html> <html> <body>{svg_content}</body></html>'
         with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.html','w') as f:
             f.write(html)
     else:
@@ -141,7 +146,11 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
     if ctx.obj.html:
         fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
-        html = f'<!DOCTYPE html> <html> <body><img src=\'length_distributions.svg\' alt=\'something went wrong\'></body></html>'
+        with open(f'{ctx.obj.out_dir}/length_distributions.svg', 'r') as svg_file:
+            svg_content = svg_file.read()
+        svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
+        svg_content = re.sub(r'<!DOCTYPE[^>]+>', '', svg_content)
+        html = f'<!DOCTYPE html> <html> <body>{svg_content}</body></html>'
         with open(f'{ctx.obj.out_dir}/length_distributions.html','w') as f:
             f.write(html)
     else:
