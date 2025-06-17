@@ -5,9 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.1.6 - [dev]
 
-### Changed 
+### Fixed
 - Remove modification of peptides for peptide length histogram.
-- Adjust the epicore intensity plot rage to make sure that all epitopes are included.
+- Adjust the epicore intensity plot range to make sure that all epitopes are included.
+- Remove redundant intensity information. 
 
 ## v0.1.5 - 2025/06/16
 

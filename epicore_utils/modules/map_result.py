@@ -96,6 +96,8 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
         drop_cols.append('sequence')
     if protacc_column != 'accession':
         drop_cols.append('accession')
+    if intensity_column != 'intensity':
+        drop_cols.append('intensity')
     evidence_file_df = evidence_file_df[evidence_file_df.columns.drop(list(evidence_file_df.filter(regex='.*_y')))]
     evidence_file_df.columns = evidence_file_df.columns.str.replace(r'_x$','', regex=True)
     evidence_file_df = evidence_file_df.drop(drop_cols, axis=1)
