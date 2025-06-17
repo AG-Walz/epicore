@@ -7,11 +7,12 @@ import matplotlib.ticker as tck
 from matplotlib.ticker import MaxNLocator
 import pandas as pd 
 import numpy as np
+import re
 import logging
 logger = logging.getLogger(__name__)
 
 
-def plot_peptide_length_dist(first_df: pd.DataFrame, second_df: pd.DataFrame, first_explode: str, second_explode: str, first_column: str, second_column: str, first_label: str, second_label: str) -> tuple[plt.figure,int,int]:
+def plot_peptide_length_dist(first_df: pd.DataFrame, second_df: pd.DataFrame, first_explode: str, second_explode: str, first_column: str, second_column: str, first_label: str, second_label: str, mod_pattern: str) -> tuple[plt.figure,int,int]:
     """Visualize the distribution of lengths of sequences.
     
     Args:
@@ -27,6 +28,9 @@ def plot_peptide_length_dist(first_df: pd.DataFrame, second_df: pd.DataFrame, fi
             second_df, for which the length distribution will be plotted.  
         first_label: Label for the values of first_column in the plot.
         second_label: Label for the values of second_column in the plot. 
+        mod_pattern: A comma separated string with delimiters for peptide
+            modifications
+
 
     Returns:
         A tuple including a matplotlib figure and two integers. The figure is a 
@@ -44,7 +48,16 @@ def plot_peptide_length_dist(first_df: pd.DataFrame, second_df: pd.DataFrame, fi
     seq_first = first_long[first_column]
     seq_second = second_long[second_column]
 
-    first_len = seq_first.map(lambda pep: len(pep)).to_list()
+    # remove modifications before accessing the sequence length
+    pattern = r'\(.*?\)'
+    peptide_seqs = seq_first.apply(lambda seq: re.sub(pattern,"",seq))
+    pattern = r'\[.*?\]'
+    peptide_seqs = peptide_seqs.apply(lambda seq: re.sub(pattern,"",seq))
+    if mod_pattern:
+        pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
+        peptide_seqs = peptide_seqs.apply(lambda seq: re.sub(pattern,"",seq))
+
+    first_len = peptide_seqs.map(lambda pep: len(pep)).to_list()
     second_len = seq_second.map(lambda pep: len(pep)).to_list()
     
     ax.hist(first_len, bins=np.arange(5,50,1), color='grey', label=first_label, alpha=0.6)

@@ -143,7 +143,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
             f.write(html)
     else:
         fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
-    fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
+    fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes', mod_pattern)
     if ctx.obj.html:
         fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
         with open(f'{ctx.obj.out_dir}/length_distributions.svg', 'r') as svg_file:
