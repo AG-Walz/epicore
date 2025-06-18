@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove modification of peptides for peptide length histogram.
 - Adjust the epicore intensity plot range to make sure that all epitopes are included.
 - Remove redundant intensity information. 
+- Fix aggregation method for peptides with the same sequence but different properties.
 
 ## v0.1.5 - 2025/06/16
 

@@ -36,6 +36,25 @@ def read_entire_id_output(id_output: str) -> pd.DataFrame:
         raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
     return peptides_df
 
+def aggregation_strategy(series):
+    """Aggregation strategy.
+
+    Args:
+        series: A pandas series.
+    
+    Returns:
+        A aggregated version of the pandas series. If all elements of the
+        series are the same, only the first element is returned. If the 
+        elements differ from each other a list of all elements is returned
+        as a string.
+    """
+    series = series.fillna('nan')
+    if len(set(series)) == 1:
+        return series.iloc[0]
+    else:
+        return ','.join(series).astype('string')
+
+
 def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, protacc_column: str, start_column: str, end_column: str, intensity_column: str, delimiter: str, mod_pattern: str, proteome_dict: dict[str,str]) -> pd.DataFrame:
     """Map computed consensus epitope groups to the input evidence_file.
     
@@ -76,7 +95,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     # reformat protein_df so every peptide sequence is represented by one row
     if intensity_column:
         protein_df = protein_df.explode(['sequence', 'start', 'end', 'intensity', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence'])
-    else:
+    else: 
         protein_df = protein_df.explode(['sequence', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'proteome_occurrence'])
 
     # reformat evidence file so each protein accession is represented by one row
@@ -108,16 +127,10 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
         ev_cols.append(intensity_column)
         ev_cols.append('core_epitopes_intensity_all')
         ev_cols.append('relative_core_intensity_all')
-    evidence_file_df[ev_cols] = evidence_file_df[ev_cols].astype(str)
-    # create dictionary for aggregation 
-    all_cols = evidence_file_df.columns
-    agg_dict = {}
-    for col in all_cols:
-        if col in [protacc_column,'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence']:
-            agg_dict[col] = lambda x: ','.join(x)
-        else:
-            agg_dict[col] = 'first'
-    grouped_evidence_file_df = evidence_file_df.groupby([seq_column], as_index=False).agg(agg_dict)                                                                                                            
+
+    group_cols = [col for col in evidence_file_df.columns if col not in [protacc_column, 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence']]
+    evidence_file_df[group_cols] = evidence_file_df[group_cols].astype(str)
+    grouped_evidence_file_df = evidence_file_df.fillna('nan').groupby([col for col in evidence_file_df.columns if col in group_cols], as_index=False).agg(aggregation_strategy)                                                                                                           
     return grouped_evidence_file_df
 
 def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
