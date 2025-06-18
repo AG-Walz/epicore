@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.1.6 - [dev]
 
+### Changed
+- Change output format from csv to tsv.
+- Increase the landscape value for all non-repetitive peptides, not just at the first occurrence.
+
 ### Fixed
 - Remove modification of peptides for peptide length histogram.
 - Adjust the epicore intensity plot range to make sure that all epitopes are included.

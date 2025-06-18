@@ -36,7 +36,7 @@ def read_entire_id_output(id_output: str) -> pd.DataFrame:
         raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
     return peptides_df
 
-def aggregation_strategy(series):
+def aggregation_strategy(series, delimiter):
     """Aggregation strategy.
 
     Args:
@@ -52,7 +52,7 @@ def aggregation_strategy(series):
     if len(set(series)) == 1:
         return series.iloc[0]
     else:
-        return ','.join(series).astype('string')
+        return delimiter.join(series)
 
 
 def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, protacc_column: str, start_column: str, end_column: str, intensity_column: str, delimiter: str, mod_pattern: str, proteome_dict: dict[str,str]) -> pd.DataFrame:
@@ -130,7 +130,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
 
     group_cols = [col for col in evidence_file_df.columns if col not in [protacc_column, 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence']]
     evidence_file_df[group_cols] = evidence_file_df[group_cols].astype(str)
-    grouped_evidence_file_df = evidence_file_df.fillna('nan').groupby([col for col in evidence_file_df.columns if col in group_cols], as_index=False).agg(aggregation_strategy)                                                                                                           
+    grouped_evidence_file_df = evidence_file_df.fillna('nan').groupby([col for col in evidence_file_df.columns if col in group_cols], as_index=False).agg(aggregation_strategy,delimiter)                                                                                                           
     return grouped_evidence_file_df
 
 def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:

@@ -111,7 +111,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern)
     protein_df.to_csv(f'{ctx.obj.out_dir}/epicore_result.csv')
     pep_cores_mapping = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
-    pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.csv')
+    pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.tsv', sep='\t')
 
 
     # ----------------------
