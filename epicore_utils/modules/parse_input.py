@@ -189,7 +189,7 @@ def group_repetitive(starts: list[int], ends: list[int], peptide: str, accession
     updated_starts.append(starts[0])
     for pep_pos in range(len(starts)-1):
         # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
-        if starts[pep_pos + 1] > ends[pep_pos]:
+        if int(starts[pep_pos + 1]) > int(ends[pep_pos]):
             updated_starts.append(starts[pep_pos + 1])
             updated_ends.append(ends[pep_pos])
     # add the last occurrences end position to the end positions

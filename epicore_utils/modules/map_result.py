@@ -115,7 +115,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
         drop_cols.append('sequence')
     if protacc_column != 'accession':
         drop_cols.append('accession')
-    if intensity_column != 'intensity':
+    if intensity_column != 'intensity' and intensity_column:
         drop_cols.append('intensity')
     evidence_file_df = evidence_file_df[evidence_file_df.columns.drop(list(evidence_file_df.filter(regex='.*_y')))]
     evidence_file_df.columns = evidence_file_df.columns.str.replace(r'_x$','', regex=True)
@@ -127,10 +127,9 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
         ev_cols.append(intensity_column)
         ev_cols.append('core_epitopes_intensity_all')
         ev_cols.append('relative_core_intensity_all')
-
-    group_cols = [col for col in evidence_file_df.columns if col not in [protacc_column, 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence']]
+    group_cols = [col for col in evidence_file_df.columns if col not in [protacc_column, 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence']]
     evidence_file_df[group_cols] = evidence_file_df[group_cols].astype(str)
-    grouped_evidence_file_df = evidence_file_df.fillna('nan').groupby([col for col in evidence_file_df.columns if col in group_cols], as_index=False).agg(aggregation_strategy,delimiter)                                                                                                           
+    grouped_evidence_file_df = evidence_file_df.fillna('nan').groupby([col for col in evidence_file_df.columns if col in group_cols], as_index=False).agg(lambda col: aggregation_strategy(col,delimiter))                                                                                                           
     return grouped_evidence_file_df
 
 def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
