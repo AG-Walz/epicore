@@ -264,27 +264,29 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         
 
         if intensity_column:
-            proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity'])
+            proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'peptide_index'])
         else:
-            proteins = pd.DataFrame(columns=['accession', 'sequence'])
+            proteins = pd.DataFrame(columns=['accession', 'sequence', 'peptide_index'])
 
         # create a row for each protein, that contains all peptides matched to the protein in the input evidence file
-        for _, peptide in peptides_df.iterrows():
+        for index_peptide, peptide in peptides_df.iterrows():
+            
             # get all proteins matched to the peptide
             prot_accessions = peptide[protacc_column]
             for i, prot_accession in enumerate(prot_accessions):
                 if prot_accession in proteins['accession'].values:
                     # update row for accessions seen before
                     proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'peptide_index'] = proteins.loc[proteins['accession'] == prot_accession, 'peptide_index'].apply(lambda x: x + [index_peptide])
                     if intensity_column:
                         proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
 
                 else:
                     # create new row for accessions not seen before 
                     if intensity_column:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]]}
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'peptide_index':[index_peptide]}
                     else:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]]}
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'peptide_index':[index_peptide]}
                     proteins.loc[len(proteins)] = protein_entry
 
         # add the columns start and end
@@ -297,22 +299,25 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             # get peptide sequence, protein accession and the measured intensity of the current row
             peptides = protein['sequence']
             accession = protein['accession']
+            indices = protein['peptide_index']
             if intensity_column:
                 intensities = protein['intensity']
 
-            # starts and ends keep track of all occurrences of all peptides in peptides associated with the protein accession accession
+            # starts and ends keeps track of all occurrences of all peptides in peptides associated with the protein accession
             starts = []
             ends = []
 
             # updated_peps contains at each index the peptide associated with the start and end position in starts and ends at that index 
             # updated_intens contains at each index the intensity associated with the peptide at that index in updated_intens
             updated_peps = []
+            updated_index = []
             if intensity_column:
                 updated_intens = []
 
             for n_p, peptide in enumerate(peptides):
                 # add each peptide and intensity associated with the accession to updated_peps and updated_intens
                 updated_peps.append(peptide)
+                updated_index.append(indices[n_p])
                 if intensity_column:
                     updated_intens.append(intensities[n_p])
                 
@@ -335,6 +340,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                     # if a peptide occurs multiple times in a protein
                     for _ in pep_start[:-1]:
                         updated_peps.append(peptide)
+                        updated_index.append(indices[n_p])
                         if intensity_column:
                             updated_intens.append(intensities[n_p])
                 
@@ -345,15 +351,16 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
             proteins.at[p, 'sequence'] = updated_peps
+            proteins.at[p, 'peptide_index'] = updated_index
             if intensity_column:
                 proteins.at[p,'intensity'] = updated_intens
     else:
         if intensity_column:
-            proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'start','end'])
+            proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'start','end', 'peptide_index'])
         else:
-            proteins = pd.DataFrame(columns=['accession', 'sequence', 'start','end'])
+            proteins = pd.DataFrame(columns=['accession', 'sequence', 'start','end', 'peptide_index'])
 
-        for _, peptide in peptides_df.iterrows():
+        for index_peptide, peptide in peptides_df.iterrows():
             # get all proteins associated with the peptide
             prot_accessions = peptide[protacc_column]
             for i, prot_accession in enumerate(prot_accessions):
@@ -361,17 +368,19 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                 if prot_accession in proteins['accession'].values:
                     # append sequence, intensity, start and end information for accessions seen before
                     proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'peptide_index'] = proteins.loc[proteins['accession'] == prot_accession, 'peptide_index'].apply(lambda x: x + [index_peptide])
                     if intensity_column:
                         proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
                     proteins.loc[proteins['accession'] == prot_accession, 'start'] = proteins.loc[proteins['accession'] == prot_accession, 'start'].apply(lambda x: x + [peptide[start_column][i]])
                     proteins.loc[proteins['accession'] == prot_accession, 'end'] = proteins.loc[proteins['accession'] == prot_accession, 'end'].apply(lambda x: x + [peptide[end_column][i]])
+                    proteins.loc[proteins['accession'] == prot_accession, 'peptide_index'] = proteins.loc[proteins['accession'] == prot_accession, 'peptide_index'].apply(lambda x: x + [index_peptide])
                     
                 else:
                     # create new row for accessions not seen before
                     if intensity_column:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'start':[peptide[start_column][i]], 'end':[peptide[end_column][i]]}
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'start':[peptide[start_column][i]], 'end':[peptide[end_column][i]], 'peptide_index':[index_peptide]}
                     else:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[peptide[start_column][i]], 'end':[peptide[end_column][i]]}
+                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'start':[peptide[start_column][i]], 'end':[peptide[end_column][i]], 'peptide_index':[index_peptide]}
                     proteins.loc[len(proteins)] = protein_entry
 
         
@@ -380,6 +389,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             # get peptide sequence, protein accession and the measured intensity of the current row
             peptides = protein['sequence']
             accession = protein['accession']
+            indices = protein['peptide_index']
             if intensity_column:
                 intensities = protein['intensity']
             starts = []
@@ -388,6 +398,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             # updated_peps contains at each index the peptide associated with the start and end position in starts and ends at that index 
             # updated_intens contains at each index the intensity associated with the peptide at that index in updated_intens
             updated_peps = []
+            updated_index = []
             if intensity_column:
                 updated_intens = []
 
@@ -400,6 +411,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
 
                 # add each peptide and intensity associated with the accession to updated_peps and updated_intens
                 updated_peps.append(peptide)
+                updated_index.append(indices[n_p])
                 if intensity_column:
                     updated_intens.append(intensities[n_p])
                 
@@ -416,6 +428,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
                     # if a peptide occurs multiple times in a protein
                     for _ in pep_start[:-1]:
                         updated_peps.append(peptide)
+                        updated_index.append(indices[n_p])
                         if intensity_column:
                             updated_intens.append(intensities[n_p])
                 
@@ -427,6 +440,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             proteins.at[p, 'start'] = starts
             proteins.at[p, 'end'] = ends
             proteins.at[p, 'sequence'] = updated_peps
+            proteins.at[p, 'peptide_index'] = updated_index
             if intensity_column:
                 proteins.at[p,'intensity'] = updated_intens
     return proteins
