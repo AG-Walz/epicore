@@ -35,4 +35,5 @@ result_file = pd.read_csv('tests/result_file.csv')
 result_file = result_file.sort_values(by='sequence').reset_index(drop=True).astype(str)
 
 # test if epicore produces expected result
-assert pep_cores_mapping.equals(result_file)
+def test_equal():
+  assert pep_cores_mapping.equals(result_file)
