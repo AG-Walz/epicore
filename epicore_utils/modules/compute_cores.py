@@ -129,13 +129,14 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     return protein_df
 
 
-def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
+def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str, proteome_dict: dict[str, str]) -> pd.DataFrame:
     """Compute the landscape of consensus epitope groups.
     
     Args:
         protein_df: A pandas dataframe containing one protein per row.
         mod_pattern A comma separated string with delimiters for peptide
             modifications
+        proteome_dict: A dictionary containing the reference proteome.
 
     Returns:
         The protein_df with two additional columns (landscape, whole_epitopes).
@@ -157,7 +158,7 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
         for group, [pep_group_start, pep_group_end] in enumerate(zip(row['grouped_peptides_start'], row['grouped_peptides_end'])):
             seen_pep={}
             start_idx = pep_group_start[0]
-            group_landscape = [0 for _ in range(max(pep_group_end)+1-min(pep_group_start))]#np.zeros(max(pep_group_end)+1-min(pep_group_start)) 
+            group_landscape = [0 for _ in range(max(pep_group_end)+1-min(pep_group_start))]  
             
             for pep_idx, pep_pos in enumerate(zip(pep_group_start, pep_group_end)):
                 pep_start = pep_pos[0]
@@ -193,19 +194,15 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str) -> pd.DataFrame:
             # build whole group sequences
             consensus_seq = ''
             consensus_pos = []
-            for sequence, sequence_pos in zip(row['grouped_peptides_sequence'][group], row['grouped_peptides_start'][group]):
-                sequence = re.sub(r"\(.*?\)","",sequence)
-                sequence = re.sub(r'\[.*?\]',"",sequence)
-                if mod_pattern:
-                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
-                    sequence = re.sub(pattern,"",sequence)
-                sequence_pos = [i for i in range(sequence_pos, sequence_pos + len(sequence))]
-                for aa, aa_pos in zip(sequence, sequence_pos):
+            sequence = proteome_dict[row['accession']]
+            for sequence_start, sequence_end in zip(row['grouped_peptides_start'][group], row['grouped_peptides_end'][group]):
+                sequence_pos = [i for i in range(sequence_start, sequence_end + 1)]
+                for aa_pos in sequence_pos:
                     if aa_pos not in consensus_pos:
-                        consensus_seq += aa
-                        consensus_pos.append(aa_pos)
+                        consensus_seq += sequence[aa_pos]
+                        consensus_pos.append(aa_pos) 
                     else:
-                        if consensus_seq[consensus_pos.index(aa_pos)] != aa:
+                        if consensus_seq[consensus_pos.index(aa_pos)] != sequence[aa_pos]:
                             raise Exception('Something with the mapping went wrong! If you provided the start and end column please try again without providing the column header for these columns.')
             for _ in row['grouped_peptides_sequence'][group]:
                 protein_df.at[r,'whole_epitopes_all'].append(consensus_seq)
@@ -308,7 +305,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         return list(starts), list(ends), list(sequences), list(indices)
 
 
-def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str) -> pd.DataFrame:
+def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str, proteome_dict: dict[str,str]) -> pd.DataFrame:
     """ Compute the core and whole sequence of all consensus epitope groups. 
     
     Args:
@@ -323,6 +320,7 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
             of the peptides.
         mod_pattern: A comma separated string with delimiters for peptide
             modifications
+        proteome_dict: A dictionary containing the reference proteome.
 
     Returns:
         The protein_df containing for each protein the core and whole sequence of each of its consensus epitope groups.
@@ -333,6 +331,6 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
         protein_df[['start', 'end', 'sequence', 'peptide_index']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     # group peptides 
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column)
-    protein_df = gen_landscape(protein_df,mod_pattern)
+    protein_df = gen_landscape(protein_df,mod_pattern, proteome_dict)
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
     return protein_df
