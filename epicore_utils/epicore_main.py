@@ -149,7 +149,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
             f.write(html)
     else:
         fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
-    fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes', mod_pattern)
+    fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'consensus_epitopes', ctx.obj.seq_column, 'consensus_epitopes', 'peptides', 'consensus epitopes', mod_pattern)
     if ctx.obj.html:
         fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
         with open(f'{ctx.obj.out_dir}/length_distributions.svg', 'r') as svg_file:
@@ -187,6 +187,7 @@ def plot_landscape(ctx,epicore_csv, protacc):
         if accession is not None:
             fig = plot_protein_landscape(protein_df,accession,ctx.obj.proteome_dict)
             fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf',bbox_inches='tight')
+            fig.savefig(f'{ctx.obj.out_dir}/{accession}.svg',bbox_inches='tight')
             
 
 main.add_command(generate_epicore_csv)
