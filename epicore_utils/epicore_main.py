@@ -108,13 +108,13 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     # ----------------------
     #    Parse input file
     # ----------------------
-    protein_df, n_removed_peps = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
+    protein_df, n_removed_peps, total_intens = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
 
     # ----------------------
     # compute core epitopes, map peptides to cores
     # ----------------------
-    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict)
+    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict, total_intens)
     protein_df.to_csv(f'{ctx.obj.out_dir}/epicore_result.csv')
     pep_cores_mapping = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
     pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.tsv', sep='\t')

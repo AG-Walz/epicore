@@ -49,7 +49,7 @@ def aggregation_strategy(series, delimiter):
         as a string.
     """
     series = series.fillna('nan')
-    if series.name in  ['start', 'end', 'whole_epitopes_all', 'consensus_epitopes_all', 'proteome_occurrence']:
+    if series.name in  ['start', 'end', 'whole_epitopes_all', 'consensus_epitopes_all', 'proteome_occurrence', 'core_epitopes_intensity_all', 'relative_core_intensity_all']:
         return delimiter.join(series)
     elif len(set(series)) == 1:
         return series.iloc[0]

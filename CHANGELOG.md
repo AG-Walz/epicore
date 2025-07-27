@@ -8,12 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Change output format from csv to tsv.
 - Increase the landscape value for all non-repetitive peptides, not just at the first occurrence.
+- Plot core epitope lengths instead of the length of the entire consensus epitope. 
+- Change the calculation of the total intensity of the evidence file by counting each peptide intensity only once.
 
 ### Fixed
 - Remove modification of peptides for peptide length histogram.
 - Adjust the epicore intensity plot range to make sure that all epitopes are included.
 - Remove redundant intensity information. 
 - Fix aggregation method for peptides with the same sequence but different properties.
+- Fix mapping of cores and input peptides for peptide sequences that occur multiple times in the evidence file.
+- Fix proteome_occurrence column for peptides that are part of a repetitive region.
 
 ## v0.1.5 - 2025/06/16
 

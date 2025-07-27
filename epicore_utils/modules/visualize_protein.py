@@ -91,7 +91,7 @@ def plot_protein_landscape(protein_df: pd.DataFrame, accession: str, proteome_di
 
     prot_landscape = [0 for _ in prot_seq]
     
-    fig_width = max(1,round(len(prot_landscape)/50))
+    fig_width = max(15,round(len(prot_landscape)/50))
     fig_height = 3
 
     max_intens = 0
@@ -110,18 +110,18 @@ def plot_protein_landscape(protein_df: pd.DataFrame, accession: str, proteome_di
         group_start = min(prot_row['grouped_peptides_start'].iloc[0][group])
         for idx, position in enumerate(landscape):
             ax.bar(group_start+int(idx),position,width=1, alpha=0.4, color=color)
-        for pos in range(prot_row['core_epitopes_start'].iloc[0][group],prot_row['core_epitopes_end'].iloc[0][group]):
+        for pos in range(prot_row['core_epitopes_start'].iloc[0][group],prot_row['core_epitopes_end'].iloc[0][group]+1):
             ax.bar(pos,0.5,width=1,color=color)
 
         max_intens = max(max_intens, max(landscape))
 
     ybins=max_intens/10
     ax.yaxis.set_major_locator(MaxNLocator(nbins=max(ybins, 5)))
-    ax.xaxis.set_major_locator(MaxNLocator(nbins=max(fig_width/10, 15)))
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=max(fig_width/10, 25)))
 
-    ax.set_title('Number of peptides mapped to each amino acid position and core epitopes of protein {}'.format(accession))
+    ax.set_title('Landscape and consensus epitopes of the protein {}'.format(accession))
     ax.set_xlabel('Position in protein {}'.format(accession))
-    ax.set_ylabel('Number of mapped peptides')
+    ax.set_ylabel('Number of aligned peptides')
     return fig
 
 
@@ -139,10 +139,9 @@ def plot_core_mapping_peptides_hist(epitope_df: pd.DataFrame) ->  plt.figure:
     """
     fig, ax = plt.subplots(layout='constrained')
     n_peps = epitope_df['grouped_peptides_sequence'].apply(lambda sequences: len(sequences.split(',')))
-    print(max(n_peps))
     ax.hist(n_peps,bins=np.arange(1,max(n_peps)+2,1))
     ax.set_yscale('log')
-    ax.set_xlabel('number of peptides contributing to epitope')
+    ax.set_xlabel('number of peptides contributing to each consensus epitope')
     ax.set_ylabel('count')
     return fig
 

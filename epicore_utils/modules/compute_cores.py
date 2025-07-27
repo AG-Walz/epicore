@@ -7,7 +7,7 @@ import re
 import pandas as pd
 
 
-def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str) -> pd.DataFrame:
+def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float) -> pd.DataFrame:
     """Group the peptides to consensus epitopes.
 
     Args:
@@ -19,6 +19,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             epitope.
         intensity_column: The header of the column containing the intensities
             of the peptides.
+        total_intens: The total intensity of the evidence file.
 
     Returns:
         The protein_df with the five to seven additional columns: 
@@ -44,7 +45,6 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     # for each peptide the index of its group
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
 
-    total_file_intensity = 0
     for r,row in protein_df.iterrows():
         
         start_pos =  row['start']
@@ -75,7 +75,6 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             mapping.append(n_jumps)
             if intensity_column:
                 core_intensity += float(intensity[i])
-                total_file_intensity += float(intensity[i])
 
             # create new peptide group after each jump
             if (step_size >= max_step_size) and (pep_length <= step_size + min_overlap):
@@ -102,7 +101,6 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             if intensity_column:
                 protein_df.at[r,'grouped_peptides_intensity'].append([intensity[-1]])
                 protein_df.at[r,'core_epitopes_intensity'].append(intensity[-1])
-                total_file_intensity += float(intensity[-1])
             mapping.append(n_jumps)
         else:
             grouped_peptides_start.append(int(start_pos[-1]))
@@ -111,7 +109,6 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             if intensity_column:
                 grouped_peptides_intensity.append(intensity[-1])
                 core_intensity += float(intensity[-1])
-                total_file_intensity += float(intensity[-1])
                 protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
                 protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
             protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
@@ -121,7 +118,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
 
         protein_df.at[r,'sequence_group_mapping'] = mapping
     if intensity_column:
-        protein_df['relative_core_intensity'] = protein_df['core_epitopes_intensity'].apply(lambda x: [float(ints)/total_file_intensity for ints in x])
+        protein_df['relative_core_intensity'] = protein_df['core_epitopes_intensity'].apply(lambda x: [float(ints)/total_intens for ints in x])
     if intensity_column:
         protein_df['core_epitopes_intensity_all'] = protein_df.apply(lambda row: [row['core_epitopes_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
         protein_df['relative_core_intensity_all'] = protein_df.apply(lambda row: [row['relative_core_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
@@ -305,7 +302,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         return list(starts), list(ends), list(sequences), list(indices)
 
 
-def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str, proteome_dict: dict[str,str]) -> pd.DataFrame:
+def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str, proteome_dict: dict[str,str], total_intens: float) -> pd.DataFrame:
     """ Compute the core and whole sequence of all consensus epitope groups. 
     
     Args:
@@ -321,6 +318,7 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
         mod_pattern: A comma separated string with delimiters for peptide
             modifications
         proteome_dict: A dictionary containing the reference proteome.
+        total_intens: The total intensity of the evidence file.
 
     Returns:
         The protein_df containing for each protein the core and whole sequence of each of its consensus epitope groups.
@@ -330,7 +328,7 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
     else:
         protein_df[['start', 'end', 'sequence', 'peptide_index']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     # group peptides 
-    protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column)
+    protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens)
     protein_df = gen_landscape(protein_df,mod_pattern, proteome_dict)
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
     return protein_df
