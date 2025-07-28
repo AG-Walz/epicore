@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Increase the landscape value for all non-repetitive peptides, not just at the first occurrence.
 - Plot core epitope lengths instead of the length of the entire consensus epitope. 
 - Change the calculation of the total intensity of the evidence file by counting each peptide intensity only once.
+- Adjust column output order to column input order.
 
 ### Fixed
 - Remove modification of peptides for peptide length histogram.

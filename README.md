@@ -96,11 +96,11 @@ The csv contains one protein per row. The different columns contain the followin
 The pep_cores_mapping.csv contains all the information from the initial evidence file. In addition there are the following columns:
 | column | description |
 | --- | --- |
-| whole_epitopes | A list of all sequences of epitopes to which the peptide of the row contributes.|
-| core_epitopes | A list of all core sequences of epitopes to which the peptide of the row contributes.|
+| entire_epitope_sequence | A list of all sequences of epitopes to which the peptide of the row contributes.|
+| core_epitope_sequence | A list of all core sequences of epitopes to which the peptide of the row contributes.|
 | proteome_occurrence | A list containing protein accessions and sequence positions at which the core epitope occurs in the proteome. |
-| total_core_intensity | A list containing the intensity of each epitope. The intensity of an epitope is computed as the sum of the intensities of peptides that contribute to that epitope. |
-| relative_core_intensity | A list containing the relative intensity of each epitope. The relative intensity of an epitope is the intensity of the epitope divided by the sum of all intensities in the provided evidence file.|
+| consensus_epitope_intensity | A list containing the intensity of each consensus epitope. The intensity of an epitope is computed as the sum of the intensities of peptides that contribute to that epitope. |
+| relative_consensus_epitope_intensity | A list containing the relative intensity of each consensus epitope. The relative intensity of an epitope is the intensity of the epitope divided by the sum of all intensities in the provided evidence file.|
 
 #### epitope_intensity_hist.svg
 The plot visualizes how many peptides contribute to a core epitope.
