@@ -10,11 +10,6 @@ import warnings
 import re
 
 
-#from modules.compute_cores import compute_consensus_epitopes
-#from modules.map_result import map_pep_core, gen_epitope_df
-#from modules.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist
-#from modules.parse_input import parse_input, proteome_to_dict
-#from modules.generate_report import gen_report
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
 from epicore_utils.modules.map_result import map_pep_core, gen_epitope_df

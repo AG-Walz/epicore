@@ -37,8 +37,8 @@ def read_entire_id_output(id_output: str) -> pd.DataFrame:
         raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
     return peptides_df
 
-def aggregation_strategy(series, delimiter):
-    """Aggregation strategy.
+def aggregate_series(series: pd.Series, delimiter: str):
+    """Aggregate the series.
 
     Args:
         series: A pandas series.
@@ -125,17 +125,16 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     evidence_file_df.columns = evidence_file_df.columns.str.replace(r'_y$','', regex=True)
     evidence_file_df = evidence_file_df.drop(drop_cols, axis=1)
 
-    # group the rows which belong to the same peptide together (adds a list of all core epitopes belonging to that peptide)
+    # group the rows which belong to the same peptide in the evidence file
     ev_cols = ['whole_epitopes_all', 'consensus_epitopes_all', protacc_column, 'proteome_occurrence']
     if intensity_column:
         ev_cols.append(intensity_column)
         ev_cols.append('core_epitopes_intensity_all')
         ev_cols.append('relative_core_intensity_all')
-
     evidence_file_df[ev_cols] = evidence_file_df[ev_cols].astype(str)
     group_cols = [col for col in evidence_file_df.columns if col not in [protacc_column, 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence']]
     evidence_file_df[group_cols] = evidence_file_df[group_cols].astype(str)
-    grouped_evidence_file_df = evidence_file_df.fillna('nan').groupby([col for col in evidence_file_df.columns if col in group_cols], as_index=False).agg(lambda col: aggregation_strategy(col,delimiter))                                                                                                           
+    grouped_evidence_file_df = evidence_file_df.fillna('nan').groupby([col for col in evidence_file_df.columns if col in group_cols], as_index=False).agg(lambda col: aggregate_series(col,delimiter))                                                                                                           
 
     # sort the dataframe columns so they match the input order
     out_cols = list(in_cols) + [col for col in grouped_evidence_file_df.columns.values if col not in in_cols]
