@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt, mpld3
 import warnings
 import re
 
+
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
 from epicore_utils.modules.map_result import map_pep_core, gen_epitope_df
@@ -102,16 +103,16 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     # ----------------------
     #    Parse input file
     # ----------------------
-    protein_df, n_removed_peps = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
+    protein_df, n_removed_peps, total_intens = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
 
     # ----------------------
     # compute core epitopes, map peptides to cores
     # ----------------------
-    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern)
+    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict, total_intens)
     protein_df.to_csv(f'{ctx.obj.out_dir}/epicore_result.csv')
     pep_cores_mapping = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
-    pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.csv')
+    pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.tsv', sep='\t')
 
 
     # ----------------------
@@ -143,7 +144,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
             f.write(html)
     else:
         fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
-    fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'whole_epitopes', ctx.obj.seq_column, 'whole_epitopes', 'peptides', 'whole epitopes')
+    fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'consensus_epitopes', ctx.obj.seq_column, 'consensus_epitopes', 'peptides', 'consensus epitopes', mod_pattern)
     if ctx.obj.html:
         fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
         with open(f'{ctx.obj.out_dir}/length_distributions.svg', 'r') as svg_file:
@@ -181,6 +182,7 @@ def plot_landscape(ctx,epicore_csv, protacc):
         if accession is not None:
             fig = plot_protein_landscape(protein_df,accession,ctx.obj.proteome_dict)
             fig.savefig(f'{ctx.obj.out_dir}/{accession}.pdf',bbox_inches='tight')
+            fig.savefig(f'{ctx.obj.out_dir}/{accession}.svg',bbox_inches='tight')
             
 
 main.add_command(generate_epicore_csv)
