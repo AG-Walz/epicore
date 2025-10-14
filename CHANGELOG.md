@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Remove index column from pep_cores_mapping.tsv.
+- Set required python version from >=3.12 to >=3.10.
 
 ## v0.1.6 - 2025/07/30
 

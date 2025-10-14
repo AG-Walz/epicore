@@ -5,7 +5,7 @@ channels:
   - defaults
 dependencies:
   - pyyaml>=6.0.2
-  - python>=3.12
+  - python>=3.10
   - pandas>=2
   - numpy>=2
   - matplotlib>=3.4
