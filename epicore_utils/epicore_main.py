@@ -5,7 +5,7 @@ import yaml
 import click
 import logging
 import numpy as np 
-import matplotlib.pyplot as plt, mpld3
+import matplotlib.pyplot as plt
 import warnings
 import re
 
