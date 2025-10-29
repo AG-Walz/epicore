@@ -367,11 +367,13 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             proteins_df = proteins_df.rename({'index':'peptide_index'})
             proteins_df = proteins_df.with_columns(pl.col(end_column).cast(pl.List(pl.Int64)))
             proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.List(pl.Int64)))
+            proteins_df = proteins_df.with_columns(pl.col('peptide_index').cast(pl.Int64))
             proteins_df = proteins_df.with_columns(pl.struct(start_column, end_column).map_batches(lambda x: pl.Series(group_repetitive(x.struct.field(start_column), x.struct.field(end_column))), return_dtype=pl.String).str.split('|').alias('repetitive'))
             proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('end'))
+            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
             proteins_df = proteins_df.group_by(protacc_column).agg(pl.col(seq_column), pl.col('start'), pl.col('end'), pl.col('peptide_index'))
             proteins_df = proteins_df.rename({protacc_column:'accession'})
+            print(proteins_df.columns)
     return proteins_df
 
 
