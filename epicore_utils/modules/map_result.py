@@ -104,6 +104,10 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
 
     # reformat evidence file so each protein accession is represented by one row
     evidence_file_df[protacc_column] = evidence_file_df[protacc_column].str.split(delimiter)
+    #evidence_file_df[start_column] = evidence_file_df[start_column].str.split(delimiter)
+    #evidence_file_df[end_column] = evidence_file_df[end_column].str.split(delimiter)
+
+    evidence_file_df['index'] = evidence_file_df.reset_index()['index'].astype(str)
     evidence_file_df = evidence_file_df.explode([protacc_column])
     evidence_merge_cols = [seq_column,protacc_column, 'index']
     if intensity_column:
@@ -114,7 +118,9 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
 
     # merge protein and evidence df to map each core epitope to the peptides that contribute to it 
     drop_cols = ['index', 'peptide_index']
-    evidence_file_df = evidence_file_df.reset_index().merge(protein_df, left_on=evidence_merge_cols, right_on=protein_merge_cols)  
+    protein_df['peptide_index'] = protein_df['peptide_index'].astype(str)
+
+    evidence_file_df = pd.merge(evidence_file_df, protein_df, left_on=evidence_merge_cols, right_on=protein_merge_cols)
     if seq_column != 'sequence':
         drop_cols.append('sequence')
     if protacc_column != 'accession':
