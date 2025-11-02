@@ -49,11 +49,11 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
     # determine the file type
     ext = os.path.splitext(id_output)[1]
     if ext == '.csv':
-        peptides_df = pl.read_csv(id_output, separator=',').with_row_count('peptide_index')
+        peptides_df = pd.read_csv(id_output, sep=',').reset_index()#.with_row_count('peptide_index')
     elif ext == '.tsv':
-        peptides_df = pl.read_csv(id_output, separator='\t').with_row_count('peptide_index')
+        peptides_df = pd.read_csv(id_output, sep='\t').reset_index()#.with_row_count('peptide_index')
     elif ext == '.xlsx':
-        peptides_df = pl.read_excel(id_output)
+        peptides_df = pd.read_excel(id_output).reset_index()
     else:
         raise Exception('The file type of your evidence file is not supported. \
                         Please use an evidence file that has one of the \
@@ -94,25 +94,28 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
     # read in evidence file (start, stop position and intensity only when 
     # provided)
     if start_column and end_column:
+        peptides_df['peptide_index'] = peptides_df['index']
         if intensity_column:
-            peptides_df = peptides_df.select(protacc_column, seq_column, intensity_column, 'peptide_index', start_column, end_column)
+            peptides_df = peptides_df[[protacc_column,seq_column,       
+                                       intensity_column, start_column, 
+                                       end_column, 'peptide_index']]  
         else:
-            peptides_df = peptides_df.select(protacc_column, seq_column, 'peptide_index', start_column, end_column)
-
-        # split if peptide occurs multiple times in proteome
-        peptides_df = peptides_df.with_columns((pl.col(start_column).str.split(delimiter)).alias(start_column))
-        peptides_df = peptides_df.with_columns((pl.col(end_column).str.split(delimiter)).alias(end_column))
-        peptides_df = peptides_df.with_columns((pl.col(protacc_column).str.split(delimiter)).alias(protacc_column))
-    
+            peptides_df = peptides_df[[protacc_column,seq_column, start_column, 
+                                       end_column, 'peptide_index']]
+        peptides_df = peptides_df.astype(str)
+        # split if peptide occurs multiple times in proteome 
+        peptides_df[start_column] = peptides_df[start_column].str.split(delimiter)
+        peptides_df[end_column] = peptides_df[end_column].str.split(delimiter)
+        peptides_df[protacc_column] = peptides_df[protacc_column].str.split(delimiter)
     else:
+        peptides_df['peptide_index'] = peptides_df['index']
         if intensity_column:
-            peptides_df = peptides_df.select(protacc_column, seq_column, intensity_column, 'peptide_index')
+            peptides_df = peptides_df[[protacc_column,seq_column, intensity_column, 'peptide_index']]
         else:
-            peptides_df = peptides_df.select(protacc_column, seq_column, 'peptide_index')
-        
+            peptides_df = peptides_df[[protacc_column,seq_column, 'peptide_index']]
         # split accessions if peptide occurs multiple times in proteome
-        peptides_df = peptides_df.with_columns((pl.col(protacc_Column).str.split(delimiter)).alias(protacc_column))
-
+        peptides_df[protacc_column] = peptides_df[protacc_column].str.split(delimiter)
+    print(peptides_df)
     return peptides_df
 
 
@@ -162,7 +165,7 @@ def compute_pep_pos(peptide: str, accession: str, proteome_dict: dict[str,str]) 
     return start, end
 
 
-def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, idex)->tuple[list[int],list[int]]:
+def group_repetitive(starts,ends, peps, accs, idex)->tuple[list[int],list[int]]:
     """Group peptide occurrences that belong to the same repetitive region.
 
     Args: 
@@ -364,28 +367,17 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         if intensity_column:
             proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'start','end', 'peptide_index'])
         else:
-            proteins_df = peptides_df.explode(protacc_column, start_column, end_column).group_by(protacc_column).agg(pl.col(seq_column), pl.col(start_column), pl.col(end_column), pl.col('peptide_index'))
-            proteins_df = proteins_df.explode(start_column, end_column, seq_column, 'peptide_index').group_by(seq_column, protacc_column).agg(pl.col(start_column), pl.col(end_column), pl.col('peptide_index'))
-            proteins_df = proteins_df.with_columns(pl.col(end_column).cast(pl.List(pl.Int64)))
-            proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.List(pl.Int64)))
-            proteins_df = proteins_df.with_columns(pl.col('peptide_index').cast(pl.List(pl.Int64)))
-
-            proteins_df = proteins_df.with_columns(pl.struct(start_column, end_column, seq_column, protacc_column, 'peptide_index').map_batches(lambda x: pl.Series(group_repetitive(x.struct.field(start_column), x.struct.field(end_column), x.struct.field(seq_column), x.struct.field(protacc_column), x.struct.field('peptide_index'))), return_dtype=pl.String).str.split('|').alias('repetitive'))
-            
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(2).alias('peptide_index'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(3).alias('sequence'))
-
-            proteins_df = proteins_df.with_columns((pl.col(start_column).str.split(delimiter)).alias(start_column))
-            proteins_df = proteins_df.with_columns((pl.col(end_column).str.split(delimiter)).alias(end_column))
-            proteins_df = proteins_df.with_columns((pl.col('peptide_index').str.split(delimiter)).alias('peptide_index'))
-            proteins_df = proteins_df.with_columns((pl.col('sequence').str.split(delimiter)).alias('sequence'))
-
-            proteins_df = proteins_df.explode('start', 'end', 'peptide_index','sequence')
-
-            proteins_df = proteins_df.group_by(protacc_column).agg(pl.col(seq_column), pl.col('start'), pl.col('end'), pl.col('peptide_index'))
-            proteins_df = proteins_df.rename({protacc_column:'accession'})
+            proteins_df = peptides_df.explode([protacc_column, start_column, end_column]).groupby([protacc_column]).agg({seq_column: lambda x: list(x), start_column: lambda x: list(x), end_column: lambda x: list(x), 'peptide_index': lambda x: list(x)})
+            proteins_df = proteins_df.explode([start_column, end_column, seq_column, 'peptide_index']).groupby([seq_column, protacc_column]).agg({start_column: lambda x: list(x), end_column: lambda x: list(x), 'peptide_index': lambda x: list(x)}).reset_index()
+            proteins_df['repetitive'] = group_repetitive(proteins_df[start_column], proteins_df[end_column], proteins_df[seq_column], proteins_df[protacc_column], proteins_df['peptide_index'])#, axis=1)
+            proteins_df[[start_column, end_column, 'peptide_index', 'sequence']] = proteins_df['repetitive'].str.split('|', n=4, expand=True)
+            proteins_df[start_column] = proteins_df[start_column].str.split(delimiter)
+            proteins_df[end_column] = proteins_df[end_column].str.split(delimiter)
+            proteins_df['peptide_index'] = proteins_df['peptide_index'].str.split(delimiter)
+            proteins_df['sequence'] = proteins_df['sequence'].str.split(delimiter)
+            proteins_df = proteins_df.explode(['start', 'end', 'peptide_index','sequence'])
+            proteins_df = proteins_df.groupby(protacc_column).agg({seq_column: lambda x: list(x), start_column: lambda x: list(x), end_column: lambda x: list(x), 'peptide_index': lambda x: list(x)}).reset_index()
+            proteins_df = proteins_df.rename(columns={protacc_column:'accession'})
 
     return proteins_df
 
@@ -422,17 +414,16 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
     peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter)
 
     # get peptides/proteins with protein accessions that do not appear in the proteome
-    peptides = pl.Series(peptides_df.with_columns((pl.col(protacc_column).list.filter(~pl.element().is_in(list(proteome_dict.keys())))).alias('removed')).select('removed')).to_list()
-    n_removed_proteins = set(itertools.chain.from_iterable(peptides))
+    peptides = peptides_df.explode(protacc_column)
+    n_removed_proteins = peptides[~peptides[protacc_column].isin(proteome_dict.keys())][protacc_column].unique()
 
     # remove peptides with protein accessions that do not appear in the proteome 
-    if start_column and end_column:
-        peptides_df = peptides_df.with_columns(pl.col(start_column).list.gather(pl.col(protacc_column).list.eval(pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(start_column))))
-        peptides_df = peptides_df.with_columns(pl.col(end_column).list.gather(pl.col(protacc_column).list.eval(pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(end_column))))
-    peptides_df = peptides_df.with_columns(pl.col(protacc_column).list.gather(pl.col(protacc_column).list.eval(pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(protacc_column))))
-
-    # remove peptides that are not annotated with any proteome accession
-    peptides_df = peptides_df.remove(pl.col(protacc_column).list.len() == 0)
+    if start_column and end_column: #TODO add intensity
+        peptides_df = peptides_df.explode([start_column, end_column, protacc_column])
+        peptides_df = peptides_df[~peptides_df[protacc_column].isin(n_removed_proteins)].groupby(['peptide_index', seq_column]).agg({start_column: lambda x: list(x), end_column: lambda x: list(x), protacc_column: lambda x: list(x)}).reset_index()
+    else:
+        peptides_df = peptides_df.explode([protacc_column])
+        peptides_df = peptides_df[peptides_df[protacc_column].isin(n_removed_proteins)].groupby([protacc_column]).agg({start_column: lambda x: list(x), end_column: lambda x: list(x)})
 
     logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file: {n_removed_proteins}.')
     protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_dict, mod_pattern, delimiter)

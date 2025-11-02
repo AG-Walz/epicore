@@ -298,6 +298,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         return list(starts), list(ends), list(sequences), list(intensities), list(indices)
     else:
         lists = list(zip(row['start'], row['end'], row['sequence'], row['peptide_index']))
+        lists = sorted(lists, key=lambda x: x[2], reverse=True)
         lists = sorted(lists, key=lambda x: int(x[1]), reverse=True)
         sorted_lists = sorted(lists, key=lambda x: int(x[0]))
         starts, ends, sequences, indices = zip(*sorted_lists)

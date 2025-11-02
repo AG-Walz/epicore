@@ -105,7 +105,6 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     #    Parse input file
     # ----------------------
     protein_df, n_removed_peps, total_intens = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
-    protein_df = protein_df.to_pandas()
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
 
     # ----------------------
