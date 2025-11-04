@@ -3,26 +3,30 @@ import pandas as pd
 from epicore_utils.modules.parse_input import parse_input, proteome_to_dict
 from epicore_utils.modules.map_result import map_pep_core
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
+import polars as pl
 
 # define test files
 evidence_path = 'tests/evidence_file.csv'
+evidence_pathtwo = 'tests/evidence_file_cohort.csv'
 proteome_path = 'tests/proteome.fasta'
 path_resultone = 'tests/result_one.csv'
 path_resulttwo = 'tests/result_two.csv'
+path_resultthree = 'tests/result_three.csv'
 
 # define params
 seq_column = 'sequence'
 protacc_column = 'accessions'
-intensity_column = 'intensity'
-start_column = ''
-end_column = ''
+intensity_column = None
+sample_column = 'sample'
+start_column = 'start'
+end_column = 'end'
 delimiter = ';'
 mod_pattern = ''
 min_overlap = 7
 max_step_size = 5
 min_epi_length = 10
 
-def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, mod_pattern: str, min_overlap: int, max_step_size: int, min_epi_length: int) -> pd.DataFrame:
+def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, mod_pattern: str, min_overlap: int, max_step_size: int, min_epi_length: int, sample_column) -> pd.DataFrame:
   """Run epicore on an evidence file.
 
   Args:
@@ -55,7 +59,8 @@ def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_
       consensus epitope group, to which the peptide of the row belongs.
   """
   proteome_dict = proteome_to_dict(proteome_path)
-  protein_df, _, total_intens = parse_input(evidence_path, seq_column , protacc_column, intensity_column, start_column, end_column, delimiter, proteome_dict, mod_pattern)
+  protein_df, _, total_intens = parse_input(evidence_path, seq_column , protacc_column, intensity_column, start_column, end_column, delimiter, proteome_dict, mod_pattern, sample_column)
+  protein_df = protein_df.to_pandas()
   protein_df = compute_consensus_epitopes(protein_df, min_overlap, max_step_size, min_epi_length, intensity_column, mod_pattern, proteome_dict, total_intens)
   pep_cores_mapping = map_pep_core(evidence_path,protein_df,seq_column,protacc_column,start_column,end_column,intensity_column,delimiter,mod_pattern, proteome_dict)
   pep_cores_mapping = pep_cores_mapping.sort_values(by='sequence').reset_index(drop=True).astype(str)
@@ -63,11 +68,11 @@ def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_
 
 
 #############################
-# Test one
+# Test one (one sample)
 #############################
 
 # run epicore on test file one 
-pep_cores_mapping_one = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length)
+pep_cores_mapping_one = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
 
 # read in expected result and sort it
 result_file = pd.read_csv(path_resultone)
@@ -81,13 +86,25 @@ def test_one():
 
 
 #############################
-# Test two
+# Test two (multiple samples)
 #############################
+
+pep_cores_mapping_three = run_epicore(proteome_path, evidence_pathtwo, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+
+# read in expected result and sort it
+result_file_three = pd.read_csv(path_resultthree)
+result_file_three = result_file_three.sort_values(by='sequence').reset_index(drop=True).astype(str)
+
+# test if epicore produces expected final result
+def test_two():
+  assert pep_cores_mapping_three.equals(result_file_three)
+  
+'''
 max_step_size = 3
 min_overlap = 8
 
 # run epicore on test file two
-pep_cores_mapping_two = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length)
+pep_cores_mapping_two = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
 
 # read in expected result and sort it
 result_file_two = pd.read_csv(path_resulttwo)
@@ -95,4 +112,4 @@ result_file_two = result_file_two.sort_values(by='sequence').reset_index(drop=Tr
 
 # test if epicore produces expected result
 def test_two():
-  assert pep_cores_mapping_two.equals(result_file_two)
+  assert pep_cores_mapping_two.equals(result_file_two)'''
