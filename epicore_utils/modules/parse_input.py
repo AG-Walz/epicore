@@ -49,9 +49,9 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
     # determine the file type
     ext = os.path.splitext(id_output)[1]
     if ext == '.csv':
-        peptides_df = pd.read_csv(id_output, sep=',').reset_index()#.with_row_count('peptide_index')
+        peptides_df = pd.read_csv(id_output, sep=',').reset_index()
     elif ext == '.tsv':
-        peptides_df = pd.read_csv(id_output, sep='\t').reset_index()#.with_row_count('peptide_index')
+        peptides_df = pd.read_csv(id_output, sep='\t').reset_index()
     elif ext == '.xlsx':
         peptides_df = pd.read_excel(id_output).reset_index()
     else:
@@ -115,7 +115,7 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
             peptides_df = peptides_df[[protacc_column,seq_column, 'peptide_index']]
         # split accessions if peptide occurs multiple times in proteome
         peptides_df[protacc_column] = peptides_df[protacc_column].str.split(delimiter)
-    print(peptides_df)
+
     return peptides_df
 
 
@@ -165,14 +165,15 @@ def compute_pep_pos(peptide: str, accession: str, proteome_dict: dict[str,str]) 
     return start, end
 
 
-def group_repetitive(starts,ends, peps, accs, idex)->tuple[list[int],list[int]]:
+def group_repetitive(start: pd.Series, end: pd.Series, pep:pd.Series, acc: pd.Series, idx: pd.Series)->tuple[list[int],list[int]]:
     """Group peptide occurrences that belong to the same repetitive region.
 
-    Args: 
-        peptide: The string of a peptide sequence.
-        accession: The string of a protein accession.
-        starts: A list of all start positions of the peptide in the protein.
-        ends: A list of all end positions of the peptide in the protein. 
+    Args:
+        starts: A pandas series containing the start positions of the peptides.
+        ends: A pandas series containing the end positions of the peptides.
+        peps: A pandas series containing the peptide sequences.
+        accs: A pandas series containing the protein accessions of the peptides.
+        idex: A pandas series containing the peptide indices.
 
     Returns:
         Returns a tuple (starts,ends), where starts is a list containing the
@@ -182,31 +183,26 @@ def group_repetitive(starts,ends, peps, accs, idex)->tuple[list[int],list[int]]:
         end positions that are part of repetitive regions the lowest start 
         position and highest end position is kept for each repetitive region. 
     """
-    updated_pos = []
-    # add the first occurrences start positions to the start positions
-    
-    for start, end, pep, acc, idx in zip(starts,ends, peps, accs, idex):
-        updated_start = ''
-        updated_end = ''
-        updated_idx = ''
-        updated_start = str(start[0])
-        updated_peps = ''
-        for pep_pos in range(len(start)-1):
+    updated_start = []
+    updated_end = []
+    updated_idx = []
+    updated_start = [str(start[0])]
+    updated_peps = []
+    for pep_pos in range(len(start)-1):
 
-            # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
-            if int(start[pep_pos + 1]) > int(end[pep_pos]):
-                updated_start += f';{start[pep_pos + 1]}'
-                updated_end += f'{end[pep_pos]};'
-                updated_idx += f'{idx[pep_pos]};'
-                updated_peps += f'{pep};'
+        # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
+        if int(start[pep_pos + 1]) > int(end[pep_pos]):
+            updated_start.append(start[pep_pos + 1])
+            updated_end.append(end[pep_pos])
+            updated_idx.append(idx[pep_pos])
+            updated_peps.append(pep)
 
-        # add the last occurrences end position to the end positions
-        updated_end += f'{end[-1]}'
-        updated_idx += f'{idx[-1]}'
-        updated_peps += f'{pep}'
-        updated_pos.append(f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}')
+    # add the last occurrences end position to the end positions
+    updated_end.append(end[-1])
+    updated_idx.append(idx[-1])
+    updated_peps.append(pep)
 
-    return updated_pos
+    return [updated_start, updated_end, updated_idx, updated_peps]
 
 
 def get_start_end(row: pd.Series, peptide: str) -> tuple[list[int],list[int],list[float]]:
@@ -367,16 +363,15 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         if intensity_column:
             proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'start','end', 'peptide_index'])
         else:
-            proteins_df = peptides_df.explode([protacc_column, start_column, end_column]).groupby([protacc_column]).agg({seq_column: lambda x: list(x), start_column: lambda x: list(x), end_column: lambda x: list(x), 'peptide_index': lambda x: list(x)})
-            proteins_df = proteins_df.explode([start_column, end_column, seq_column, 'peptide_index']).groupby([seq_column, protacc_column]).agg({start_column: lambda x: list(x), end_column: lambda x: list(x), 'peptide_index': lambda x: list(x)}).reset_index()
-            proteins_df['repetitive'] = group_repetitive(proteins_df[start_column], proteins_df[end_column], proteins_df[seq_column], proteins_df[protacc_column], proteins_df['peptide_index'])#, axis=1)
-            proteins_df[[start_column, end_column, 'peptide_index', 'sequence']] = proteins_df['repetitive'].str.split('|', n=4, expand=True)
-            proteins_df[start_column] = proteins_df[start_column].str.split(delimiter)
-            proteins_df[end_column] = proteins_df[end_column].str.split(delimiter)
-            proteins_df['peptide_index'] = proteins_df['peptide_index'].str.split(delimiter)
-            proteins_df['sequence'] = proteins_df['sequence'].str.split(delimiter)
-            proteins_df = proteins_df.explode(['start', 'end', 'peptide_index','sequence'])
-            proteins_df = proteins_df.groupby(protacc_column).agg({seq_column: lambda x: list(x), start_column: lambda x: list(x), end_column: lambda x: list(x), 'peptide_index': lambda x: list(x)}).reset_index()
+            # convert peptide_df (containing one peptide per row) to protein_df (containing one protein per row)
+            proteins_df = peptides_df.explode([protacc_column, start_column, end_column]).groupby([protacc_column]).agg(list)
+            proteins_df = proteins_df.explode([start_column, end_column, seq_column, 'peptide_index']).groupby([seq_column, protacc_column]).agg(list).reset_index()
+
+            # group repetitive peptides
+            proteins_df[[start_column, end_column, 'peptide_index', 'sequence']] = proteins_df.apply(lambda row: group_repetitive(row[start_column], row[end_column], row[seq_column], row[protacc_column], row['peptide_index']), result_type='expand', axis=1)
+
+            # group peptides by accession
+            proteins_df = proteins_df.explode(['start', 'end', 'peptide_index','sequence']).groupby(protacc_column).agg(list).reset_index()
             proteins_df = proteins_df.rename(columns={protacc_column:'accession'})
 
     return proteins_df
