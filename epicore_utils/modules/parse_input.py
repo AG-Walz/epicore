@@ -183,12 +183,24 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
     # add the first occurrences start positions to the start positions
     
     for start, end, pep, acc, idx, sample in zip(starts,ends, peps, accs, idex, samples):
+        if len(set(idx)) > 1:
+            print('##########################')
+            print('##########################')
+            print(idx)
+            print(start)
+            print(end)
+            print(pep)
+            print(acc)
+            print(sample)
         updated_start = ''
         updated_end = ''
         updated_idx = ''
         updated_start = str(start[0])
         updated_peps = ''
         updated_samples = ''
+        lists = list(zip(start, end, idx))
+        lists = sorted(lists, key=lambda x: int(x[0]))
+        start, end, idx = zip(*lists)
         for pep_pos in range(len(start)-1):
 
             # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
@@ -390,7 +402,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             proteins_df = proteins_df.group_by(protacc_column).agg(pl.col(seq_column), pl.col('start'), pl.col('end'), pl.col('peptide_index'), pl.col('sample'))
             proteins_df = proteins_df.rename({protacc_column:'accession'})
 
-            
+
     return proteins_df
 
 
@@ -433,7 +445,7 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
         peptides_df = peptides_df.with_columns(pl.col(start_column).list.gather(pl.col(protacc_column).list.eval(pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(start_column))))
         peptides_df = peptides_df.with_columns(pl.col(end_column).list.gather(pl.col(protacc_column).list.eval(pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(end_column))))
     peptides_df = peptides_df.with_columns(pl.col(protacc_column).list.gather(pl.col(protacc_column).list.eval(pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(protacc_column))))
-    
+
     # remove peptides that are not annotated with any proteome accession
     peptides_df = peptides_df.remove(pl.col(protacc_column).list.len() == 0)
 
