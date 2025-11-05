@@ -1,5 +1,6 @@
 sequence,accessions,charge,score,intensity,sample,start,end
 LLLLLLLL,sp|A|1;sp|A|1;sp|A|1;sp|A|1;sp|E|1,2,1.3,2,A,1;2;3;4;1,8;9;10;11;8
+LLLLLLLL,sp|A|1;sp|A|1;sp|A|1;sp|A|1;sp|E|1,3,1.3,2,A,1;2;3;4;1,8;9;10;11;8
 LLLLLLLLL,sp|A|1;sp|A|1;sp|A|1,2,1.3,5,A,1;2;3,9;10;11
 ALALALAL,sp|B|1;sp|B|1;sp|B|1;sp|B|1,2,1.4,4,A,0;2;4;6,7;9;11;13
 ALALALALALALAL,sp|B|1,2,1.5,7,A,0,13
