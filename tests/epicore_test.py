@@ -10,11 +10,17 @@ evidence_path = 'tests/evidence_file.csv'
 evidence_pathtwo = 'tests/evidence_file.csv'
 evidence_paththree = 'tests/evidence_file_cohort.csv'
 evidence_pathfour = 'tests/evidence_file_modifications.csv'
+evidence_pathfive = 'tests/evidence_file_five.csv'
 proteome_path = 'tests/proteome.fasta'
 path_resultone = 'tests/result_one.csv'
 path_resulttwo = 'tests/result_two.csv'
 path_resultthree = 'tests/result_three.csv'
 path_resultfour = 'tests/results_four.csv'
+path_resultfive = 'tests/result_five.csv'
+
+large_fasta = 'tests/spHUMANwoi_130927_CLL_mut.fasta'
+large_evidence = 'tests/UPN52.tsv'
+large_result = 'tests/UPN52_c.tsv'
 
 # define params
 seq_column = 'sequence'
@@ -26,7 +32,7 @@ end_column = 'end'
 delimiter = ';'
 mod_pattern = ''
 min_overlap = 7
-max_step_size = 5
+max_step_size = 4
 min_epi_length = 10
 
 def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, mod_pattern: str, min_overlap: int, max_step_size: int, min_epi_length: int, sample_column) -> pd.DataFrame:
@@ -71,7 +77,7 @@ def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_
 
 
 
-
+'''
 #############################
 # Test one (one sample)
 #############################
@@ -88,11 +94,10 @@ def test_one():
   assert pep_cores_mapping_one.equals(result_file)
 
 
-
 ############################# TODO: fix start and end not given
 # Test two (one sample, start and end not given)
 #############################
-'''start_column = None
+start_column = None
 end_column = None
 # run epicore on test file one 
 pep_cores_mapping_two = run_epicore(proteome_path, evidence_pathtwo, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
@@ -104,7 +109,7 @@ result_file_two = result_file_two.sort_values(by='sequence').reset_index(drop=Tr
 # test if epicore produces expected final result
 def test_two():
   assert pep_cores_mapping_two.equals(result_file_two)
-'''
+
 
 
 
@@ -113,11 +118,11 @@ def test_two():
 #############################
 
 pep_cores_mapping_three = run_epicore(proteome_path, evidence_paththree, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
-pep_cores_mapping_three.to_csv('thre.csv')
+
 # read in expected result and sort it
 result_file_three = pd.read_csv(path_resultthree)
 result_file_three = result_file_three.sort_values(by='sequence').reset_index(drop=True).astype(str)
-result_file_three.to_csv('three.csv')
+
 # test if epicore produces expected final result
 def test_three():
   assert pep_cores_mapping_three.equals(result_file_three)
@@ -127,7 +132,7 @@ def test_three():
 #############################
 # Test four (multiple samples, multiple charges, modifications)
 #############################
-
+min_epi_length = 3
 # run epicore on test file one 
 pep_cores_mapping_four = run_epicore(proteome_path, evidence_pathfour, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
 
@@ -138,3 +143,219 @@ result_filefour = result_filefour.sort_values(by='sequence').reset_index(drop=Tr
 # test if epicore produces expected final result
 def test_four():
   assert pep_cores_mapping_four.equals(result_filefour)
+
+
+#############################
+# Test five
+#############################
+#min_epi_length 
+max_step_size = 5
+min_epi_length = 3
+# run epicore on test file one 
+pep_cores_mapping_five = run_epicore(proteome_path, evidence_pathfive, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+pep_cores_mapping_five = pep_cores_mapping_five.sort_values(by='sequence')
+
+# read in expected result and sort it
+result_filefive = pd.read_csv(path_resultfive)
+result_filefive = result_filefive.sort_values(by='sequence').reset_index(drop=True).astype(str)
+
+# test if epicore produces expected final result
+def test_five():
+  assert pep_cores_mapping_five.equals(result_filefive)
+
+
+large_fasta = 'tests/spHUMANwoi_130927_CLL_mut.fasta'
+large_evidence = 'tests/UPN52.tsv'
+large_result = 'tests/UPN52_cw.tsv'
+
+max_step_size = 5
+min_epi_length = 13
+min_overlap = 11
+
+# run epicore on test file one 
+pep_cores_mapping_six = run_epicore(large_fasta, large_evidence, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+pep_cores_mapping_six = pep_cores_mapping_six.sort_values(by='sequence')
+print('#####')
+pep_cores_mapping_six = pep_cores_mapping_six.loc[:, ~pep_cores_mapping_six.columns.str.contains('^Unnamed')]
+pep_cores_mapping_six['start'] = pep_cores_mapping_six['start'].str.split(';')
+pep_cores_mapping_six['end'] = pep_cores_mapping_six['end'].str.split(';')
+pep_cores_mapping_six['accessions'] = pep_cores_mapping_six['accessions'].str.split(';')
+pep_cores_mapping_six['proteome_occurrence'] = pep_cores_mapping_six['proteome_occurrence'].str.split(';')
+pep_cores_mapping_six['entire_epitope_sequence'] = pep_cores_mapping_six['entire_epitope_sequence'].str.split(';')
+pep_cores_mapping_six['core_epitope_sequence'] = pep_cores_mapping_six['core_epitope_sequence'].str.split(';')
+pep_cores_mapping_six.to_csv('inssss.csv')
+pep_cores_mapping_six = pep_cores_mapping_six.explode(['start', 'end', 'accessions', 'proteome_occurrence', 'entire_epitope_sequence', 'core_epitope_sequence']).sort_values(['accessions','start','end','sequence'])
+out_cols = list(pep_cores_mapping_six.columns.values)
+print(pep_cores_mapping_six)
+pep_cores_mapping_six.to_csv('inss.csv')
+
+
+# read in expected result and sort it
+result_large = pd.read_csv(large_result, sep='\t')
+result_large = result_large.sort_values(by='sequence').reset_index(drop=True).astype(str)
+result_large['sample'] = 'U52'
+result_large = result_large[out_cols]
+result_large['start'] = result_large['start'].str.split(';')
+result_large['end'] = result_large['end'].str.split(';')
+result_large['accessions'] = result_large['accessions'].str.split(';')
+result_large['proteome_occurrence'] = result_large['proteome_occurrence'].str.split(';')
+result_large['entire_epitope_sequence'] = result_large['entire_epitope_sequence'].str.split(';')
+result_large['core_epitope_sequence'] = result_large['core_epitope_sequence'].str.split(';')
+
+def safe_len(x):
+return len(x) if isinstance(x, (list, tuple)) else 0
+# compute lengths for each column
+lengths = result_large[['start', 'end', 'accessions', 'proteome_occurrence', 'entire_epitope_sequence', 'core_epitope_sequence']].applymap(safe_len)
+# findrows where lengths differ
+bad_rows = result_large[lengths.nunique(axis=1) > 1]
+print(bad_rows)
+
+result_large = result_large.explode(['start', 'end', 'accessions', 'proteome_occurrence', 'entire_epitope_sequence', 'core_epitope_sequence']).sort_values(['accessions','start','end','sequence'])
+result_large = result_large.drop_duplicates()
+result_large.to_csv('ress.csv')
+
+print(result_large)
+# test if epicore produces expected final result
+def test_six():
+  assert pep_cores_mapping_six.equals(result_large)
+'''
+###############################################################
+
+# define test files
+evidence_path = 'tests/evidence_file.csv'
+#evidence_path_two = 'tests/evidence_file.csv'
+evidence_path_three = 'tests/evidence_file_cohort.csv'
+evidence_path_four = 'tests/evidence_file_modifications.csv'
+evidence_path_five = 'tests/evidence_file_five.csv'
+large_evidence = 'tests/UPN52.tsv'
+path_result_one = 'tests/result_one.csv'
+path_result_two = 'tests/result_two.csv'
+path_result_three = 'tests/result_three.csv'
+path_result_four = 'tests/results_four.csv'
+path_result_five = 'tests/result_five.csv'
+large_result = 'tests/UPN52_cw.tsv'
+
+large_fasta = 'tests/spHUMANwoi_130927_CLL_mut.fasta'
+proteome_path = 'tests/proteome.fasta'
+
+# define params
+seq_column = 'sequence'
+protacc_column = 'accessions'
+intensity_column = None
+sample_column = 'sample'
+start_column = 'start'
+end_column = 'end'
+delimiter = ';'
+mod_pattern = ''
+min_overlap = 7
+max_step_size = 4
+min_epi_length = 10
+
+
+#############################
+# Test one (one sample)
+#############################
+
+# run epicore on test file one 
+pep_cores_mapping_one = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+
+# read in expected result and sort it
+result_file_one = pd.read_csv(path_result_one)
+result_file_one = result_file_one.sort_values(by='sequence').reset_index(drop=True).astype(str)
+
+# test if epicore produces expected final result
+def test_one():
+  assert pep_cores_mapping_one.equals(result_file_one)
+  
+  
+#############################
+# Test two (multiple samples)
+#############################
+
+pep_cores_mapping_two = run_epicore(proteome_path, evidence_path_three, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+
+# read in expected result and sort it
+result_file_two = pd.read_csv(path_result_three)
+result_file_two = result_file_two.sort_values(by='sequence').reset_index(drop=True).astype(str)
+
+# test if epicore produces expected final result
+def test_two():
+  assert pep_cores_mapping_two.equals(result_file_two)
+
+
+#############################
+# Test three (multiple samples, multiple charges, modifications)
+#############################
+
+min_epi_length = 3
+
+# run epicore on test file one 
+pep_cores_mapping_three = run_epicore(proteome_path, evidence_path_four, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+
+# read in expected result and sort it
+result_file_three = pd.read_csv(path_result_four)
+result_file_three = result_file_three.sort_values(by='sequence').reset_index(drop=True).astype(str)
+
+# test if epicore produces expected final result
+def test_three():
+  assert pep_cores_mapping_three.equals(result_file_three)
+
+
+#############################
+# Test four 
+#############################
+
+max_step_size = 5
+min_epi_length = 3
+
+# run epicore on test file one 
+pep_cores_mapping_four = run_epicore(proteome_path, evidence_path_five, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+pep_cores_mapping_four = pep_cores_mapping_four.sort_values(by='sequence')
+
+# read in expected result and sort it
+result_file_four = pd.read_csv(path_result_five)
+result_file_four = result_file_four.sort_values(by='sequence').reset_index(drop=True).astype(str)
+
+# test if epicore produces expected final result
+def test_four():
+  assert pep_cores_mapping_four.equals(result_file_four)
+
+#############################
+# Test five (one sample, large test)
+#############################
+
+max_step_size = 5
+min_epi_length = 13
+min_overlap = 11
+
+# run epicore on test file one 
+pep_cores_mapping_five = run_epicore(large_fasta, large_evidence, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+pep_cores_mapping_five = pep_cores_mapping_five.sort_values(by='sequence')
+pep_cores_mapping_five = pep_cores_mapping_five.loc[:, ~pep_cores_mapping_five.columns.str.contains('^Unnamed')]
+pep_cores_mapping_five['start'] = pep_cores_mapping_five['start'].str.split(';')
+pep_cores_mapping_five['end'] = pep_cores_mapping_five['end'].str.split(';')
+pep_cores_mapping_five['accessions'] = pep_cores_mapping_five['accessions'].str.split(';')
+pep_cores_mapping_five['proteome_occurrence'] = pep_cores_mapping_five['proteome_occurrence'].str.split(';')
+pep_cores_mapping_five['entire_epitope_sequence'] = pep_cores_mapping_five['entire_epitope_sequence'].str.split(';')
+pep_cores_mapping_five['core_epitope_sequence'] = pep_cores_mapping_five['core_epitope_sequence'].str.split(';')
+pep_cores_mapping_five = pep_cores_mapping_five.explode(['start', 'end', 'accessions', 'proteome_occurrence', 'entire_epitope_sequence', 'core_epitope_sequence']).sort_values(['accessions','start','end','sequence'])
+out_cols = list(pep_cores_mapping_five.columns.values)
+
+
+# read in expected result and sort it
+result_large = pd.read_csv(large_result, sep='\t')
+result_large = result_large.sort_values(by='sequence').reset_index(drop=True).astype(str)
+result_large['sample'] = 'U52'
+result_large = result_large[out_cols]
+result_large['start'] = result_large['start'].str.split(';')
+result_large['end'] = result_large['end'].str.split(';')
+result_large['accessions'] = result_large['accessions'].str.split(';')
+result_large['proteome_occurrence'] = result_large['proteome_occurrence'].str.split(';')
+result_large['entire_epitope_sequence'] = result_large['entire_epitope_sequence'].str.split(';')
+result_large['core_epitope_sequence'] = result_large['core_epitope_sequence'].str.split(';')
+result_large = result_large.explode(['start', 'end', 'accessions', 'proteome_occurrence', 'entire_epitope_sequence', 'core_epitope_sequence']).sort_values(['accessions','start','end','sequence'])
+result_large = result_large.drop_duplicates()
+
+# test if epicore produces expected final result
+def test_five():
+  assert pep_cores_mapping_five.equals(result_large)
