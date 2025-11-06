@@ -93,6 +93,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     # read in entire evidence file
     evidence_file_df = read_entire_id_output(evidence_file)
     in_cols = evidence_file_df.columns.values
+
     if intensity_column:
         protein_df = protein_df[['sequence', 'accession', 'start', 'end', 'intensity', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence', 'peptide_index']]
     else:
@@ -115,15 +116,15 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     # prepare peptide_df
     evidence_file_df['index'] = evidence_file_df.reset_index()['index'].astype(str)
     evidence_file_df[protacc_column] = evidence_file_df[protacc_column].str.split(delimiter)
-    evidence_file_df[start_column] = evidence_file_df[start_column].str.split(delimiter)#.astype(int)
-    evidence_file_df[end_column] = evidence_file_df[end_column].str.split(delimiter)#.astype(int)
+    evidence_file_df[start_column] = evidence_file_df[start_column].str.split(delimiter)
+    evidence_file_df[end_column] = evidence_file_df[end_column].str.split(delimiter)
     evidence_file_df = evidence_file_df.explode([protacc_column, start_column, end_column])
     evidence_file_df = evidence_file_df.groupby('index').agg(lambda col: aggregate_series(col,delimiter))
 
-    # merge dataframes
+    # merge dataframes on peptide index, use the input columns
     evidence_file_df = evidence_file_df.reset_index()
     protein_df = protein_df.reset_index()
-    evidence_file_df = pd.merge(evidence_file_df, protein_df, left_on=['index'], right_on=['peptide_index'], how='outer')
+    evidence_file_df = pd.merge(evidence_file_df, protein_df, left_on=['index'], right_on=['peptide_index'], how='right')
     rename={'whole_epitopes_all':'entire_epitope_sequence','consensus_epitopes_all':'core_epitope_sequence'}
     drop_cols = ['index', 'peptide_index']
     if seq_column != 'sequence':
