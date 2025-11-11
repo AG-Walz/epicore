@@ -181,7 +181,7 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
         end positions that are part of repetitive regions the lowest start 
         position and highest end position is kept for each repetitive region. 
     """
-    updated_pos = [] # TODO: have to be sorted
+    updated_pos = [] row: pd.Series
 
     for start, end, pep, acc, idx, sample in zip(starts,ends, peps, accs, idex, samples):
         current = -1
@@ -195,31 +195,45 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
         lists = list(zip(start, end, idx))
         lists = sorted(lists, key=lambda x: int(x[0]))
         start, end, idx = zip(*lists)
+        group_ends = []
         for pep_pos in range(len(start)-1):
 
             # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
-            
-            if int(start[pep_pos + 1]) > int(end[pep_pos]):
+            if int(start[pep_pos + 1]) > int(end[pep_pos]): # new group
+
+                # add max end of repetitive group
+                if len(group_ends) > 0:
+                    for group_end in group_ends:
+                        updated_end += f'{max(group_ends)};'
+                    group_ends = []
+
                 updated_start += f';{start[pep_pos + 1]}'
                 updated_end += f'{end[pep_pos]};'
                 updated_idx += f'{idx[pep_pos].to_list()};'
                 updated_peps += f'{pep};'
                 updated_samples += f'{sample[0]};'
                 current = pep_pos
-            else:
+
+            else: #  add min_start for repetitive group
+                group_ends.append(end[pep_pos])
                 updated_start += f';{start[current + 1]}'
-                updated_end += f'{end[current]};'
                 updated_idx += f'{idx[current].to_list()};'
                 updated_peps += f'{pep};'
                 updated_samples += f'{sample[0]};'
-                
 
         # add the last occurrences end position to the end positions
-        updated_end += f'{end[-1]}'
+        if len(group_ends) > 0:
+            group_ends.append(end[-1])
+            for group_end in group_ends:
+                updated_end += f'{max(group_ends)};'
+            updated_end = updated_end[:-1]
+        else:
+            updated_end += f'{end[-1]}'
+
         updated_idx += f'{idx[-1].to_list()}'
         updated_peps += f'{pep}'
         updated_samples += f'{sample[0]}'
-        updated_ends = ''
+    
         updated_pos.append(f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}|{updated_samples}')
 
     return updated_pos
