@@ -149,7 +149,7 @@ def pep_landscape(row: pd.Series) -> np.array:
     zeros[row['grouped_peptides_start']-row['start_min']:(row['grouped_peptides_end']-row['start_min']+1)] = 1
     return zeros
 
-def combine_landscapes(group: pd.DataFrame) -> list[int]:
+def compute_group_landscapes(group: pd.DataFrame) -> list[int]:
     """Generate landscape of a peptide group.
 
     Args:
@@ -157,50 +157,21 @@ def combine_landscapes(group: pd.DataFrame) -> list[int]:
     Returns:
         A list containing the landscape of a protein in a given peptide group.
     """
-    group = group.drop_duplicates(subset=['grouped_peptides_start','grouped_peptides_end','grouped_peptides_sample'])
+    group = group.drop_duplicates(subset=['grouped_peptides_start','grouped_peptides_end','grouped_peptides_sample']) # count each unique sequence once for each sample
     landscapes = group['pep_landscape']
     grouped_peptides_starts = group['grouped_peptides_start']
     grouped_peptides_ends = group['grouped_peptides_end']
     samples = group['grouped_peptides_sample']
     group_landscape = landscapes.iloc[0]
     seen = [f'{grouped_peptides_starts.iloc[0]},{grouped_peptides_ends.iloc[0]},{samples.iloc[1:]}']
+    # increase landscape for each landscape once
     for landscape, grouped_peptides_start, grouped_peptides_end, sample in zip(landscapes.iloc[1:], grouped_peptides_starts.iloc[1:], grouped_peptides_ends.iloc[1:], samples.iloc[1:]):
         group_landscape = np.add(group_landscape, landscape)
     return group_landscape.astype(int).tolist()
 
-def refine_peptide_groups(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, proteome_dict) -> pd.DataFrame:
 
-    protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample'])
-    protein_df['start_min'] = protein_df.apply(lambda row: min(row['grouped_peptides_start']), axis=1)
-    protein_df['end_max'] = protein_df.apply(lambda row: max(row['grouped_peptides_end']), axis=1)
-    print(protein_df.columns)
-    protein_df['whole_epitopes'] = protein_df.apply(lambda row: proteome_dict[row['accession']][row['start_min']:row['end_max']+1], axis=1)
-    protein_df['whole_epitopes_all'] = protein_df.apply(lambda row: proteome_dict[row['accession']][row['start_min']:row['end_max']+1], axis=1)
-    protein_df['group'] = range(len(protein_df))
-    protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample'])
-    protein_df['mapping'] = protein_df.groupby(protein_df.index).cumcount()
-    protein_df['pep_landscape'] = protein_df.apply(lambda row: pep_landscape(row), axis=1)
-    cols = protein_df.columns.values
-    aggr = {'whole_epitopes_all':lambda x: list(x),'landscape': 'first', 'grouped_peptides_start': lambda x: list(x), 'grouped_peptides_end': lambda x: list(x), 'grouped_peptides_sample': lambda x: list(x)}
-    for col in cols:
-        if col not in aggr.keys():
-            aggr[col] = 'first'
-    comb_landscapes = protein_df.groupby('group').apply(lambda group: combine_landscapes(group))
-    comb_landscapes.name = 'landscape'
-    protein_df = pd.merge(protein_df, comb_landscapes, on='group')
-    protein_df = protein_df.groupby('group').agg(aggr)
-    aggr['landscape'] = lambda x: list(x)
-    aggr['whole_epitopes'] = lambda x: list(x)
-    del aggr['accession']
-    protein_df = protein_df.groupby('accession').agg(aggr)
-    protein_df['whole_epitopes_all'] = protein_df['whole_epitopes_all'].apply(lambda x: np.hstack(x).tolist())
-    protein_df = protein_df.drop(['group','mapping','pep_landscape'], axis=1)
-    return protein_df.reset_index()
-
-
-
-def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str, proteome_dict: dict[str, str]) -> pd.DataFrame:
-    """Compute the landscape of consensus epitope groups.
+def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
+    """Compute the landscape of all consensus epitope groups.
     
     Args:
         protein_df: A pandas dataframe containing one protein per row.
@@ -215,62 +186,150 @@ def gen_landscape(protein_df: pd.DataFrame, mod_pattern: str, proteome_dict: dic
         position is the number of peptides that contain that position. The 
         column whole_epitopes contains the entire sequence of the consensus 
         epitope group.
+    """
+    # get entire sequence of each group
+    protein_df['start_min'] = protein_df.apply(lambda row: min(row['grouped_peptides_start']), axis=1)
+    protein_df['end_max'] = protein_df.apply(lambda row: max(row['grouped_peptides_end']), axis=1)
+    protein_df['whole_epitopes'] = protein_df.apply(lambda row: proteome_dict[row['accession']][row['start_min']:row['end_max']+1], axis=1)
+    protein_df['whole_epitopes_all'] = protein_df.apply(lambda row: proteome_dict[row['accession']][row['start_min']:row['end_max']+1], axis=1)
+    protein_df['group'] = range(len(protein_df))
+    protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence'])
+    protein_df['mapping'] = protein_df.groupby(protein_df.index).cumcount()
 
-    Raises:
-        Exception: If the mappings are contradictory.
+    # compute the landscape for each peptide in the group
+    protein_df['pep_landscape'] = protein_df.apply(lambda row: pep_landscape(row), axis=1)
+
+    cols = protein_df.columns.values
+    aggr = {'whole_epitopes_all':lambda x: list(x), 'landscape': 'first', 'grouped_peptides_start': lambda x: list(x), 'grouped_peptides_end': lambda x: list(x), 'grouped_peptides_sample': lambda x: list(x), 'grouped_peptides_sequence': lambda x: list(x)}
+    for col in cols:
+        if col not in aggr.keys():
+            aggr[col] = 'first'
+
+    # compute the landscape of the entire group
+    comb_landscapes = protein_df.groupby('group').apply(lambda group: compute_group_landscapes(group))
+    comb_landscapes.name = 'landscape'
+    protein_df = pd.merge(protein_df, comb_landscapes, on='group')
+    protein_df = protein_df.groupby('group').agg(aggr)
+    aggr['landscape'] = lambda x: list(x)
+    aggr['whole_epitopes'] = lambda x: list(x)
+    aggr['whole_epitopes'] = lambda x: list(x)
+    del aggr['accession']
+    aggr['start_min'] = lambda x: list(x)
+
+    # combine all groups of one protein
+    protein_df = protein_df.groupby('accession').agg(aggr)
+    protein_df['whole_epitopes_all'] = protein_df['whole_epitopes_all'].apply(lambda x: np.hstack(x).tolist())
+    protein_df = protein_df.drop(['group','mapping','pep_landscape'], axis=1)
+    protein_df = protein_df.reset_index()
+
+    return protein_df
+
+
+def find_minima(landscape):
+    """Compute local minima of a landscape.
+    
+    Args:
+        landscape: A list containing the landscape of a peptide group.
+
+    Returns:
+        A list of the positions where the landscape has a minimum
+    """
+    # find minima
+    landscape_f = np.roll(landscape, -1) > landscape
+    landscape_b = np.roll(landscape, 1) > landscape
+
+    # ensure minima is not at the edge
+    edge = np.full(len(landscape), True)
+    edge[0] = False
+    edge[-1] = False
+    landscape = landscape_f & landscape_b & edge
+    return landscape
+
+
+def new_groups(starts, ends, samples, splits, sequences):
+    """Generate new peptide groups based on the landscape minima. 
+
+    Args:
+        starts: A list containing all start positions of the current peptide group. 
+        ends: A list containing all end positions of the current peptide group. 
+        samples: A list containing all samples of the current peptide group. 
+        splits: A list containing all minima of the landscape of the current peptide group. 
+        sequences: A list containing all sequences of the current peptide group.
+    
+    Returns:
+        A list containing the new peptide groups.
+    """
+    start_groups = []
+    end_groups = []
+    sample_groups = []
+    sequence_groups = []
+    start_list = []
+    end_list = []
+    sample_list = []
+    sequence_list = []
+
+    # if the landscape has no minima
+    if len(splits) == 0:
+        return [[starts], [ends], [sequences], [samples]]
+
+    
+    for start, end, sample, sequence in zip(starts, ends, samples, sequences):
+        
+        if len(splits) == 0 or splits[0] > start:
+            start_list.append(start)
+            end_list.append(end)
+            sample_list.append(sample)
+            sequence_list.append(sequence)
+
+        elif splits[0] <= start: # TODO check if split position is correct here (right index and < or <=)
+            # start new peptide group after minimum
+            start_groups.append(start_list)
+            end_groups.append(end_list)
+            sample_groups.append(sample_list)
+            sequence_groups.append(sequence_list)
+            sequence_list = [sequence]
+            start_list = [start]
+            end_list = [end]
+            sample_list = [sample]
+            splits = splits[1:]
+
+    start_groups.append(start_list)
+    end_groups.append(end_list)
+    sample_groups.append(sample_list)
+    sequence_groups.append(sequence_list)
+
+    return [start_groups, end_groups, sequence_groups, sample_groups]
+
+
+def group_refinement(protein_df, proteome_dict):
+    """Split peptide groups at landscape minima.
+
+    Args: 
+        protein_df: A pandas dataframe containing one protein per row.
+        proteome_dict: A dictionary containing the reference proteome.
+
+    Returns:
+        The pandas dataframe with refined peptide groups.
     """
 
-    protein_df['landscape'] = [[] for _ in range(len(protein_df))]
-    protein_df['whole_epitopes'] = [[] for _ in range(len(protein_df))]
-    protein_df['whole_epitopes_all'] = [[] for _ in range(len(protein_df))]
+    # convert protein_df so each peptide group is in one row
+    protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence', 'landscape', 'start_min'])
+    
+    # find landscape minima
+    protein_df['split_rows'] = protein_df['landscape'].apply(lambda landscape: find_minima(landscape))
+    protein_df['split_position'] = protein_df.apply(lambda row: np.where(row['split_rows'])[0]+row['start_min'], axis=1)
 
-    for r, row in protein_df.iterrows():
-        for group, [pep_group_start, pep_group_end, pep_group_sample] in enumerate(zip(row['grouped_peptides_start'], row['grouped_peptides_end'], row['grouped_peptides_sample'])):
-            seen_pep={}
-            start_idx = pep_group_start[0]
-            group_landscape = [0 for _ in range(max(pep_group_end)+1-min(pep_group_start))]  
-            for pep_idx, pep_info in enumerate(zip(pep_group_start, pep_group_end, pep_group_sample)):
-                pep_start = pep_info[0]
-                pep_end = pep_info[1]
-                sample = pep_info[2]
+    # refine peptide groups
+    protein_df[['new_groups_start', 'new_groups_end', 'new_group_sequences', 'new_groups_sample']] = protein_df.apply(lambda row: new_groups(row['grouped_peptides_start'], row['grouped_peptides_end'], row['grouped_peptides_sample'], row['split_position'], row['grouped_peptides_sequence']), axis=1, result_type='expand')
+    protein_df = protein_df.explode(['new_groups_start', 'new_groups_end', 'new_groups_sample', 'new_group_sequences'])
+    protein_df = protein_df.drop(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence'], axis=1)
+    protein_df = protein_df.rename(columns={'new_groups_start':'grouped_peptides_start', 'new_groups_end':'grouped_peptides_end', 'new_groups_sample':'grouped_peptides_sample', 'new_group_sequences': 'grouped_peptides_sequence'})
+    protein_df = protein_df.drop(['landscape'], axis=1)
 
-                current_seq = row['grouped_peptides_sequence'][group][pep_idx]
-                pattern = r'\(.*?\)'
-                current_seq = re.sub(pattern,"",current_seq)
-                pattern = r'\[.*?\]'
-                current_seq = re.sub(pattern,"",current_seq)
-                if mod_pattern:
-                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
-                    current_seq = re.sub(pattern,"",current_seq)
+    # recompute group landscapes
+    #protein_df = protein_df.group_by(['accession'])
+    protein_df = comp_landscape(protein_df,proteome_dict)
 
-                # position seen before
-                if str(pep_start) + '-' + str(pep_end) + '-' + sample in seen_pep:
-                    seen_pep[str(pep_start) + '-' + str(pep_end) + '-' + sample].append(current_seq)
-                else: 
-                    # if position not seen before add the sequence to the landscape
-                    seen_pep[str(pep_start) + '-' + str(pep_end) + '-' + sample] = [current_seq]
-                    for pos in range(pep_start, pep_end+1):
-                        group_landscape[pos-start_idx] += 1
-
-            protein_df.at[r,'landscape'].append(group_landscape)
-
-            # build whole group sequences
-            consensus_seq = ''
-            consensus_pos = []
-            sequence = proteome_dict[row['accession']]
-            for sequence_start, sequence_end in zip(row['grouped_peptides_start'][group], row['grouped_peptides_end'][group]):
-                sequence_pos = [i for i in range(sequence_start, sequence_end + 1)]
-                for aa_pos in sequence_pos:
-                    if aa_pos not in consensus_pos:
-                        consensus_seq += sequence[aa_pos]
-                        consensus_pos.append(aa_pos) 
-                    else:
-                        if consensus_seq[consensus_pos.index(aa_pos)] != sequence[aa_pos]:
-                            raise Exception('Something with the mapping went wrong! If you provided the start and end column please try again without providing the column header for these columns.')
-            for _ in row['grouped_peptides_sequence'][group]:
-                protein_df.at[r,'whole_epitopes_all'].append(consensus_seq)
-            protein_df.at[r,'whole_epitopes'].append(consensus_seq)
-        
     return protein_df
 
 
@@ -398,10 +457,11 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
     else:
         protein_df[['start', 'end', 'sequence', 'peptide_index', 'sample']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     # group peptides
-
-    protein_dfs = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens)
-    protein_df = refine_peptide_groups(protein_dfs, min_overlap, max_step_size, intensity_column, total_intens, proteome_dict)
+    protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens)
+    protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence'])
+    protein_df = comp_landscape(protein_df, proteome_dict)
+    protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all', 'start_min']]
+    protein_df = group_refinement(protein_df, proteome_dict)
     protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all']]
-    #protein_df = protein_df.sort_values('accession')
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
     return protein_df
