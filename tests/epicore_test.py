@@ -53,13 +53,15 @@ evidence_path = 'tests/evidence_file.csv'
 evidence_path_three = 'tests/evidence_file_cohort.csv'
 evidence_path_four = 'tests/evidence_file_modifications.csv'
 evidence_path_five = 'tests/evidence_file_five.csv'
-large_evidence = 'tests/UPN52.tsv'
+large_evidence = 'large_evidence.csv'
 path_result_one = 'tests/result_one.csv'
 path_result_two = 'tests/result_two.csv'
 path_result_three = 'tests/result_three.csv'
 path_result_four = 'tests/results_four.csv'
 path_result_five = 'tests/result_five.csv'
-large_result = 'tests/UPN52_cw.tsv'
+large_result = 'new_U/pep_cores_mapping.tsv'
+min_landscape_evidence = 'tests/minimal_landscape_evidence.csv'
+min_landscape_result = 'tests/result_min_landscape.csv'
 
 large_fasta = 'tests/spHUMANwoi_130927_CLL_mut.fasta'
 proteome_path = 'tests/proteome.fasta'
@@ -171,7 +173,8 @@ out_cols = list(pep_cores_mapping_five.columns.values)
 # read in expected result and sort it
 result_large = pd.read_csv(large_result, sep='\t')
 result_large = result_large.sort_values(by='sequence').reset_index(drop=True).astype(str)
-result_large['sample'] = 'U52'
+result_large = result_large.loc[:, ~result_large.columns.str.contains('^Unnamed')]
+#result_large['sample'] = 'U52'
 result_large = result_large[out_cols]
 result_large['start'] = result_large['start'].str.split(';')
 result_large['end'] = result_large['end'].str.split(';')
@@ -185,3 +188,22 @@ result_large = result_large.drop_duplicates()
 # test if epicore produces expected final result
 def test_five():
   assert pep_cores_mapping_five.equals(result_large)
+
+  
+#############################
+# Test six (one sample, minimum in landscape)
+#############################
+max_step_size = 2
+min_epi_length = 11
+min_overlap = 6
+
+# run epicore on test file one 
+pep_cores_mapping_six = run_epicore(proteome_path, min_landscape_evidence, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
+
+# read in expected result and sort it
+result_file_six = pd.read_csv(min_landscape_result)
+result_file_six = result_file_six.sort_values(by='sequence').reset_index(drop=True).astype(str)
+
+# test if epicore produces expected final result
+def test_six():
+  assert pep_cores_mapping_six.equals(result_file_six)
