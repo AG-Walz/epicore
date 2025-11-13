@@ -83,7 +83,6 @@ min_epi_length = 10
 #############################
 # Test one (one sample)
 #############################
-
 # run epicore on test file one 
 pep_cores_mapping_one = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column)
 
@@ -189,11 +188,10 @@ result_large = result_large.drop_duplicates()
 def test_five():
   assert pep_cores_mapping_five.equals(result_large)
 
-  
 #############################
 # Test six (one sample, minimum in landscape)
 #############################
-max_step_size = 2
+max_step_size = 3
 min_epi_length = 11
 min_overlap = 6
 
