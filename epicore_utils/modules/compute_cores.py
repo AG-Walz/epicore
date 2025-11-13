@@ -417,15 +417,15 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
     """
     if intensity_column:
         lists = list(zip(row['start'], row['end'], row['sequence'], row['intensity'], row['peptide_index'], row['sample']))
-        lists = sorted(lists, key=lambda x: int(x[1]), reverse=True)
-        lists = sorted(lists, key=lambda x: x[2], reverse=True)
+        #lists = sorted(lists, key=lambda x: int(x[1]), reverse=True)
+        #lists = sorted(lists, key=lambda x: x[2], reverse=True)
         sorted_lists = sorted(lists, key=lambda x: int(x[0]))
         starts, ends, sequences, intensities, indices, samples = zip(*sorted_lists)
         return list(starts), list(ends), list(sequences), list(intensities), list(indices), list(samples)
     else:
         lists = list(zip(row['start'], row['end'], row['sequence'], row['peptide_index'], row['sample']))
-        lists = sorted(lists, key=lambda x: x[2], reverse=True)
-        lists = sorted(lists, key=lambda x: int(x[1]), reverse=True)
+        #lists = sorted(lists, key=lambda x: x[2], reverse=True)
+        #lists = sorted(lists, key=lambda x: int(x[1]), reverse=True)
         sorted_lists = sorted(lists, key=lambda x: int(x[0]))
         starts, ends, sequences, indices, samples = zip(*sorted_lists)
         return list(starts), list(ends), list(sequences), list(indices), list(samples)
@@ -460,8 +460,8 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens)
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence'])
     protein_df = comp_landscape(protein_df, proteome_dict)
-    protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all', 'start_min']]
-    protein_df = group_refinement(protein_df, proteome_dict)
+    #protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all', 'start_min']]
+    #protein_df = group_refinement(protein_df, proteome_dict)
     protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all']]
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
     return protein_df
