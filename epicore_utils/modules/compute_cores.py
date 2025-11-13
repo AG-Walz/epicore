@@ -206,7 +206,7 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
             aggr[col] = 'first'
 
     # compute the landscape of the entire group
-    comb_landscapes = protein_df.groupby('group').apply(lambda group: compute_group_landscapes(group))
+    comb_landscapes = protein_df.groupby('group').apply(lambda group: compute_group_landscapes(group), include_groups=False)
     comb_landscapes.name = 'landscape'
     protein_df = pd.merge(protein_df, comb_landscapes, on='group')
     protein_df = protein_df.groupby('group').agg(aggr)
