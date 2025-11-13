@@ -116,6 +116,8 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     # prepare peptide_df
     evidence_file_df['index'] = evidence_file_df.reset_index()['index'].astype(str)
     evidence_file_df[protacc_column] = evidence_file_df[protacc_column].str.split(delimiter)
+    evidence_file_df[start_column] = evidence_file_df[start_column].astype(str)
+    evidence_file_df[end_column] = evidence_file_df[end_column].astype(str)
     evidence_file_df[start_column] = evidence_file_df[start_column].str.split(delimiter)
     evidence_file_df[end_column] = evidence_file_df[end_column].str.split(delimiter)
     evidence_file_df = evidence_file_df.explode([protacc_column, start_column, end_column])

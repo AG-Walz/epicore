@@ -181,7 +181,7 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
         end positions that are part of repetitive regions the lowest start 
         position and highest end position is kept for each repetitive region. 
     """
-    updated_pos = [] row: pd.Series
+    updated_pos = [] # TODO have to be sorted
 
     for start, end, pep, acc, idx, sample in zip(starts,ends, peps, accs, idex, samples):
         current = -1
