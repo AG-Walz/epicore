@@ -170,6 +170,7 @@ def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
 
     # separate each epitope in one row
     protein_df_long = protein_df.explode(cols)
+    protein_df_long['grouped_peptides_sequence'] = protein_df_long['grouped_peptides_sequence'].apply(lambda x: sorted(x))
     protein_df_long = protein_df_long.astype(str)
     epitopes_grouped_df = protein_df_long[cols_acc].groupby(cols)
     epitopes_grouped_df = epitopes_grouped_df.agg({'accession':lambda x:','.join(x)}).reset_index()
