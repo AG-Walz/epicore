@@ -200,15 +200,12 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
 
             # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
             if int(start[pep_pos + 1]) > int(end[pep_pos]): # new group
-
+                group_ends.append(end[pep_pos])
                 # add max end of repetitive group
-                if len(group_ends) > 0:
-                    for group_end in group_ends:
-                        updated_end += f'{max(group_ends)};'
-                    group_ends = []
-
+                for group_end in group_ends:
+                    updated_end += f'{max(group_ends)};'
+                group_ends = []
                 updated_start += f';{start[pep_pos + 1]}'
-                updated_end += f'{end[pep_pos]};'
                 updated_idx += f'{idx[pep_pos].to_list()};'
                 updated_peps += f'{pep};'
                 updated_samples += f'{sample[0]};'
@@ -222,18 +219,18 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
                 updated_samples += f'{sample[0]};'
 
         # add the last occurrences end position to the end positions
-        if len(group_ends) > 0:
+        if len(group_ends) == 0:
+            updated_end += f'{end[-1]}'
+        else:
             group_ends.append(end[-1])
             for group_end in group_ends:
                 updated_end += f'{max(group_ends)};'
             updated_end = updated_end[:-1]
-        else:
-            updated_end += f'{end[-1]}'
 
         updated_idx += f'{idx[-1].to_list()}'
         updated_peps += f'{pep}'
         updated_samples += f'{sample[0]}'
-    
+
         updated_pos.append(f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}|{updated_samples}')
 
     return updated_pos
