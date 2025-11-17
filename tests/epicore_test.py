@@ -173,7 +173,7 @@ out_cols = list(pep_cores_mapping_five.columns.values)
 result_large = pd.read_csv(large_result, sep='\t')
 result_large = result_large.sort_values(by='sequence').reset_index(drop=True).astype(str)
 result_large = result_large.loc[:, ~result_large.columns.str.contains('^Unnamed')]
-#result_large['sample'] = 'U52'
+result_large['sample'] = 'UPN52_1'
 result_large = result_large[out_cols]
 result_large['start'] = result_large['start'].str.split(';')
 result_large['end'] = result_large['end'].str.split(';')
