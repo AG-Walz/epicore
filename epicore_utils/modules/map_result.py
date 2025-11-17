@@ -162,7 +162,7 @@ def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
     """
     # include intensity columns if present
     if ('core_epitopes_intensity' not in protein_df.columns) and ('relative_core_intensity' not in protein_df.columns):
-        cols = ['whole_epitopes', 'consensus_epitopes','landscape', 'grouped_peptides_sequence']
+        cols = ['whole_epitopes', 'consensus_epitopes','landscape', 'grouped_peptides_sequence', 'grouped_peptides_sample']
     else:
         cols = ['whole_epitopes', 'consensus_epitopes','landscape', 'grouped_peptides_sequence', 'relative_core_intensity', 'core_epitopes_intensity']
 
