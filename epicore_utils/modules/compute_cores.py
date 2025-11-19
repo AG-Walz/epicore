@@ -75,7 +75,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
                 grouped_peptides_intensity.append(intensity[i])
 
             step_size = int(start_pos[i+1]) - int(start_pos[i])
-            pep_length = int(end_pos[i]) - int(start_pos[i])
+            pep_length = int(end_pos[i]) - int(start_pos[i]) + 1
             mapping.append(n_jumps)
             if intensity_column:
                 core_intensity += float(intensity[i])
@@ -85,7 +85,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             group_overlap = max(min(int(end_pos[i])-int(start_pos[i]), first_end-int(start_pos[i])),0)
 
             # create new peptide group after each jump
-            if ((step_size >= max_step_size) and (pep_length <= step_size + min_overlap)) or (pep_length <= step_size + min_overlap) or (group_overlap < min_overlap):
+            if ((step_size >= max_step_size) and (pep_length < step_size + min_overlap)) or (pep_length <= step_size + min_overlap) or (group_overlap <= min_overlap):
                 protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
                 protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
                 protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
