@@ -47,7 +47,6 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
 
     for r,row in protein_df.iterrows():
-        
         start_pos =  row['start']
         end_pos = row['end']
         sequences = row['sequence']
@@ -75,36 +74,40 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
                 grouped_peptides_intensity.append(intensity[i])
 
             step_size = int(start_pos[i+1]) - int(start_pos[i])
-            pep_length = int(end_pos[i]) - int(start_pos[i]) + 1
             mapping.append(n_jumps)
             if intensity_column:
                 core_intensity += float(intensity[i])
 
             #first_start = grouped_peptides_start[0]
             first_end = grouped_peptides_end[0]
-            group_overlap = max(min(int(end_pos[i])-int(start_pos[i]), first_end-int(start_pos[i])),0)
+            group_overlap = max(min(int(end_pos[i+1])-int(start_pos[i+1])+1, first_end-int(start_pos[i+1])+1),0) 
 
+            overlap = int(end_pos[i]) - int(start_pos[i+1]) +1
+            group_overlap = min(grouped_peptides_end) - int(start_pos[i+1]) +1
             # create new peptide group after each jump
-            if ((step_size >= max_step_size) and (pep_length < step_size + min_overlap)) or (pep_length <= step_size + min_overlap) or (group_overlap <= min_overlap):
-                protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
-                protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
-                protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
-                protein_df.at[r,'grouped_peptides_sample'].append(grouped_peptides_sample)
-                if intensity_column:
-                    protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
-                    protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
+            if step_size != 0:
 
-                n_jumps += 1
-                grouped_peptides_end = []
-                grouped_peptides_start = []
-                grouped_peptides_sequence = []
-                grouped_peptides_sample = []
-                grouped_peptides_intensity = []
-                if intensity_column:
-                    core_intensity = 0
+                if ((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap):
+                    protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
+                    protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
+                    protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
+                    protein_df.at[r,'grouped_peptides_sample'].append(grouped_peptides_sample)
+                    if intensity_column:
+                        protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
+                        protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
+
+                    n_jumps += 1
+                    grouped_peptides_end = []
+                    grouped_peptides_start = []
+                    grouped_peptides_sequence = []
+                    grouped_peptides_sample = []
+                    grouped_peptides_intensity = []
+                    if intensity_column:
+                        core_intensity = 0
 
         # special case for last peptide match of protein
         if len(grouped_peptides_end) == 0:
+
             protein_df.at[r,'grouped_peptides_start'].append([int(start_pos[-1])])
             protein_df.at[r,'grouped_peptides_end'].append([int(end_pos[-1])])
             protein_df.at[r,'grouped_peptides_sequence'].append([sequences[-1]])
@@ -114,6 +117,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
                 protein_df.at[r,'core_epitopes_intensity'].append(intensity[-1])
             mapping.append(n_jumps)
         else:
+
             grouped_peptides_start.append(int(start_pos[-1]))
             grouped_peptides_end.append(int(end_pos[-1]))
             grouped_peptides_sequence.append(sequences[-1])

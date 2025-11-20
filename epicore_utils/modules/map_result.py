@@ -3,6 +3,7 @@ Assigns each peptide in the evidence files its core epitopes, the total intensit
 """
 import warnings
 import pandas as pd
+import ast
 import numpy as np
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 import re
@@ -10,6 +11,7 @@ import os
 from itertools import repeat
 import logging
 import time
+import polars as pl
 logger = logging.getLogger(__name__)
 
 def read_entire_id_output(id_output: str) -> pd.DataFrame:
@@ -95,52 +97,35 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     in_cols = evidence_file_df.columns.values
 
     if intensity_column:
-        protein_df = protein_df[['sequence', 'accession', 'start', 'end', 'intensity', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence', 'peptide_index']]
+        protein_df = protein_df[['accession', 'start', 'end', 'intensity', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence', 'peptide_index']]
     else:
-        protein_df = protein_df[['sequence', 'accession', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'proteome_occurrence', 'peptide_index']]
+        protein_df = protein_df[['accession', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'proteome_occurrence', 'peptide_index']]
 
     # reformat protein_df so every peptide sequence is represented by one row
     if intensity_column:
-        protein_df = protein_df.explode(['sequence', 'start', 'end', 'intensity', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence', 'peptide_index'])
+        protein_df = protein_df.explode(['start', 'end', 'intensity', 'whole_epitopes_all','consensus_epitopes_all', 'core_epitopes_intensity_all', 'relative_core_intensity_all', 'proteome_occurrence', 'peptide_index'])
     else: 
-        protein_df = protein_df.explode(['sequence', 'start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'proteome_occurrence', 'peptide_index'])
+        protein_df = protein_df.explode(['start', 'end', 'whole_epitopes_all','consensus_epitopes_all', 'proteome_occurrence', 'peptide_index'])
     
     # prepare protein_df
     protein_df['peptide_index'] = protein_df['peptide_index'].str.replace('[','').str.replace(']','').str.replace(' ','').str.split(',')
     protein_df = protein_df.explode(['peptide_index'])
     protein_df['start'] = protein_df['start'].astype(int)
-    protein_df = protein_df.sort_values(by=['start'])
-    protein_df = protein_df.sort_values(by=['accession'])
-    protein_df = protein_df.groupby('peptide_index').agg(lambda col: aggregate_series(col,delimiter))
+    protein_df = protein_df.sort_values(by=['accession', 'start'])
+    protein_df['start'] = protein_df['start'].astype(str)
+    protein_df = protein_df.groupby('peptide_index').agg(lambda x: delimiter.join(x)) # keep like that and take sequence from pep_cores_mapping
 
     # prepare peptide_df
+    evidence_file_df = evidence_file_df.drop(columns=['start', 'end', protacc_column])
     evidence_file_df['index'] = evidence_file_df.reset_index()['index'].astype(str)
-    evidence_file_df[protacc_column] = evidence_file_df[protacc_column].str.split(delimiter)
-    evidence_file_df[start_column] = evidence_file_df[start_column].astype(str)
-    evidence_file_df[end_column] = evidence_file_df[end_column].astype(str)
-    evidence_file_df[start_column] = evidence_file_df[start_column].str.split(delimiter)
-    evidence_file_df[end_column] = evidence_file_df[end_column].str.split(delimiter)
-    evidence_file_df = evidence_file_df.explode([protacc_column, start_column, end_column])
-    evidence_file_df = evidence_file_df.groupby('index').agg(lambda col: aggregate_series(col,delimiter))
 
     # merge dataframes on peptide index, use the input columns
     evidence_file_df = evidence_file_df.reset_index()
     protein_df = protein_df.reset_index()
     evidence_file_df = pd.merge(evidence_file_df, protein_df, left_on=['index'], right_on=['peptide_index'], how='right')
-    rename={'whole_epitopes_all':'entire_epitope_sequence','consensus_epitopes_all':'core_epitope_sequence'}
+    rename={'whole_epitopes_all':'entire_epitope_sequence','consensus_epitopes_all':'consensus_epitope_sequence', 'sequence':seq_column, 'intensity': intensity_column, 'accession':protacc_column}
+    evidence_file_df = evidence_file_df.rename(columns=rename)
     drop_cols = ['index', 'peptide_index']
-    if seq_column != 'sequence':
-        drop_cols.append('sequence')
-    else:
-        evidence_file_df = evidence_file_df.drop(['sequence_y'], axis=1)
-        evidence_file_df = evidence_file_df.rename(columns={'sequence_x':'sequence'})
-    if protacc_column != 'accession':
-        drop_cols.append(protacc_column)
-        rename['accession'] = protacc_column
-        in_cols = ['accession' if col==protacc_column else col for col in in_cols]
-    if intensity_column != 'intensity' and intensity_column:
-        drop_cols.append('intensity')
-    evidence_file_df = evidence_file_df[evidence_file_df.columns.drop(list(evidence_file_df.filter(regex='.*_x')))]
     evidence_file_df = evidence_file_df.drop(drop_cols, axis=1)
     evidence_file_df.columns = evidence_file_df.columns.str.replace(r'_y$','', regex=True)
 
@@ -149,6 +134,8 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     evidence_file_df = evidence_file_df[out_cols].rename(columns=rename)
     if intensity_column:
         evidence_file_df = evidence_file_df.rename(columns={'core_epitopes_intensity_all':'consensus_epitope_intensity','relative_core_intensity_all':'relative_consensus_epitope_intensity' })
+
+    evidence_file_df = evidence_file_df.drop(columns='level_0')
     return evidence_file_df
 
 def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
@@ -169,11 +156,11 @@ def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
     cols_acc = cols + ['accession']
 
     # separate each epitope in one row
-    protein_df_long = protein_df.explode(cols)
+    protein_df_long = protein_df[cols_acc].explode(cols)
     protein_df_long = protein_df_long.astype(str)
-    epitopes_grouped_df = protein_df_long[cols_acc].groupby(cols)
+    epitopes_grouped_df = protein_df_long.groupby(cols)
     epitopes_grouped_df = epitopes_grouped_df.agg({'accession':lambda x:','.join(x)}).reset_index()
-    
+
     logger.info(f'{len(epitopes_grouped_df)} unique epitopes were computed.')
 
     return epitopes_grouped_df

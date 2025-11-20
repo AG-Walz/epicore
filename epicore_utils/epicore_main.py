@@ -163,7 +163,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     
     # summarize some results
     if ctx.obj.report:
-        gen_report(f'./{ctx.obj.out_dir}/length_distributions.svg', f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx, evidence_file,  f'{ctx.obj.out_dir}/epicore_result.csv')
+        gen_report(f'http://localhost:8000/{ctx.obj.out_dir}/length_distributions.svg', f'http://localhost:8000/{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx, evidence_file,  f'{ctx.obj.out_dir}/epicore_result.csv')
 
 
 @click.command()
