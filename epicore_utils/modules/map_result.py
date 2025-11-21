@@ -52,7 +52,7 @@ def aggregate_series(series: pd.Series, delimiter: str):
         as a string.
     """
     series = series.fillna('nan')
-    if series.name in  ['start', 'end', 'accession', 'whole_epitopes_all', 'consensus_epitopes_all', 'proteome_occurrence', 'core_epitopes_intensity_all', 'relative_core_intensity_all']:
+    if series.name in  ['start', 'end', 'accession', 'whole_epitopes_all', 'proteome_occurrence']:
         series = series.astype(str)
         return delimiter.join(series)
     elif len(set(series)) == 1:
@@ -113,7 +113,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     protein_df['start'] = protein_df['start'].astype(int)
     protein_df = protein_df.sort_values(by=['accession', 'start'])
     protein_df['start'] = protein_df['start'].astype(str)
-    protein_df = protein_df.groupby('peptide_index').agg(lambda x: delimiter.join(x)) # keep like that and take sequence from pep_cores_mapping
+    protein_df = protein_df.groupby('peptide_index').agg(lambda x: delimiter.join(x))
 
     # prepare peptide_df
     evidence_file_df = evidence_file_df.drop(columns=['start', 'end', protacc_column])
@@ -123,7 +123,9 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     evidence_file_df = evidence_file_df.reset_index()
     protein_df = protein_df.reset_index()
     evidence_file_df = pd.merge(evidence_file_df, protein_df, left_on=['index'], right_on=['peptide_index'], how='right')
-    rename={'whole_epitopes_all':'entire_epitope_sequence','consensus_epitopes_all':'consensus_epitope_sequence', 'sequence':seq_column, 'intensity': intensity_column, 'accession':protacc_column}
+    rename={'whole_epitopes_all':'entire_epitope_sequence','consensus_epitopes_all':'consensus_epitope_sequence', 'sequence':seq_column, 'accession':protacc_column}
+    if intensity_column:
+        rename['intensity'] = intensity_column
     evidence_file_df = evidence_file_df.rename(columns=rename)
     drop_cols = ['index', 'peptide_index']
     evidence_file_df = evidence_file_df.drop(drop_cols, axis=1)

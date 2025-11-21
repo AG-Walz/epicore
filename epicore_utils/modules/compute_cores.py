@@ -7,7 +7,7 @@ import re
 import pandas as pd
 
 
-def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float) -> pd.DataFrame:
+def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool) -> pd.DataFrame:
     """Group the peptides to consensus epitopes.
 
     Args:
@@ -84,10 +84,16 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
 
             overlap = int(end_pos[i]) - int(start_pos[i+1]) +1
             group_overlap = min(grouped_peptides_end) - int(start_pos[i+1]) +1
+
+            if strict:
+                condition = ((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)
+            else:
+                condition = ((step_size >= max_step_size) and (overlap < min_overlap))
+
             # create new peptide group after each jump
             if step_size != 0:
 
-                if ((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap):
+                if condition:
                     protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
                     protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
                     protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
@@ -425,6 +431,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
     """
     if intensity_column:
         lists = list(zip(row['start'], row['end'], row['sequence'], row['intensity'], row['peptide_index'], row['sample']))
+        lists = sorted(lists, key=lambda x: x[5], reverse=True)
         lists = sorted(lists, key=lambda x: int(x[1]), reverse=True)
         lists = sorted(lists, key=lambda x: x[2], reverse=True)
         sorted_lists = sorted(lists, key=lambda x: int(x[0]))
@@ -432,6 +439,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         return list(starts), list(ends), list(sequences), list(intensities), list(indices), list(samples)
     else:
         lists = list(zip(row['start'], row['end'], row['sequence'], row['peptide_index'], row['sample']))
+        lists = sorted(lists, key=lambda x: x[4], reverse=True)
         lists = sorted(lists, key=lambda x: x[2], reverse=True)
         lists = sorted(lists, key=lambda x: int(x[1]), reverse=True)
         sorted_lists = sorted(lists, key=lambda x: int(x[0]))
@@ -439,7 +447,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         return list(starts), list(ends), list(sequences), list(indices), list(samples)
 
 
-def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str, proteome_dict: dict[str,str], total_intens: float) -> pd.DataFrame:
+def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str, proteome_dict: dict[str,str], total_intens: float, strict: bool) -> pd.DataFrame:
     """ Compute the core and whole sequence of all consensus epitope groups. 
     
     Args:
@@ -465,7 +473,7 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
     else:
         protein_df[['start', 'end', 'sequence', 'peptide_index', 'sample']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     # group peptides
-    protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens)
+    protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens, strict)
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence'])
     protein_df = comp_landscape(protein_df, proteome_dict)
     protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all', 'start_min']]

@@ -1,0 +1,6 @@
+sequence,accessions,start,end,charge,sample
+ABC,A;A,0;15,2;17,4,A
+ABC,A;A,0;15,2;17,3,A
+ABC,A;A,0;15,2;17,3,B
+DEFG,A,3,6,3,A
+DE(aefssss)F(wqw)G,A,3,6,3,A

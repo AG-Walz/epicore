@@ -1,4 +1,4 @@
-sequence,accessions,charge,score,intensity,sample,start,end,entire_epitope_sequence,core_epitope_sequence,proteome_occurrence
+sequence,accessions,charge,score,intensity,sample,start,end,entire_epitope_sequence,consensus_epitope_sequence,proteome_occurrence
 ABCDEFGHIJKLMNOPQRST,W,2,2,2,A,0,19,ABCDEFGHIJKLMNOPQRST,ABCDEFGHIJKLMNOPQRS,W:ABCDEFGHIJKLMNOPQRS:0-18
 ABCDEFGHI,W,2,2,2,A,0,8,ABCDEFGHIJKLMNOPQRST,ABCDEFGHIJKLMNOPQRS,W:ABCDEFGHIJKLMNOPQRS:0-18
 ABCDEFGHI,W,2,2,2,A,0,8,ABCDEFGHIJKLMNOPQRST,ABCDEFGHIJKLMNOPQRS,W:ABCDEFGHIJKLMNOPQRS:0-18

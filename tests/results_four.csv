@@ -1,0 +1,6 @@
+sequence,accessions,start,end,charge,sample,entire_epitope_sequence,consensus_epitope_sequence,proteome_occurrence
+ABC,A;A,0;15,2;17,4,A,ABC;ABC,ABC;ABC,A:ABC:0-2;A:ABC:15-17
+ABC,A;A,0;15,2;17,3,A,ABC;ABC,ABC;ABC,A:ABC:0-2;A:ABC:15-17
+ABC,A;A,0;15,2;17,3,B,ABC;ABC,ABC;ABC,A:ABC:0-2;A:ABC:15-17
+DE(aefssss)F(wqw)G,A,3,6,3,A,DEFG,DEFG,A:DEFG:3-6
+DEFG,A,3,6,3,A,DEFG,DEFG,A:DEFG:3-6

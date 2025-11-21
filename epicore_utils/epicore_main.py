@@ -52,7 +52,7 @@ class InputParameter(object):
             containing the end position of peptides in proteins.
 
     """
-    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None, sample_column=None):
+    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None, sample_column=None, strict=None):
         self.min_epi_length = min_epi_length
         self.min_overlap = min_overlap
         self.max_step_size = max_step_size
@@ -70,6 +70,7 @@ class InputParameter(object):
         self.proteome_dict = proteome_to_dict(reference_proteome)
         self.reference_proteome = reference_proteome
         self.sample_column = sample_column
+        self.strict = strict
 
 @click.version_option(__version__, "--version", "-V")
 
@@ -94,11 +95,12 @@ def main(ctx, reference_proteome, out_dir):
 @click.option('--end_column', type=click.STRING)
 @click.option('--report', is_flag=True)
 @click.option('--html', is_flag=True)
+@click.option('--strict', is_flag=True)
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
-def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html, sample_column):
-    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html, sample_column)
+def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html, sample_column, strict):
+    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html, sample_column, strict)
     if not os.path.exists(ctx.obj.out_dir):
         os.mkdir(ctx.obj.out_dir)
     logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -113,7 +115,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     # ----------------------
     # compute core epitopes, map peptides to cores
     # ----------------------
-    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict, total_intens)
+    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict, total_intens, ctx.obj.strict)
     protein_df.to_csv(f'{ctx.obj.out_dir}/epicore_result.csv')
     pep_cores_mapping = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
     pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.tsv', sep='\t', index=False)
