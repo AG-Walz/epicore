@@ -7,7 +7,7 @@ import polars as pl
 
 
 
-def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, mod_pattern: str, min_overlap: int, max_step_size: int, min_epi_length: int, sample_column, strict) -> pd.DataFrame:
+def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, mod_pattern: str, min_overlap: int, max_step_size: int, min_epi_length: int, sample_column, strict, condition_column) -> pd.DataFrame:
   """Run epicore on an evidence file.
 
   Args:
@@ -40,7 +40,7 @@ def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_
       consensus epitope group, to which the peptide of the row belongs.
   """
   proteome_dict = proteome_to_dict(proteome_path)
-  protein_df, _, total_intens = parse_input(evidence_path, seq_column , protacc_column, intensity_column, start_column, end_column, delimiter, proteome_dict, mod_pattern, sample_column)
+  protein_df, _, total_intens = parse_input(evidence_path, seq_column , protacc_column, intensity_column, start_column, end_column, delimiter, proteome_dict, mod_pattern, sample_column, condition_column)
   protein_df = protein_df.to_pandas()
   protein_df = compute_consensus_epitopes(protein_df, min_overlap, max_step_size, min_epi_length, intensity_column, mod_pattern, proteome_dict, total_intens, strict)
   pep_cores_mapping = map_pep_core(evidence_path,protein_df,seq_column,protacc_column,start_column,end_column,intensity_column,delimiter,mod_pattern, proteome_dict)
@@ -81,6 +81,7 @@ mod_pattern = ''
 min_overlap = 7
 max_step_size = 4
 min_epi_length = 10
+condition_column = 'condition'
 strict=False
 
 
@@ -88,7 +89,7 @@ strict=False
 # Test one (one sample)
 #############################
 # run epicore on test file one 
-pep_cores_mapping_one = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict)
+pep_cores_mapping_one = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
 
 # read in expected result and sort it
 result_file_one = pd.read_csv(path_result_one)
@@ -97,16 +98,17 @@ result_file_one = result_file_one.sort_values(by='sequence').reset_index(drop=Tr
 # test if epicore produces expected final result
 def test_one():
   assert pep_cores_mapping_one.equals(result_file_one)
-  
+
 #############################
 # Test strict (one sample)
 #############################
 strict = True
-pep_cores_mapping_strict = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict)
+pep_cores_mapping_strict = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
+out_cols = pep_cores_mapping_strict.columns.values
 
 # read in expected result and sort it
 result_file_strict = pd.read_csv(path_result_strict)
-result_file_strict = result_file_strict.sort_values(by='sequence').reset_index(drop=True).astype(str)
+result_file_strict = result_file_strict[out_cols].sort_values(by='sequence').reset_index(drop=True).astype(str)
 
 # test if epicore produces expected final result
 def test_strict():
@@ -115,11 +117,13 @@ def test_strict():
 #############################
 # Test two (multiple samples)
 #############################
-pep_cores_mapping_two = run_epicore(proteome_path, evidence_path_three, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict)
+pep_cores_mapping_two = run_epicore(proteome_path, evidence_path_three, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
+out_cols = pep_cores_mapping_two.columns.values
 
 # read in expected result and sort it
 result_file_two = pd.read_csv(path_result_three)
-result_file_two = result_file_two.sort_values(by='sequence').reset_index(drop=True).astype(str)
+print(result_file_two)
+result_file_two = result_file_two[out_cols].sort_values(by='sequence').reset_index(drop=True).astype(str)
 
 # test if epicore produces expected final result
 def test_two():
@@ -133,11 +137,12 @@ def test_two():
 min_epi_length = 3
 
 # run epicore on test file one 
-pep_cores_mapping_three = run_epicore(proteome_path, evidence_path_four, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict)
+pep_cores_mapping_three = run_epicore(proteome_path, evidence_path_four, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
+out_cols = pep_cores_mapping_three.columns.values
 
 # read in expected result and sort it
 result_file_three = pd.read_csv(path_result_four)
-result_file_three = result_file_three.sort_values(by='sequence').reset_index(drop=True).astype(str)
+result_file_three = result_file_three[out_cols].sort_values(by='sequence').reset_index(drop=True).astype(str)
 
 # test if epicore produces expected final result
 def test_three():
@@ -152,12 +157,13 @@ max_step_size = 5
 min_epi_length = 3
 
 # run epicore on test file one 
-pep_cores_mapping_four = run_epicore(proteome_path, evidence_path_five, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict)
+pep_cores_mapping_four = run_epicore(proteome_path, evidence_path_five, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
 pep_cores_mapping_four = pep_cores_mapping_four.sort_values(by='sequence')
+out_cols = pep_cores_mapping_four.columns.values
 
 # read in expected result and sort it
 result_file_four = pd.read_csv(path_result_five)
-result_file_four = result_file_four.sort_values(by='sequence').reset_index(drop=True).astype(str)
+result_file_four = result_file_four[out_cols].sort_values(by='sequence').reset_index(drop=True).astype(str)
 
 # test if epicore produces expected final result
 def test_four():
@@ -172,7 +178,7 @@ min_epi_length = 13
 min_overlap = 11
 
 # run epicore on test file one 
-pep_cores_mapping_five = run_epicore(large_fasta, large_evidence, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict)
+pep_cores_mapping_five = run_epicore(large_fasta, large_evidence, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
 pep_cores_mapping_five = pep_cores_mapping_five.sort_values(by='sequence')
 pep_cores_mapping_five = pep_cores_mapping_five.loc[:, ~pep_cores_mapping_five.columns.str.contains('^Unnamed')]
 pep_cores_mapping_five['start'] = pep_cores_mapping_five['start'].str.split(';')
@@ -211,7 +217,7 @@ min_epi_length = 11
 min_overlap = 6
 
 # run epicore on test file one 
-pep_cores_mapping_six = run_epicore(proteome_path, min_landscape_evidence, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict)
+pep_cores_mapping_six = run_epicore(proteome_path, min_landscape_evidence, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
 
 # read in expected result and sort it
 result_file_six = pd.read_csv(min_landscape_result)

@@ -52,7 +52,7 @@ class InputParameter(object):
             containing the end position of peptides in proteins.
 
     """
-    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None, sample_column=None, strict=None):
+    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None, sample_column=None, strict=None, condition=None):
         self.min_epi_length = min_epi_length
         self.min_overlap = min_overlap
         self.max_step_size = max_step_size
@@ -71,6 +71,7 @@ class InputParameter(object):
         self.reference_proteome = reference_proteome
         self.sample_column = sample_column
         self.strict = strict
+        self.condition_column = condition
 
 @click.version_option(__version__, "--version", "-V")
 
@@ -87,6 +88,7 @@ def main(ctx, reference_proteome, out_dir):
 @click.option('--seq_column', type=click.STRING, required=True)
 @click.option('--sample_column', type=click.STRING, required=True)
 @click.option('--protacc_column', type=click.STRING, required=True)
+@click.option('--condition_column', type=click.STRING, required=True)
 @click.option('--intensity_column', type=click.STRING)
 @click.option('--delimiter', type=click.STRING, required=True)
 @click.option('--mod_pattern', type=click.STRING)
@@ -99,8 +101,8 @@ def main(ctx, reference_proteome, out_dir):
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
-def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html, sample_column, strict):
-    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html, sample_column, strict)
+def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html, sample_column, strict, condition_column):
+    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html, sample_column, strict, condition_column)
     if not os.path.exists(ctx.obj.out_dir):
         os.mkdir(ctx.obj.out_dir)
     logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -108,7 +110,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     # ----------------------
     #    Parse input file
     # ----------------------
-    protein_df, n_removed_peps, total_intens = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern, ctx.obj.sample_column)
+    protein_df, n_removed_peps, total_intens = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern, ctx.obj.sample_column, ctx.obj.condition_column)
     protein_df = protein_df.to_pandas()
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
 
