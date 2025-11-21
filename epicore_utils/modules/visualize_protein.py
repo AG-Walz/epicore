@@ -8,6 +8,7 @@ from matplotlib.ticker import MaxNLocator
 import pandas as pd 
 import numpy as np
 import re
+import ast
 import logging
 logger = logging.getLogger(__name__)
 
@@ -145,4 +146,85 @@ def plot_core_mapping_peptides_hist(epitope_df: pd.DataFrame) ->  plt.figure:
     ax.set_ylabel('count')
     return fig
 
+
+def compute_coverage(peptide: str, consensus: str, entire: str):
+    '''Compute the coverage of the consensus sequence by the peptide contributing to it.
+
+    Args:
+        peptide: Peptide sequence.
+        consensus: Consensus sequence.
+        entire: Sequence of entire consensus sequence.
+
+    Returns:
+        The coverage of the consensus sequence by the peptide sequence
+    '''
+
+    peptide = re.sub(r'(Z|Q|E)','(Z|Q|E)',re.sub(r'(N|B|D)','(N|B|D)', peptide.replace('X','*')))
+
+    consensus_start = len(entire.split(consensus)[0])
+    consensus_end = consensus_start + len(consensus)
+
+    # all consensus sequences including aa X have perfect peptide coverage
+    if 'X' in entire:
+        return 1
+    else:
+        pep_start, pep_end = re.search(peptide, entire).span()
+        if pep_start < consensus_start:
+            overlap = max(min(len(consensus), pep_end-consensus_start),0)
+        else:
+            overlap = max(min(pep_end-pep_start, consensus_end-pep_start),0)
+
+        return overlap/len(consensus)
+
+
+def compute_epitopes_coverage(cores_df: pd.DataFrame):
+    '''Compute the coverage of consensus sequence epitopes.
+
+    Args:
+        cores_df: A pandas DataFrame containing consensus sequence epitopes..
+
+    Returns:
+        A tuple containing the list of coverages for all consensus epitope sequences and the list of coverages for consensus sequence epitope sequences that are defined by at least two peptides.
+    '''
+    cores_df['grouped_peptides_sequence'] = cores_df['grouped_peptides_sequence'].apply(lambda seqs: [re.sub(r'[^a-zA-Z0-9]', '', seq.replace('(Oxidation)','')) for seq in seqs.split(',')])
+    cores_df = cores_df.explode(['grouped_peptides_sequence'])
+    cores_df['coverage'] = cores_df.apply(lambda row: compute_coverage(row['grouped_peptides_sequence'], row['consensus_epitopes'], row['whole_epitopes']), axis=1)
+    coverage_all = cores_df['coverage'].to_list()
+    cores_df['landscape'] = cores_df['landscape'].apply(lambda cell: max(ast.literal_eval(cell)))
+    coverage_red = cores_df[cores_df['landscape'] > 1]['coverage'].to_list()
+    return coverage_all, coverage_red
+
+
+def plot_coverage(coverage_hist_all: list[float], coverage_hist_red: list[float], out:str):
+    '''Plot the coverages of the consensus sequences by the peptides.
+
+    Args:
+        coverage_hist_all: List containing all coverages.
+        coverage_hits_red: List containing coverages for consensus sequence epitopes with at least two peptides mapped.
+        out: Path were the plot gets saved.
+    '''
+    figure, axis = plt.subplots(1, 1, dpi=150)
+    n_all, bins_all, _ = axis.hist(coverage_hist_all, 100, color='red', label='all consensus sequences')
+    n_red, bins_red, _ = axis.hist(coverage_hist_red, 100, alpha=0.5, color='blue', label='reduced consensus sequences')
+    axis.set_yscale('log')
+    axis.set_ylabel('Number of peptides')
+    axis.set_xlabel(f'Consensus sequence coverage')
+    axis.grid()
+    axis.legend()
+    plt.tight_layout()
+    figure.savefig(out)
+
+
+def plot_consensus_sequence_coverage(epitopes_df: pd.DataFrame, out: str):
+    '''Plot the consensus sequence coverage of the computed consensus epitope sequences.
+    
+    Args:
+        epitopes_df: A pandas dataframe containing the calculated consensus epitope sequences.
+        out: Path were the plot gets saved.
+    '''
+    epitopes_df_copy = epitopes_df.copy()
+    all, red = compute_epitopes_coverage(epitopes_df_copy)
+    plot_coverage(all, red, out)
+    logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(all)}')
+    logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(red)}, when only looking at consensus sequences that are defined by at least two peptides.')
 

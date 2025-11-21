@@ -14,7 +14,7 @@ import polars as pl
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
 from epicore_utils.modules.map_result import map_pep_core, gen_epitope_df
-from epicore_utils.modules.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist
+from epicore_utils.modules.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist, plot_consensus_sequence_coverage
 from epicore_utils.modules.parse_input import parse_input, proteome_to_dict
 from epicore_utils.modules.generate_report import gen_report
 
@@ -128,6 +128,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     epitope_df = gen_epitope_df(protein_df)
     epitope_df.to_csv(f'{ctx.obj.out_dir}/epitopes.csv')
 
+    plot_consensus_sequence_coverage(epitope_df, f'{ctx.obj.out_dir}/consensus_sequence_coverage.png')
     # compute length distribution of peptides and epitopes
     ext = os.path.splitext(evidence_file)[1]
     if ext == '.csv':
