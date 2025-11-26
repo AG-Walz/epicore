@@ -130,7 +130,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     epitope_df = gen_epitope_df(protein_df)
     epitope_df.to_csv(f'{ctx.obj.out_dir}/epitopes.csv')
 
-    plot_consensus_sequence_coverage(epitope_df, f'{ctx.obj.out_dir}/consensus_sequence_coverage.png')
+    plot_consensus_sequence_coverage(epitope_df, f'{ctx.obj.out_dir}')
     # compute length distribution of peptides and epitopes
     ext = os.path.splitext(evidence_file)[1]
     if ext == '.csv':

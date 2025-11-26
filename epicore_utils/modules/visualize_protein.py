@@ -166,7 +166,7 @@ def compute_coverage(peptide: str, consensus: str, entire: str):
 
     # all consensus sequences including aa X have perfect peptide coverage
     if 'X' in entire:
-        return 1
+        return 1 #TODO: 
     else:
         pep_start, pep_end = re.search(peptide, entire).span()
         if pep_start < consensus_start:
@@ -174,10 +174,15 @@ def compute_coverage(peptide: str, consensus: str, entire: str):
         else:
             overlap = max(min(pep_end-pep_start, consensus_end-pep_start),0)
 
+        rep = peptide in (peptide+peptide)[1:-1]
+        if rep:
+            return 1
+            
+
         return overlap/len(consensus)
 
 
-def compute_epitopes_coverage(cores_df: pd.DataFrame):
+def compute_epitopes_coverage(cores_df: pd.DataFrame, out):
     '''Compute the coverage of consensus sequence epitopes.
 
     Args:
@@ -212,7 +217,7 @@ def plot_coverage(coverage_hist_all: list[float], coverage_hist_red: list[float]
     axis.grid()
     axis.legend()
     plt.tight_layout()
-    figure.savefig(out)
+    figure.savefig(f'{out}/consensus_sequence_coverage.png')
 
 
 def plot_consensus_sequence_coverage(epitopes_df: pd.DataFrame, out: str):
@@ -223,7 +228,7 @@ def plot_consensus_sequence_coverage(epitopes_df: pd.DataFrame, out: str):
         out: Path were the plot gets saved.
     '''
     epitopes_df_copy = epitopes_df.copy()
-    all, red = compute_epitopes_coverage(epitopes_df_copy)
+    all, red = compute_epitopes_coverage(epitopes_df_copy, out)
     plot_coverage(all, red, out)
     logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(all)}')
     logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(red)}, when only looking at consensus sequences that are defined by at least two peptides.')
