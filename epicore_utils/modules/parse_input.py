@@ -185,14 +185,14 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
 
     for start, end, pep, acc, idx, sample, condition in zip(starts,ends, peps, accs, idex, samples, conditions):
         current = -1
-        updated_start = ''
-        updated_end = ''
-        updated_idx = ''
-        updated_conditions = ''
+        updated_start = []
+        updated_end = []
+        updated_idx = []
+        updated_conditions = []
         # add the first occurrences start positions to the start positions
-        updated_start = str(start[0])
-        updated_peps = ''
-        updated_samples = ''
+        updated_start.append(str(start[0]))
+        updated_peps = []
+        updated_samples = []
         lists = list(zip(start, end, idx))
         lists = sorted(lists, key=lambda x: int(x[0]))
         start, end, idx = zip(*lists)
@@ -204,36 +204,46 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
                 group_ends.append(end[pep_pos])
                 # add max end of repetitive group
                 for group_end in group_ends:
-                    updated_end += f'{max(group_ends)};'
+                    updated_end.append(str(max(group_ends)))
                 group_ends = []
-                updated_start += f';{start[pep_pos + 1]}'
-                updated_idx += f'{idx[pep_pos].to_list()};'
-                updated_peps += f'{pep};'
-                updated_samples += f'{sample[0]};'
-                updated_conditions += f'{condition[0]};'
+                updated_start.append(str(start[pep_pos + 1]))
+                updated_idx.append(str(idx[pep_pos].to_list()[0]))
+                updated_peps.append(pep)
+                updated_samples.append(sample[0])
+                updated_conditions.append(condition[0])
                 current = pep_pos
 
             else: #  add min_start for repetitive group
                 group_ends.append(end[pep_pos])
-                updated_start += f';{start[current + 1]}'
-                updated_idx += f'{idx[current].to_list()};'
-                updated_peps += f'{pep};'
-                updated_samples += f'{sample[0]};'
-                updated_conditions += f'{condition[0]};'
+                updated_start.append(str(start[current + 1]))
+                updated_idx.append(str(idx[current].to_list()[0]))
+                updated_peps.append(pep)
+                updated_samples.append(sample[0])
+                updated_conditions.append(condition[0])
 
         # add the last occurrences end position to the end positions
         if len(group_ends) == 0:
-            updated_end += f'{end[-1]}'
+            updated_end.append(str(end[-1]))
         else:
             group_ends.append(end[-1])
             for group_end in group_ends:
-                updated_end += f'{max(group_ends)};'
-            updated_end = updated_end[:-1]
+                updated_end.append(str(max(group_ends)))
+            #updated_end = updated_end[:-1]
 
-        updated_idx += f'{idx[-1].to_list()}'
-        updated_peps += f'{pep}'
-        updated_samples += f'{sample[0]}'
-        updated_conditions += f'{condition[0]}'
+        updated_idx.append(str(idx[-1].to_list()[0]))
+        updated_peps.append(pep)
+        updated_samples.append(sample[0])
+        updated_conditions.append(condition[0])
+
+        # reduce each occurrence to one
+        updated_df = pd.DataFrame({'start':updated_start, 'end':updated_end, 'peps':updated_peps, 'idx':updated_idx, 'sample':updated_samples, 'cond':updated_conditions})
+        updated_df = updated_df.drop_duplicates()
+        updated_start = ';'.join(updated_df['start'])
+        updated_end = ';'.join(updated_df['end'])
+        updated_peps = ';'.join(updated_df['peps'])
+        updated_idx = ';'.join(updated_df['idx'])
+        updated_samples = ';'.join(updated_df['sample'])
+        updated_conditions = ';'.join(updated_df['cond'])
 
         updated_pos.append(f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}|{updated_samples}|{updated_conditions}')
 

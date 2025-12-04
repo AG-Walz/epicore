@@ -160,6 +160,10 @@ def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
     # separate each epitope in one row
     protein_df_long = protein_df[cols_acc].explode(cols)
     protein_df_long = protein_df_long.astype(str)
+
+    # remove peptide groups occurring multiple times
+    protein_df_long = protein_df_long.drop_duplicates()
+
     epitopes_grouped_df = protein_df_long.groupby(cols)
     epitopes_grouped_df = epitopes_grouped_df.agg({'accession':lambda x:','.join(x)}).reset_index()
 

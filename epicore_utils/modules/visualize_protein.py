@@ -194,6 +194,7 @@ def compute_epitopes_coverage(cores_df: pd.DataFrame, out):
     cores_df['grouped_peptides_sequence'] = cores_df['grouped_peptides_sequence'].apply(lambda seqs: [re.sub(r'[^a-zA-Z0-9]', '', seq.replace('(Oxidation)','')) for seq in seqs.split(',')])
     cores_df = cores_df.explode(['grouped_peptides_sequence'])
     cores_df['coverage'] = cores_df.apply(lambda row: compute_coverage(row['grouped_peptides_sequence'], row['consensus_epitopes'], row['whole_epitopes']), axis=1)
+    cores_df.to_csv(f'{out}/coverage.csv')
     coverage_all = cores_df['coverage'].to_list()
     cores_df['landscape'] = cores_df['landscape'].apply(lambda cell: max(ast.literal_eval(cell)))
     coverage_red = cores_df[cores_df['landscape'] > 1]['coverage'].to_list()
