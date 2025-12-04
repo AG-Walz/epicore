@@ -147,7 +147,7 @@ def plot_core_mapping_peptides_hist(epitope_df: pd.DataFrame) ->  plt.figure:
     return fig
 
 
-def compute_coverage(peptide: str, consensus: str, entire: str):
+def compute_coverage(pep_start, pep_end, consensus_start, consensus_end):
     '''Compute the coverage of the consensus sequence by the peptide contributing to it.
 
     Args:
@@ -159,30 +159,14 @@ def compute_coverage(peptide: str, consensus: str, entire: str):
         The coverage of the consensus sequence by the peptide sequence
     '''
 
-    peptide = re.sub(r'(Z|Q|E)','(Z|Q|E)',re.sub(r'(N|B|D)','(N|B|D)', peptide.replace('X','*')))
-
-    consensus_start = len(entire.split(consensus)[0])
-    consensus_end = consensus_start + len(consensus)
-
-    # all consensus sequences including aa X have perfect peptide coverage
-    if 'X' in entire:
-        return 1 #TODO: 
+    if pep_start < consensus_start:
+        overlap = max(min(consensus_end-consensus_start+1, pep_end-consensus_start+1),0)
     else:
-        pep_start, pep_end = re.search(peptide, entire).span()
-        if pep_start < consensus_start:
-            overlap = max(min(len(consensus), pep_end-consensus_start),0)
-        else:
-            overlap = max(min(pep_end-pep_start, consensus_end-pep_start),0)
-
-        rep = peptide in (peptide+peptide)[1:-1]
-        if rep:
-            return 1
-            
-
-        return overlap/len(consensus)
+        overlap = max(min(pep_end-pep_start+1, consensus_end-pep_start+1),0)
+    return overlap/(consensus_end-consensus_start+1)
 
 
-def compute_epitopes_coverage(cores_df: pd.DataFrame, out):
+def compute_epitopes_coverage(epitope_df: pd.DataFrame, out):
     '''Compute the coverage of consensus sequence epitopes.
 
     Args:
@@ -191,13 +175,15 @@ def compute_epitopes_coverage(cores_df: pd.DataFrame, out):
     Returns:
         A tuple containing the list of coverages for all consensus epitope sequences and the list of coverages for consensus sequence epitope sequences that are defined by at least two peptides.
     '''
-    cores_df['grouped_peptides_sequence'] = cores_df['grouped_peptides_sequence'].apply(lambda seqs: [re.sub(r'[^a-zA-Z0-9]', '', seq.replace('(Oxidation)','')) for seq in seqs.split(',')])
-    cores_df = cores_df.explode(['grouped_peptides_sequence'])
-    cores_df['coverage'] = cores_df.apply(lambda row: compute_coverage(row['grouped_peptides_sequence'], row['consensus_epitopes'], row['whole_epitopes']), axis=1)
-    cores_df.to_csv(f'{out}/coverage.csv')
-    coverage_all = cores_df['coverage'].to_list()
-    cores_df['landscape'] = cores_df['landscape'].apply(lambda cell: max(ast.literal_eval(cell)))
-    coverage_red = cores_df[cores_df['landscape'] > 1]['coverage'].to_list()
+    epitope_df['grouped_peptides_start'] = epitope_df['grouped_peptides_start'].apply(lambda starts: [re.sub(r'[^a-zA-Z0-9]', '',start) for start in starts.split(',')])
+    epitope_df['grouped_peptides_end'] = epitope_df['grouped_peptides_end'].apply(lambda starts: [re.sub(r'[^a-zA-Z0-9]', '',start) for start in starts.split(',')])
+    epitope_df['grouped_peptides_sequence'] = epitope_df['grouped_peptides_sequence'].apply(lambda starts: [re.sub(r'[^a-zA-Z0-9]', '',start) for start in starts.split(',')])
+    epitope_df = epitope_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sequence'])
+    epitope_df['coverage'] = epitope_df.apply(lambda row: compute_coverage(int(row['grouped_peptides_start']), int(row['grouped_peptides_end']), int(row['core_epitopes_start']), int(row['core_epitopes_end'])), axis=1)
+    epitope_df.to_csv(f'{out}/coverage.csv')
+    coverage_all = epitope_df['coverage'].to_list()
+    epitope_df['landscape'] = epitope_df['landscape'].apply(lambda cell: max(ast.literal_eval(cell)))
+    coverage_red = epitope_df[epitope_df['landscape'] > 1]['coverage'].to_list()
     return coverage_all, coverage_red
 
 

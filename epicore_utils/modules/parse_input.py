@@ -245,6 +245,12 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
         updated_samples = ';'.join(updated_df['sample'])
         updated_conditions = ';'.join(updated_df['cond'])
 
+        if pep == 'GVGVAPGVGVAPG':
+            print(start)
+            print(end)
+            print(updated_start)
+            print(updated_end)
+
         updated_pos.append(f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}|{updated_samples}|{updated_conditions}')
 
     return updated_pos
