@@ -182,27 +182,22 @@ def compute_epitopes_coverage(epitope_df: pd.DataFrame, out):
     epitope_df['coverage'] = epitope_df.apply(lambda row: compute_coverage(int(row['grouped_peptides_start']), int(row['grouped_peptides_end']), int(row['core_epitopes_start']), int(row['core_epitopes_end'])), axis=1)
     epitope_df.to_csv(f'{out}/coverage.csv')
     coverage_all = epitope_df['coverage'].to_list()
-    epitope_df['landscape'] = epitope_df['landscape'].apply(lambda cell: max(ast.literal_eval(cell)))
-    coverage_red = epitope_df[epitope_df['landscape'] > 1]['coverage'].to_list()
-    return coverage_all, coverage_red
+    return coverage_all
 
 
-def plot_coverage(coverage_hist_all: list[float], coverage_hist_red: list[float], out:str):
+def plot_coverage(coverage_hist_all: list[float], out:str):
     '''Plot the coverages of the consensus sequences by the peptides.
 
     Args:
         coverage_hist_all: List containing all coverages.
-        coverage_hits_red: List containing coverages for consensus sequence epitopes with at least two peptides mapped.
         out: Path were the plot gets saved.
     '''
     figure, axis = plt.subplots(1, 1, dpi=150)
     n_all, bins_all, _ = axis.hist(coverage_hist_all, 100, color='red', label='all consensus sequences')
-    n_red, bins_red, _ = axis.hist(coverage_hist_red, 100, alpha=0.5, color='blue', label='reduced consensus sequences')
     axis.set_yscale('log')
     axis.set_ylabel('Number of peptides')
     axis.set_xlabel(f'Consensus sequence coverage')
     axis.grid()
-    axis.legend()
     plt.tight_layout()
     figure.savefig(f'{out}/consensus_sequence_coverage.png')
 
@@ -215,8 +210,8 @@ def plot_consensus_sequence_coverage(epitopes_df: pd.DataFrame, out: str):
         out: Path were the plot gets saved.
     '''
     epitopes_df_copy = epitopes_df.copy()
-    all, red = compute_epitopes_coverage(epitopes_df_copy, out)
-    plot_coverage(all, red, out)
+    all = compute_epitopes_coverage(epitopes_df_copy, out)
+    plot_coverage(all, out)
     logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(all)}')
     logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(red)}, when only looking at consensus sequences that are defined by at least two peptides.')
 
