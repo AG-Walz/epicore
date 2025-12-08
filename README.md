@@ -11,6 +11,7 @@ The tool can be used to identify shared consensus epitopes.
 pip install epicore
 ```
 
+Follow the [conda docs](https://github.com/AG-Walz/docs/tree/main/conda) to install conda. <br>
 ![Install with bioconda](https://img.shields.io/badge/install%20with-bioconda-blue?style=flat-square)
 ```bash
 conda install bioconda::epicore
