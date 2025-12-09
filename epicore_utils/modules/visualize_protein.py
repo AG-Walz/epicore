@@ -180,8 +180,9 @@ def compute_epitopes_coverage(epitope_df: pd.DataFrame, out):
     epitope_df['grouped_peptides_sequence'] = epitope_df['grouped_peptides_sequence'].apply(lambda starts: [re.sub(r'[^a-zA-Z0-9]', '',start) for start in starts.split(',')])
     epitope_df = epitope_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sequence'])
     epitope_df['coverage'] = epitope_df.apply(lambda row: compute_coverage(int(row['grouped_peptides_start']), int(row['grouped_peptides_end']), int(row['core_epitopes_start']), int(row['core_epitopes_end'])), axis=1)
-    epitope_df.to_csv(f'{out}/coverage.csv')
     coverage_all = epitope_df['coverage'].to_list()
+    epitope_df = epitope_df.drop_duplicates(['grouped_peptides_sequence', 'whole_epitopes', 'consensus_epitopes'])
+    epitope_df.to_csv(f'{out}/coverage.csv')
     return coverage_all
 
 
@@ -213,5 +214,3 @@ def plot_consensus_sequence_coverage(epitopes_df: pd.DataFrame, out: str):
     all = compute_epitopes_coverage(epitopes_df_copy, out)
     plot_coverage(all, out)
     logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(all)}')
-    logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(red)}, when only looking at consensus sequences that are defined by at least two peptides.')
-

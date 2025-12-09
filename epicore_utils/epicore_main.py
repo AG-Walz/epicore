@@ -106,7 +106,8 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     if not os.path.exists(ctx.obj.out_dir):
         os.mkdir(ctx.obj.out_dir)
     logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-        
+    logger.info(f'Parameter: min_epi_length:{min_epi_length}, min_overlap:{min_overlap}, max_step_size:{max_step_size}, strict:{strict}, evidence_file:{evidence_file}, fasta_file:{ctx.obj.reference_proteome}')
+    
     # ----------------------
     #    Parse input file
     # ----------------------
