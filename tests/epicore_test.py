@@ -103,6 +103,7 @@ def test_one():
 # Test strict (one sample)
 #############################
 strict = True
+min_overlap = 8
 pep_cores_mapping_strict = run_epicore(proteome_path, evidence_path, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
 out_cols = pep_cores_mapping_strict.columns.values
 
@@ -117,6 +118,7 @@ def test_strict():
 #############################
 # Test two (multiple samples)
 #############################
+min_overlap = 7
 pep_cores_mapping_two = run_epicore(proteome_path, evidence_path_three, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
 out_cols = pep_cores_mapping_two.columns.values
 

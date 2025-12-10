@@ -89,8 +89,11 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             overlap = int(end_pos[i]) - int(start_pos[i+1]) +1
             group_overlap = min(grouped_peptides_end) - int(start_pos[i+1]) +1
 
+            # check if the current peptide is completely included by the previous peptide
+            included = ~((end_pos[i+1]<=end_pos[i])&(start_pos[i+1]>=start_pos[i]))
+
             if strict:
-                condition_group = ((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)
+                condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) and included
             else:
                 condition_group = ((step_size >= max_step_size) and (overlap < min_overlap))
 

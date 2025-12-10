@@ -184,56 +184,58 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
     updated_pos = [] # TODO have to be sorted
 
     for start, end, pep, acc, idx, sample, condition in zip(starts,ends, peps, accs, idex, samples, conditions):
+        
         current = -1
         updated_start = []
         updated_end = []
         updated_idx = []
         updated_conditions = []
         # add the first occurrences start positions to the start positions
-        updated_start.append(str(start[0]))
+        for i in idx[0].to_list():
+            updated_start.append(str(start[0]))
         updated_peps = []
         updated_samples = []
+
         lists = list(zip(start, end, idx))
         lists = sorted(lists, key=lambda x: int(x[0]))
         start, end, idx = zip(*lists)
         group_ends = []
+
         for pep_pos in range(len(start)-1):
 
             # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
             if int(start[pep_pos + 1]) > int(end[pep_pos]): # new group
                 group_ends.append(end[pep_pos])
-                # add max end of repetitive group
-                for group_end in group_ends:
-                    updated_end.append(str(max(group_ends)))
+                for i in idx[pep_pos].to_list():
+                    # add max end of repetitive group
+                    for group_end in group_ends:
+                        updated_end.append(str(max(group_ends)))
+                    updated_start.append(str(start[pep_pos + 1]))
+                    updated_idx.append(str(i))
+                    updated_peps.append(pep)
+                    updated_samples.append(sample[0])
+                    updated_conditions.append(condition[0])
+                    current = pep_pos
                 group_ends = []
-                updated_start.append(str(start[pep_pos + 1]))
-                updated_idx.append(str(idx[pep_pos].to_list()[0]))
-                updated_peps.append(pep)
-                updated_samples.append(sample[0])
-                updated_conditions.append(condition[0])
-                current = pep_pos
 
             else: #  add min_start for repetitive group
                 group_ends.append(end[pep_pos])
-                updated_start.append(str(start[current + 1]))
-                updated_idx.append(str(idx[current].to_list()[0]))
-                updated_peps.append(pep)
-                updated_samples.append(sample[0])
-                updated_conditions.append(condition[0])
-
+                for i in idx[pep_pos].to_list():
+                    updated_start.append(str(start[current + 1]))
+                    updated_idx.append(str(i))
+                    updated_peps.append(pep)
+                    updated_samples.append(sample[0])
+                    updated_conditions.append(condition[0])
+        
+        group_ends.append(end[-1])
         # add the last occurrences end position to the end positions
-        if len(group_ends) == 0:
-            updated_end.append(str(end[-1]))
-        else:
-            group_ends.append(end[-1])
+        for i in idx[-1].to_list():
+            updated_idx.append(str(i))
+            updated_peps.append(pep)
+            updated_samples.append(sample[0])
+            updated_conditions.append(condition[0])
             for group_end in group_ends:
                 updated_end.append(str(max(group_ends)))
-            #updated_end = updated_end[:-1]
-
-        updated_idx.append(str(idx[-1].to_list()[0]))
-        updated_peps.append(pep)
-        updated_samples.append(sample[0])
-        updated_conditions.append(condition[0])
 
         # reduce each occurrence to one
         updated_df = pd.DataFrame({'start':updated_start, 'end':updated_end, 'peps':updated_peps, 'idx':updated_idx, 'sample':updated_samples, 'cond':updated_conditions})
