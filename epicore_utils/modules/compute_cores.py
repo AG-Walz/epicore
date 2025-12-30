@@ -61,6 +61,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
         grouped_peptides_sequence = []
         grouped_peptides_sample = []
         grouped_peptides_condition = []
+        grouped_peptides_max_end = 0
         if intensity_column:
             grouped_peptides_intensity = []
             core_intensity = 0
@@ -74,6 +75,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             grouped_peptides_sequence.append(sequences[i])
             grouped_peptides_sample.append(samples[i])
             grouped_peptides_condition.append(conditions[i])
+            grouped_peptides_max_end = max(grouped_peptides_max_end, int(end_pos[i]))
             if intensity_column:
                 grouped_peptides_intensity.append(intensity[i])
 
@@ -89,13 +91,12 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             overlap = int(end_pos[i]) - int(start_pos[i+1]) +1
             group_overlap = min(grouped_peptides_end) - int(start_pos[i+1]) +1
 
-            # check if the current peptide is completely included by the previous peptide
-            included = ~((end_pos[i+1]<=end_pos[i])&(start_pos[i+1]>=start_pos[i]))
-
             if strict:
-                condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) and included
+                condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) and (grouped_peptides_max_end<int(end_pos[i+1]))
             else:
                 condition_group = ((step_size >= max_step_size) and (overlap < min_overlap))
+
+
 
             # create new peptide group after each jump
             if step_size != 0:
@@ -117,6 +118,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
                     grouped_peptides_sample = []
                     grouped_peptides_condition = []
                     grouped_peptides_intensity = []
+                    grouped_peptides_max_end = 0
                     if intensity_column:
                         core_intensity = 0
 
