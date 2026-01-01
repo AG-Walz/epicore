@@ -46,8 +46,14 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
         protein_df['relative_core_intensity'] = [[] for _ in range(len(protein_df))]
     # for each peptide the index of its group
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
+    protein_df['peptide_indices'] = [[] for _ in range(len(protein_df))]
 
     for r,row in protein_df.iterrows():
+        
+        # keep track of all group ranges to group peptides that are completly included in it
+        group_start = [0]
+        group_end = [0]
+
         start_pos =  row['start']
         end_pos = row['end']
         sequences = row['sequence']
@@ -55,12 +61,15 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
         conditions = row['condition']
         if intensity_column:
             intensity = row['intensity']
+        peptide_indices = row['peptide_index']
 
         grouped_peptides_start = []
         grouped_peptides_end = []
         grouped_peptides_sequence = []
         grouped_peptides_sample = []
         grouped_peptides_condition = []
+        grouped_peptides_index = []
+        grouped_peptides_previous = []
         grouped_peptides_max_end = 0
         if intensity_column:
             grouped_peptides_intensity = []
@@ -70,12 +79,35 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
 
         for i in range(len(start_pos)-1):
 
+            included_previous = False
+            # check if peptides is completly included in previuos groups 
+            for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
+    
+                if min_start + 30  < int(start_pos[i]):
+                    # stop check at peptide groups with start position 30 aa < current group start
+                    continue
+                else:
+                    # check if peptide is completly included in group and add it
+                    if int(end_pos[i]) <= max_end:
+                        # add peptide information to the group
+                        protein_df.at[r,'grouped_peptides_start'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_start'][-(pos_index+1)]+[int(start_pos[i])]
+                        protein_df.at[r,'grouped_peptides_end'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_end'][-(pos_index+1)]+[int(end_pos[i])]
+                        protein_df.at[r,'grouped_peptides_sequence'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_sequence'][-(pos_index+1)]+[sequences[i]]
+                        protein_df.at[r,'grouped_peptides_sample'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_sample'][-(pos_index+1)]+[samples[i]]
+                        protein_df.at[r,'grouped_peptides_condition'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_condition'][-(pos_index+1)]+[conditions[i]]
+                        if intensity_column:
+                            protein_df.at[r,'grouped_peptides_intensity'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_intensity'][-(pos_index+1)]+[intensity[i]]
+                        protein_df.at[r,'peptide_indices'][-(pos_index+1)] = protein_df.at[r,'peptide_indices'][-(pos_index+1)]+[peptide_indices[i]]
+                        included_previous = True
+
+            grouped_peptides_previous.append(included_previous)
             grouped_peptides_start.append(int(start_pos[i]))
             grouped_peptides_end.append(int(end_pos[i]))
             grouped_peptides_sequence.append(sequences[i])
             grouped_peptides_sample.append(samples[i])
             grouped_peptides_condition.append(conditions[i])
             grouped_peptides_max_end = max(grouped_peptides_max_end, int(end_pos[i]))
+            grouped_peptides_index.append(peptide_indices[i])
             if intensity_column:
                 grouped_peptides_intensity.append(intensity[i])
 
@@ -96,21 +128,24 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             else:
                 condition_group = ((step_size >= max_step_size) and (overlap < min_overlap))
 
-
-
             # create new peptide group after each jump
             if step_size != 0:
 
-                if condition_group:
+                if condition_group & (not all(grouped_peptides_previous)):
                     protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
                     protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
                     protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
                     protein_df.at[r,'grouped_peptides_sample'].append(grouped_peptides_sample)
                     protein_df.at[r,'grouped_peptides_condition'].append(grouped_peptides_condition)
+                    protein_df.at[r,'peptide_indices'].append(grouped_peptides_index)
                     if intensity_column:
                         protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
                         protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
 
+                if condition_group:
+
+                    group_start = [grouped_peptides_start[0]] + group_start
+                    group_end = [max(grouped_peptides_end)] + group_end
                     n_jumps += 1
                     grouped_peptides_end = []
                     grouped_peptides_start = []
@@ -118,48 +153,106 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
                     grouped_peptides_sample = []
                     grouped_peptides_condition = []
                     grouped_peptides_intensity = []
+                    grouped_peptides_index = []
+                    grouped_peptides_previous = []
                     grouped_peptides_max_end = 0
                     if intensity_column:
                         core_intensity = 0
 
+
         # special case for last peptide match of protein
         if len(grouped_peptides_end) == 0:
 
-            protein_df.at[r,'grouped_peptides_start'].append([int(start_pos[-1])])
-            protein_df.at[r,'grouped_peptides_end'].append([int(end_pos[-1])])
-            protein_df.at[r,'grouped_peptides_sequence'].append([sequences[-1]])
-            protein_df.at[r,'grouped_peptides_sample'].append([samples[-1]])
-            protein_df.at[r,'grouped_peptides_condition'].append([conditions[-1]])
-            if intensity_column:
-                protein_df.at[r,'grouped_peptides_intensity'].append([intensity[-1]])
-                protein_df.at[r,'core_epitopes_intensity'].append(intensity[-1])
-            mapping.append(n_jumps)
+            # check if completly included in previous group
+            for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
+    
+                if min_start + 30  < int(grouped_peptides_start[-1]):
+                    # stop check at peptide groups with start position 30 aa < current group start
+                    continue
+                else:
+                    # check if peptide is completly included in group and add it
+                    if int(grouped_peptides_end[-1]) <= max_end:
+                        # add peptide information to the group
+                        protein_df.at[r,'grouped_peptides_start'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_start'][-1]+[int(start_pos[-1])]
+                        protein_df.at[r,'grouped_peptides_end'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_end'][-1]+[int(end_pos[-1])]
+                        protein_df.at[r,'grouped_peptides_sequence'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_sequence'][-1]+[sequences[-1]]
+                        protein_df.at[r,'grouped_peptides_sample'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_sample'][-1]+[samples[-1]]
+                        protein_df.at[r,'grouped_peptides_condition'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_condition'][-1]+[conditions[-1]]
+                        if intensity_column:
+                            protein_df.at[r,'grouped_peptides_intensity'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_intensity'][-1]+[intensity[-1]]
+                        protein_df.at[r,'peptide_indices'][-(pos_index+1)] = protein_df.at[r,'peptide_indices'][-1]+[peptide_indices[-1]]
+            else:
+
+                protein_df.at[r,'grouped_peptides_start'].append([int(start_pos[-1])])
+                protein_df.at[r,'grouped_peptides_end'].append([int(end_pos[-1])])
+                protein_df.at[r,'grouped_peptides_sequence'].append([sequences[-1]])
+                protein_df.at[r,'grouped_peptides_sample'].append([samples[-1]])
+                protein_df.at[r,'grouped_peptides_condition'].append([conditions[-1]])
+                protein_df.at[r,'peptide_indices'].append([peptide_indices[-1]])
+                if intensity_column:
+                    protein_df.at[r,'grouped_peptides_intensity'].append([intensity[-1]])
+                    protein_df.at[r,'core_epitopes_intensity'].append(peptide_indices[-1])
+                mapping.append(n_jumps)
+        
         else:
 
+            # add peptide to previous group
+            included_previous = False
+            for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
+    
+                if min_start + 30  < int(start_pos[i]):
+                    # stop check at peptide groups with start position 30 aa < current group start
+                    continue
+                else:
+                    # check if peptide is completly included in group and add it
+                    if int(end_pos[i]) <= max_end:
+                        # add peptide information to the group
+                        protein_df.at[r,'grouped_peptides_start'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_start'][-(pos_index+1)]+[int(start_pos[-1])]
+                        protein_df.at[r,'grouped_peptides_end'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_end'][-(pos_index+1)]+[int(end_pos[-1])]
+                        protein_df.at[r,'grouped_peptides_sequence'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_sequence'][-(pos_index+1)]+[sequences[-1]]
+                        protein_df.at[r,'grouped_peptides_sample'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_sample'][-(pos_index+1)]+[samples[-1]]
+                        protein_df.at[r,'grouped_peptides_condition'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_condition'][-(pos_index+1)]+[conditions[-1]]
+                        if intensity_column:
+                            protein_df.at[r,'grouped_peptides_intensity'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_intensity'][-(pos_index+1)]+[intensity[-1]]
+                        protein_df.at[r,'peptide_indices'][-(pos_index+1)] = protein_df.at[r,'peptide_indices'][-(pos_index+1)]+[peptide_indices[-1]]
+                        included_previous = True
+                        
+            grouped_peptides_previous.append(included_previous)
             grouped_peptides_start.append(int(start_pos[-1]))
             grouped_peptides_end.append(int(end_pos[-1]))
             grouped_peptides_sequence.append(sequences[-1])
             grouped_peptides_sample.append(samples[-1])
             grouped_peptides_condition.append(conditions[-1])
+            grouped_peptides_index.append(peptide_indices[-1])
             if intensity_column:
                 grouped_peptides_intensity.append(intensity[-1])
                 core_intensity += float(intensity[-1])
                 protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
                 protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
-            protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
-            protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
-            protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
-            protein_df.at[r,'grouped_peptides_sample'].append(grouped_peptides_sample)
-            protein_df.at[r,'grouped_peptides_condition'].append(grouped_peptides_condition)
-            mapping.append(n_jumps)
+                
+            if not all(grouped_peptides_previous):
+                protein_df.at[r,'grouped_peptides_start'].append(grouped_peptides_start)
+                protein_df.at[r,'grouped_peptides_end'].append(grouped_peptides_end)
+                protein_df.at[r,'grouped_peptides_sequence'].append(grouped_peptides_sequence)
+                protein_df.at[r,'grouped_peptides_sample'].append(grouped_peptides_sample)
+                protein_df.at[r,'grouped_peptides_condition'].append(grouped_peptides_condition)
+                protein_df.at[r,'peptide_indices'].append(grouped_peptides_index)
+                mapping.append(n_jumps)
 
         protein_df.at[r,'sequence_group_mapping'] = mapping
+
+        # update start and end position (add start and end position for multiple occurrences)
+        protein_df.at[r,'start'] = [f'{start}' for group in protein_df.at[r,'grouped_peptides_start'] for start in group]
+        protein_df.at[r,'end'] = [f'{end}' for group in protein_df.at[r,'grouped_peptides_end'] for end in group]
+        protein_df.at[r,'peptide_index'] = [f'{index}' for group in protein_df.at[r,'peptide_indices'] for index in group]
+
     if intensity_column:
         protein_df['relative_core_intensity'] = protein_df['core_epitopes_intensity'].apply(lambda x: [float(ints)/total_intens for ints in x])
     if intensity_column:
         protein_df['core_epitopes_intensity_all'] = protein_df.apply(lambda row: [row['core_epitopes_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
         protein_df['relative_core_intensity_all'] = protein_df.apply(lambda row: [row['relative_core_intensity'][i] for i in row['sequence_group_mapping']],axis=1)
-    
+    protein_df = protein_df.drop(columns={'peptide_indices'})
+
     return protein_df
 
 def pep_landscape(row: pd.Series) -> np.array:
@@ -498,8 +591,9 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens, strict)
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence', 'grouped_peptides_condition'])
     protein_df = comp_landscape(protein_df, proteome_dict)
-    protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','condition','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample', 'grouped_peptides_condition','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all', 'start_min']]
-    protein_df = group_refinement(protein_df, proteome_dict)
+    if not strict:
+        protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','condition','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample', 'grouped_peptides_condition','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all', 'start_min']]
+        protein_df = group_refinement(protein_df, proteome_dict)
     protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','condition','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample', 'grouped_peptides_condition','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all']]
     protein_df = get_consensus_epitopes(protein_df, min_epi_len)
     return protein_df
