@@ -3,7 +3,25 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v0.1.7 - [dev]
+## v0.1.8 - [dev]
+
+### Added
+- Enable epicore for cohorts.
+- The flag --strict, enabling a strict peptide grouping mode.
+- Add quality control plots to output.
+
+### Changed 
+- Sort peptides with descending end positions and ascending start positions.
+- Split peptide groups at landscape minima in default mode.
+- Add all peptides completely included in a group to it.
+
+### Fixed
+- Include modification information in output.
+- Fix mapping of consensus sequences to input peptides.
+- Fix peptide sorting for repetitive regions.
+
+
+## v0.1.7 - 2025/10/14
 
 ### Changed
 - Remove index column from pep_cores_mapping.tsv.

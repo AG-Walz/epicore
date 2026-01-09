@@ -51,8 +51,8 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     for r,row in protein_df.iterrows():
         
         # keep track of all group ranges to group peptides that are completly included in it
-        group_start = [0]
-        group_end = [0]
+        group_start = []
+        group_end = []
 
         start_pos =  row['start']
         end_pos = row['end']
@@ -83,7 +83,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             # check if peptides is completly included in previuos groups 
             for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
     
-                if min_start + 30  < int(start_pos[i]):
+                if min_start + 17  < int(start_pos[i]):
                     # stop check at peptide groups with start position 30 aa < current group start
                     continue
                 else:
@@ -140,12 +140,13 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
                     protein_df.at[r,'peptide_indices'].append(grouped_peptides_index)
                     if intensity_column:
                         protein_df.at[r,'grouped_peptides_intensity'].append(grouped_peptides_intensity)
-                        protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)
+                        protein_df.at[r,'core_epitopes_intensity'].append(core_intensity)                   
+                        
+                    group_start = [grouped_peptides_start[0]] + group_start
+                    group_end = [max(grouped_peptides_end)] + group_end
 
                 if condition_group:
 
-                    group_start = [grouped_peptides_start[0]] + group_start
-                    group_end = [max(grouped_peptides_end)] + group_end
                     n_jumps += 1
                     grouped_peptides_end = []
                     grouped_peptides_start = []
