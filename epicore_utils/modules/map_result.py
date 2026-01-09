@@ -116,7 +116,10 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     protein_df = protein_df.groupby('peptide_index').agg(lambda x: delimiter.join(x))
 
     # prepare peptide_df
-    evidence_file_df = evidence_file_df.drop(columns=['start', 'end', protacc_column])
+    if start_column and end_column:
+        evidence_file_df = evidence_file_df.drop(columns=['start', 'end', protacc_column])
+    else: 
+        evidence_file_df = evidence_file_df.drop(columns=[protacc_column])
     evidence_file_df['index'] = evidence_file_df.reset_index()['index'].astype(str)
 
     # merge dataframes on peptide index, use the input columns

@@ -10,6 +10,8 @@ import os
 import itertools
 import polars as pl
 
+from epicore_utils.modules.compute_position import add_positions
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -134,34 +136,61 @@ def proteome_to_dict(proteome: str) -> dict[str,str]:
     return proteome_dict
 
 
-
-def compute_pep_pos(peptide: str, accession: str, proteome_dict: dict[str,str]) -> tuple[list[int],list[int]]:
-    """Compute the position of a peptide in a proteome.
+def get_pos(accessions_s: list[str], peptides: str, fasta_dict: dict) -> list[list]:
+    '''Compute positions of peptide in sequence.
 
     Args:
-        peptide: The string of a peptide sequence.
-        accession: The string of a protein accession.
-        proteome_dict: A dictionary containing the reference proteome.
+        accessions: List of protein accessions to which peptide is mapped.
+        peptide: Peptide sequence of interest.
+        fasta_dict: Dictionary containing reference proteome.
 
     Returns:
-        Returns a tuple (start,end), where start is a list of all start positions of the peptide in the protein and end is a list of all end positions of the peptide in the protein.
-    """   
-    
-    prot_seq = proteome_dict[accession]
+        Lists containing the accessions and start and end position of a peptide in the proteome.
+    '''
 
-    # regular expression for all occurrences of peptide in protein (also overlapping ones) 
-    peptide_search = '(?=' + peptide + ')' 
-    
-    # get all occurrences of the peptide in the protein 
-    pos_list = [[match.start(),match.start()+len(peptide)-1] for match in re.finditer(peptide_search,prot_seq)]
-    if len(pos_list) == 0:
-        raise Exception('The peptide {} does not occur in the protein with accession "{}"! Please use the proteome that was used for the identification of the peptides.'.format(peptide, accession))
-    
-    pos_list = np.array(pos_list)
-    start = pos_list[:,0].astype(str).tolist()
-    end = pos_list[:,1].astype(str).tolist()
+    positions = []
+    for accessions, peptide in zip(accessions_s,peptides):
+        starts = ''
+        ends = ''
+        accessions_str = ''
+        for accession in accessions:
+            if accession != 'unmapped':
+                seq = fasta_dict[accession]
+                groups_pos = re.finditer(f'(?=({peptide}))', seq)
+                for group_pos in groups_pos:
+                    pep_start, pep_end = group_pos.span()
+                    accessions_str += f';{accession}'
+                    starts += f';{pep_start}'
+                    ends += f';{pep_end+len(peptide)-1}'
+            else:
+                accessions_str = f';unmapped'
 
-    return start, end
+        
+        positions.append(f'{accessions_str[1:]}~{starts[1:]}~{ends[1:]}')
+    return positions
+
+
+def add_positions(fasta_dict: dict, peptides_df: pd.DataFrame) -> pd.DataFrame:
+    '''Adds positions of peptides in the proteins.
+
+    Args:
+        fasta_dict: Dictionary containing peptides as keys and accessions as values.
+        annotated_csv: Pandas dataframe containing the peptide sequence and the proteins they map to.
+
+    Returns:
+        The input dataframe with peptide positions.
+    '''
+
+    peptides_df = peptides_df.with_columns(pl.struct('accessions','sequence').map_batches(lambda x: pl.Series(get_pos(x.struct.field('accessions'), x.struct.field('sequence'), fasta_dict)),return_dtype=pl.String).str.split('~').alias('positions'))
+    peptides_df = peptides_df.with_columns(pl.col('positions').list.get(0).alias('accessions'))
+    peptides_df = peptides_df.with_columns(pl.col('positions').list.get(1).alias('start'))
+    peptides_df = peptides_df.with_columns(pl.col('positions').list.get(2).alias('end'))
+    peptides_df = peptides_df.with_columns(pl.col('accessions').str.split(';').alias('accessions'))
+    peptides_df = peptides_df.with_columns(pl.col('start').str.split(';').alias('start'))
+    peptides_df = peptides_df.with_columns(pl.col('end').str.split(';').alias('end'))
+
+    return peptides_df
+
 
 
 def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, idex, samples, conditions)->tuple[list[int],list[int]]:
@@ -251,34 +280,6 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
 
     return updated_pos
 
-
-def get_start_end(row: pd.Series, peptide: str) -> tuple[list[int],list[int],list[float]]:
-    """Gets the starts, ends and intensity of a peptide.
-    
-    Args:
-        row: A row of a pandas dataframe containing per row one protein, 
-            peptides mapped to the protein with their start and end position 
-            and their intensity. 
-        peptide: The string of a peptide sequence.
-
-    Returns: 
-        Returns a triple (starts, ends, intensity), where starts are the start 
-        positions of the peptide in the protein, ends are the end positions of 
-        the peptide in the protein and intensity is the intensity of the 
-        peptide in the protein.
-    """
-    #TODO add correct headers and add intensity
-    all_starts = row['start']
-    all_ends = row['end']
-    #intensities = row['intensities']
-    peptides = row['sequence']
-    starts = []
-    ends = []
-    for n_pep in range(len(peptides)):
-        if peptide == peptides[n_pep]:
-            starts.append(all_starts[n_pep])
-            ends.append(all_ends[n_pep])
-    return starts, ends
             
 
 
@@ -311,130 +312,37 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         Exception: If a peptide does not occur in the protein to which it is 
             mapped.
     """
-    if not start_column and not end_column:
-        # if the start and end positions of the peptides is not defined in the input evidence file 
-        
+    start_column = 'start'
+    end_column='end'
 
-        if intensity_column:
-            proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'peptide_index'])
-        else:
-            proteins = pd.DataFrame(columns=['accession', 'sequence', 'peptide_index'])
-
-        # create a row for each protein, that contains all peptides matched to the protein in the input evidence file
-        for index_peptide, peptide in peptides_df.iterrows():
-            
-            # get all proteins matched to the peptide
-            prot_accessions = peptide[protacc_column]
-            for i, prot_accession in enumerate(prot_accessions):
-                if prot_accession in proteins['accession'].values:
-                    # update row for accessions seen before
-                    proteins.loc[proteins['accession'] == prot_accession, 'sequence'] = proteins.loc[proteins['accession'] == prot_accession, 'sequence'].apply(lambda x: x + [peptide[seq_column]])
-                    proteins.loc[proteins['accession'] == prot_accession, 'peptide_index'] = proteins.loc[proteins['accession'] == prot_accession, 'peptide_index'].apply(lambda x: x + [index_peptide])
-                    if intensity_column:
-                        proteins.loc[proteins['accession'] == prot_accession, 'intensity'] = proteins.loc[proteins['accession'] == prot_accession, 'intensity'].apply(lambda x: x + [peptide[intensity_column]])
-
-                else:
-                    # create new row for accessions not seen before 
-                    if intensity_column:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'intensity':[peptide[intensity_column]], 'peptide_index':[index_peptide]}
-                    else:
-                        protein_entry = {'accession':prot_accession, 'sequence':[peptide[seq_column]], 'peptide_index':[index_peptide]}
-                    proteins.loc[len(proteins)] = protein_entry
-
-        # add the columns start and end
-        proteins['start'] = [[] for _ in range(len(proteins))]
-        proteins['end'] = [[] for _ in range(len(proteins))]
-
-        # compute the peptide positions for each peptide of each protein
-        for p, protein in proteins.iterrows():
-
-            # get peptide sequence, protein accession and the measured intensity of the current row
-            peptides = protein['sequence']
-            accession = protein['accession']
-            indices = protein['peptide_index']
-            if intensity_column:
-                intensities = protein['intensity']
-
-            # starts and ends keeps track of all occurrences of all peptides in peptides associated with the protein accession
-            starts = []
-            ends = []
-
-            # updated_peps contains at each index the peptide associated with the start and end position in starts and ends at that index 
-            # updated_intens contains at each index the intensity associated with the peptide at that index in updated_intens
-            updated_peps = []
-            updated_index = []
-            if intensity_column:
-                updated_intens = []
-
-            for n_p, peptide in enumerate(peptides):
-                # add each peptide and intensity associated with the accession to updated_peps and updated_intens
-                updated_peps.append(peptide)
-                updated_index.append(indices[n_p])
-                if intensity_column:
-                    updated_intens.append(intensities[n_p])
-                
-                # remove modifications in the sequence for the matching step (modifications are separated from the peptide by (), [] or by the user defined mod_pattern)
-                pattern = r'\(.*?\)'
-                peptide = re.sub(pattern,"",peptide)
-                pattern = r'\[.*?\]'
-                peptide = re.sub(pattern,"",peptide)
-                if mod_pattern:
-                    pattern = re.escape(mod_pattern.split(',')[0]) + r'.*?' + re.escape(mod_pattern.split(',')[1])
-                    peptide = re.sub(pattern,"",peptide)
-                pep_start, pep_end = compute_pep_pos(peptide, accession, proteome_dict)
-
-                if len(pep_start) == 0:
-                    raise Exception('The peptide {} does not occur in the protein with accession {} in the proteome you specified, but your input file provides evidence for that! Please use the proteome that was used for the identification of the peptides.'.format(peptide, prot_accession))
-                if len(pep_start) > 1:
-                    pep_start, pep_end = group_repetitive(pep_start,pep_end, peptide, accession)
-                   
-                if len(pep_start) > 1:
-                    # if a peptide occurs multiple times in a protein
-                    for _ in pep_start[:-1]:
-                        updated_peps.append(peptide)
-                        updated_index.append(indices[n_p])
-                        if intensity_column:
-                            updated_intens.append(intensities[n_p])
-                
-                # collect all start and end positions of the peptide in the protein
-                starts.extend(pep_start)
-                ends.extend(pep_end)
-            
-            proteins.at[p, 'start'] = starts
-            proteins.at[p, 'end'] = ends
-            proteins.at[p, 'sequence'] = updated_peps
-            proteins.at[p, 'peptide_index'] = updated_index
-            if intensity_column:
-                proteins.at[p,'intensity'] = updated_intens
+    if intensity_column:
+        proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'start','end', 'peptide_index'])
     else:
-        if intensity_column:
-            proteins = pd.DataFrame(columns=['accession', 'sequence', 'intensity', 'start','end', 'peptide_index'])
-        else:
-            proteins_df = peptides_df.explode(protacc_column, start_column, end_column)
-            proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.Int64))
-            proteins_df = proteins_df.sort(start_column).group_by(protacc_column).agg(pl.col(seq_column), pl.col(start_column), pl.col(end_column), pl.col('peptide_index'), pl.col(sample_column), pl.col(condition_column))
-            proteins_df = proteins_df.explode(start_column, end_column, seq_column, 'peptide_index', sample_column, condition_column).group_by(seq_column, protacc_column, sample_column, condition_column).agg(pl.col(start_column), pl.col(end_column), pl.col('peptide_index'))
-            proteins_df = proteins_df.with_columns(pl.col(end_column).cast(pl.List(pl.Int64)))
-            proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.List(pl.Int64)))
-            proteins_df = proteins_df.with_columns(pl.col('peptide_index').cast(pl.List(pl.List(pl.Int64))))
-            proteins_df = proteins_df.with_columns(pl.col('sample').cast(pl.List(pl.String)))
-            proteins_df = proteins_df.with_columns(pl.col('condition').cast(pl.List(pl.String)))
-            proteins_df = proteins_df.with_columns(pl.struct(start_column, end_column, seq_column, protacc_column, 'peptide_index', sample_column, condition_column).map_batches(lambda x: pl.Series(group_repetitive(x.struct.field(start_column), x.struct.field(end_column), x.struct.field(seq_column), x.struct.field(protacc_column), x.struct.field('peptide_index'), x.struct.field(sample_column), x.struct.field(condition_column))), return_dtype=pl.String).str.split('|').alias('repetitive'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(2).alias('peptide_index'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(3).alias('sequence'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(4).alias('sample'))
-            proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(5).alias('condition'))
-            proteins_df = proteins_df.with_columns((pl.col(start_column).str.split(delimiter)).alias(start_column))
-            proteins_df = proteins_df.with_columns((pl.col(end_column).str.split(delimiter)).alias(end_column))
-            proteins_df = proteins_df.with_columns((pl.col('peptide_index').str.split(delimiter)).alias('peptide_index'))
-            proteins_df = proteins_df.with_columns((pl.col('sequence').str.split(delimiter)).alias('sequence'))
-            proteins_df = proteins_df.with_columns((pl.col('sample').str.split(delimiter)).alias('sample'))
-            proteins_df = proteins_df.with_columns((pl.col('condition').str.split(delimiter)).alias('condition'))
-            proteins_df = proteins_df.explode('start', 'end', 'peptide_index','sequence', 'sample', 'condition')
-            proteins_df = proteins_df.group_by(protacc_column).agg(pl.col(seq_column), pl.col('start'), pl.col('end'), pl.col('peptide_index'), pl.col('sample'), pl.col('condition'))
-            proteins_df = proteins_df.rename({protacc_column:'accession'})
+        proteins_df = peptides_df.explode(protacc_column, start_column, end_column)
+        proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.Int64))
+        proteins_df = proteins_df.sort(start_column).group_by(protacc_column).agg(pl.col(seq_column), pl.col(start_column), pl.col(end_column), pl.col('peptide_index'), pl.col(sample_column), pl.col(condition_column))
+        proteins_df = proteins_df.explode(start_column, end_column, seq_column, 'peptide_index', sample_column, condition_column).group_by(seq_column, protacc_column, sample_column, condition_column).agg(pl.col(start_column), pl.col(end_column), pl.col('peptide_index'))
+        proteins_df = proteins_df.with_columns(pl.col(end_column).cast(pl.List(pl.Int64)))
+        proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.List(pl.Int64)))
+        proteins_df = proteins_df.with_columns(pl.col('peptide_index').cast(pl.List(pl.List(pl.Int64))))
+        proteins_df = proteins_df.with_columns(pl.col('sample').cast(pl.List(pl.String)))
+        proteins_df = proteins_df.with_columns(pl.col('condition').cast(pl.List(pl.String)))
+        proteins_df = proteins_df.with_columns(pl.struct(start_column, end_column, seq_column, protacc_column, 'peptide_index', sample_column, condition_column).map_batches(lambda x: pl.Series(group_repetitive(x.struct.field(start_column), x.struct.field(end_column), x.struct.field(seq_column), x.struct.field(protacc_column), x.struct.field('peptide_index'), x.struct.field(sample_column), x.struct.field(condition_column))), return_dtype=pl.String).str.split('|').alias('repetitive'))
+        proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
+        proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
+        proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(2).alias('peptide_index'))
+        proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(3).alias('sequence'))
+        proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(4).alias('sample'))
+        proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(5).alias('condition'))
+        proteins_df = proteins_df.with_columns((pl.col(start_column).str.split(delimiter)).alias(start_column))
+        proteins_df = proteins_df.with_columns((pl.col(end_column).str.split(delimiter)).alias(end_column))
+        proteins_df = proteins_df.with_columns((pl.col('peptide_index').str.split(delimiter)).alias('peptide_index'))
+        proteins_df = proteins_df.with_columns((pl.col('sequence').str.split(delimiter)).alias('sequence'))
+        proteins_df = proteins_df.with_columns((pl.col('sample').str.split(delimiter)).alias('sample'))
+        proteins_df = proteins_df.with_columns((pl.col('condition').str.split(delimiter)).alias('condition'))
+        proteins_df = proteins_df.explode('start', 'end', 'peptide_index','sequence', 'sample', 'condition')
+        proteins_df = proteins_df.group_by(protacc_column).agg(pl.col(seq_column), pl.col('start'), pl.col('end'), pl.col('peptide_index'), pl.col('sample'), pl.col('condition'))
+        proteins_df = proteins_df.rename({protacc_column:'accession'})
 
     return proteins_df
 
@@ -486,6 +394,10 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
     peptides_df = peptides_df.with_columns(pl.col(protacc_column).list.gather(pl.col(protacc_column).list.eval(pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(protacc_column))))
     # remove peptides that are not annotated with any proteome accession
     peptides_df = peptides_df.remove(pl.col(protacc_column).list.len() == 0)
+
+    # compute start and end positions of the peptides
+    if not start_column and not end_column:
+        peptides_df = add_positions(proteome_dict, peptides_df)
 
     logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file: {n_removed_proteins}.')
     protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_dict, mod_pattern, delimiter, sample_column, condition_column)
