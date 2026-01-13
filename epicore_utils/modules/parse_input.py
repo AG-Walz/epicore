@@ -132,7 +132,7 @@ def proteome_to_dict(proteome: str) -> dict[str,str]:
     proteome_dict = {}
     proteome = SeqIO.parse(open(proteome),'fasta')
     for protein in proteome:
-        proteome_dict[protein.id] = str(protein.seq)
+        proteome_dict[protein.id.split('|')[1]] = str(protein.seq)
     return proteome_dict
 
 
@@ -213,15 +213,12 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
     updated_pos = [] # TODO have to be sorted
 
     for start, end, pep, acc, idx, sample, condition in zip(starts,ends, peps, accs, idex, samples, conditions):
-        
+
         current = -1
         updated_start = []
         updated_end = []
         updated_idx = []
         updated_conditions = []
-        # add the first occurrences start positions to the start positions
-        for i in idx[0].to_list():
-            updated_start.append(str(start[0]))
         updated_peps = []
         updated_samples = []
 
@@ -229,42 +226,46 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
         lists = sorted(lists, key=lambda x: int(x[0]))
         start, end, idx = zip(*lists)
         group_ends = []
+        # add the first occurrences start positions to the start positions
+        for i in idx[0].to_list():
+            updated_start.append(str(start[0]))
 
         for pep_pos in range(len(start)-1):
-
+            for i in idx[pep_pos].to_list():
+                group_ends.append(end[pep_pos])
             # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
             if int(start[pep_pos + 1]) > int(end[pep_pos]): # new group
-                group_ends.append(end[pep_pos])
-                for i in idx[pep_pos].to_list():
-                    # add max end of repetitive group
-                    for group_end in group_ends:
-                        updated_end.append(str(max(group_ends)))
-                    updated_start.append(str(start[pep_pos + 1]))
+                for i in idx[pep_pos].to_list():                    
                     updated_idx.append(str(i))
                     updated_peps.append(pep)
                     updated_samples.append(sample[0])
                     updated_conditions.append(condition[0])
                     current = pep_pos
+                for i in idx[pep_pos+1]:
+                    updated_start.append(str(start[pep_pos+1]))
+                # add max end of repetitive group
+                for _ in group_ends:
+                        updated_end.append(str(max(group_ends)))
                 group_ends = []
 
             else: #  add min_start for repetitive group
-                group_ends.append(end[pep_pos])
                 for i in idx[pep_pos].to_list():
-                    updated_start.append(str(start[current + 1]))
                     updated_idx.append(str(i))
                     updated_peps.append(pep)
                     updated_samples.append(sample[0])
                     updated_conditions.append(condition[0])
-        
-        group_ends.append(end[-1])
+                for i in idx[pep_pos+1]:
+                    updated_start.append(str(start[current+1]))
+        for i in idx[-1].to_list():
+            group_ends.append(end[-1])
         # add the last occurrences end position to the end positions
         for i in idx[-1].to_list():
             updated_idx.append(str(i))
             updated_peps.append(pep)
             updated_samples.append(sample[0])
             updated_conditions.append(condition[0])
-            for group_end in group_ends:
-                updated_end.append(str(max(group_ends)))
+        for _ in group_ends:
+            updated_end.append(str(max(group_ends)))
 
         # reduce each occurrence to one
         updated_df = pd.DataFrame({'start':updated_start, 'end':updated_end, 'peps':updated_peps, 'idx':updated_idx, 'sample':updated_samples, 'cond':updated_conditions})
@@ -381,6 +382,7 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
     # get peptides/proteins with protein accessions that do not appear in the proteome
     peptides = pl.Series(peptides_df.with_columns((pl.col(protacc_column).list.filter(~pl.element().is_in(list(proteome_dict.keys())))).alias('removed')).select('removed')).to_list()
     n_removed_proteins = set(itertools.chain.from_iterable(peptides))
+    #n_removed_proteins = set(itertools.chain.from_iterable(pep for pep in peptides if pep))
 
     # remove all peptides occurring multiple times in different modification and charge states
     peptides_df = peptides_df.with_columns((pl.col(seq_column).str.replace_all('\(.*?\)', '')).alias(seq_column))
