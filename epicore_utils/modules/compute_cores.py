@@ -167,12 +167,12 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             # check if completly included in previous group
             for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
     
-                if min_start + 30  < int(grouped_peptides_start[-1]):
+                if min_start + 17  < int(start_pos[-1]):
                     # stop check at peptide groups with start position 30 aa < current group start
                     continue
                 else:
                     # check if peptide is completly included in group and add it
-                    if int(grouped_peptides_end[-1]) <= max_end:
+                    if int(end_pos[-1]) <= max_end:
                         # add peptide information to the group
                         protein_df.at[r,'grouped_peptides_start'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_start'][-1]+[int(start_pos[-1])]
                         protein_df.at[r,'grouped_peptides_end'][-(pos_index+1)] = protein_df.at[r,'grouped_peptides_end'][-1]+[int(end_pos[-1])]
@@ -201,7 +201,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
             included_previous = False
             for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
     
-                if min_start + 30  < int(start_pos[i]):
+                if min_start + 17  < int(start_pos[i]):
                     # stop check at peptide groups with start position 30 aa < current group start
                     continue
                 else:
