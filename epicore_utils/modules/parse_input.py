@@ -9,7 +9,7 @@ from Bio import SeqIO
 import os 
 import itertools
 import polars as pl
-
+from multiprocessing import get_context
 from epicore_utils.modules.compute_position import add_positions
 
 import logging
@@ -193,7 +193,7 @@ def add_positions(fasta_dict: dict, peptides_df: pd.DataFrame) -> pd.DataFrame:
 
 
 
-def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, idex, samples, conditions)->tuple[list[int],list[int]]:
+def group_repetitive(start: list[int], end: list[int], pep: list[str], acc, idx, sample, condition)->tuple[list[int],list[int]]:
     """Group peptide occurrences that belong to the same repetitive region.
 
     Args: 
@@ -210,78 +210,77 @@ def group_repetitive(starts: list[int], ends: list[int], peps: list[str], accs, 
         end positions that are part of repetitive regions the lowest start 
         position and highest end position is kept for each repetitive region. 
     """
-    updated_pos = [] # TODO have to be sorted
+     # TODO have to be sorted
 
-    for start, end, pep, acc, idx, sample, condition in zip(starts,ends, peps, accs, idex, samples, conditions):
 
-        current = -1
-        updated_start = []
-        updated_end = []
-        updated_idx = []
-        updated_conditions = []
-        updated_peps = []
-        updated_samples = []
+    current = -1
+    updated_start = []
+    updated_end = []
+    updated_idx = []
+    updated_conditions = []
+    updated_peps = []
+    updated_samples = []
 
-        lists = list(zip(start, end, idx))
-        lists = sorted(lists, key=lambda x: int(x[0]))
-        start, end, idx = zip(*lists)
-        group_ends = []
-        # add the first occurrences start positions to the start positions
-        for i in idx[0].to_list():
-            updated_start.append(str(start[0]))
+    lists = list(zip(start, end, idx))
+    lists = sorted(lists, key=lambda x: int(x[0]))
+    start, end, idx = zip(*lists)
+    group_ends = []
+    # add the first occurrences start positions to the start positions
+    for i in idx[0]:
+        updated_start.append(str(start[0]))
 
-        for pep_pos in range(len(start)-1):
-            for i in idx[pep_pos].to_list():
-                group_ends.append(end[pep_pos])
-            # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
-            if int(start[pep_pos + 1]) > int(end[pep_pos]): # new group
-                for i in idx[pep_pos].to_list():                    
-                    updated_idx.append(str(i))
-                    updated_peps.append(pep)
-                    updated_samples.append(sample[0])
-                    updated_conditions.append(condition[0])
-                    current = pep_pos
-                for i in idx[pep_pos+1]:
-                    updated_start.append(str(start[pep_pos+1]))
-                # add max end of repetitive group
-                for _ in group_ends:
-                        updated_end.append(str(max(group_ends)))
-                group_ends = []
+    for pep_pos in range(len(start)-1):
+        for i in idx[pep_pos]:
+            group_ends.append(end[pep_pos])
+        # two start positions are not part of one repetitive region if the next start position is higher than the current end position 
+        if int(start[pep_pos + 1]) > int(end[pep_pos]): # new group
+            for i in idx[pep_pos]:                    
+                updated_idx.append(str(i))
+                updated_peps.append(pep)
+                updated_samples.append(sample[0])
+                updated_conditions.append(condition[0])
+                current = pep_pos
+            for i in idx[pep_pos+1]:
+                updated_start.append(str(start[pep_pos+1]))
+            # add max end of repetitive group
+            for _ in group_ends:
+                    updated_end.append(str(max(group_ends)))
+            group_ends = []
 
-            else: #  add min_start for repetitive group
-                for i in idx[pep_pos].to_list():
-                    updated_idx.append(str(i))
-                    updated_peps.append(pep)
-                    updated_samples.append(sample[0])
-                    updated_conditions.append(condition[0])
-                for i in idx[pep_pos+1]:
-                    updated_start.append(str(start[current+1]))
-        for i in idx[-1].to_list():
-            group_ends.append(end[-1])
-        # add the last occurrences end position to the end positions
-        for i in idx[-1].to_list():
-            updated_idx.append(str(i))
-            updated_peps.append(pep)
-            updated_samples.append(sample[0])
-            updated_conditions.append(condition[0])
-        for _ in group_ends:
-            updated_end.append(str(max(group_ends)))
+        else: #  add min_start for repetitive group
+            for i in idx[pep_pos]:
+                updated_idx.append(str(i))
+                updated_peps.append(pep)
+                updated_samples.append(sample[0])
+                updated_conditions.append(condition[0])
+            for i in idx[pep_pos+1]:
+                updated_start.append(str(start[current+1]))
+    for i in idx[-1]:
+        group_ends.append(end[-1])
+    # add the last occurrences end position to the end positions
+    for i in idx[-1]:
+        updated_idx.append(str(i))
+        updated_peps.append(pep)
+        updated_samples.append(sample[0])
+        updated_conditions.append(condition[0])
+    for _ in group_ends:
+        updated_end.append(str(max(group_ends)))
 
-        # reduce each occurrence to one
-        updated_df = pd.DataFrame({'start':updated_start, 'end':updated_end, 'peps':updated_peps, 'idx':updated_idx, 'sample':updated_samples, 'cond':updated_conditions})
-        updated_df = updated_df.drop_duplicates()
-        updated_start = ';'.join(updated_df['start'])
-        updated_end = ';'.join(updated_df['end'])
-        updated_peps = ';'.join(updated_df['peps'])
-        updated_idx = ';'.join(updated_df['idx'])
-        updated_samples = ';'.join(updated_df['sample'])
-        updated_conditions = ';'.join(updated_df['cond'])
+    # reduce each occurrence to one
+    updated_df = pd.DataFrame({'start':updated_start, 'end':updated_end, 'peps':updated_peps, 'idx':updated_idx, 'sample':updated_samples, 'cond':updated_conditions})
+    updated_df = updated_df.drop_duplicates()
+    updated_start = ';'.join(updated_df['start'])
+    updated_end = ';'.join(updated_df['end'])
+    updated_peps = ';'.join(updated_df['peps'])
+    updated_idx = ';'.join(updated_df['idx'])
+    updated_samples = ';'.join(updated_df['sample'])
+    updated_conditions = ';'.join(updated_df['cond'])
 
-        updated_pos.append(f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}|{updated_samples}|{updated_conditions}')
-
-    return updated_pos
+    return f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}|{updated_samples}|{updated_conditions}'
 
             
+def group_repetitive_chunk(chunk_df,start, end):
+    return chunk_df[start:end].with_columns(pl.struct('start', 'end', 'sequence', 'accessions', 'peptide_index', 'sample', 'condition').map_elements(lambda x: group_repetitive(x['start'], x['end'], x['sequence'], x['accessions'], x['peptide_index'], x['sample'], x['condition']), return_dtype=pl.String).str.split('|').alias('repetitive'))
 
 
 def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, proteome_dict: dict[str,str], mod_pattern:str, delimiter, sample_column, condition_column) -> pd.DataFrame:
@@ -328,7 +327,10 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         proteins_df = proteins_df.with_columns(pl.col('peptide_index').cast(pl.List(pl.List(pl.Int64))))
         proteins_df = proteins_df.with_columns(pl.col('sample').cast(pl.List(pl.String)))
         proteins_df = proteins_df.with_columns(pl.col('condition').cast(pl.List(pl.String)))
-        proteins_df = proteins_df.with_columns(pl.struct(start_column, end_column, seq_column, protacc_column, 'peptide_index', sample_column, condition_column).map_batches(lambda x: pl.Series(group_repetitive(x.struct.field(start_column), x.struct.field(end_column), x.struct.field(seq_column), x.struct.field(protacc_column), x.struct.field('peptide_index'), x.struct.field(sample_column), x.struct.field(condition_column))), return_dtype=pl.String).str.split('|').alias('repetitive'))
+        block_size = len(proteins_df) // 10
+        with get_context('spawn').Pool(10) as pool:
+            chunk_dfs = pool.starmap(group_repetitive_chunk,[(proteins_df,chunk*block_size,(chunk+1)*block_size if chunk < 10 else len(proteins_df)) for chunk in range(10)])
+        proteins_df = pl.concat(chunk_dfs)
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(2).alias('peptide_index'))
