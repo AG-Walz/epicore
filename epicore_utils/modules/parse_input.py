@@ -132,7 +132,8 @@ def proteome_to_dict(proteome: str) -> dict[str,str]:
     proteome_dict = {}
     proteome = SeqIO.parse(open(proteome),'fasta')
     for protein in proteome:
-        proteome_dict[protein.id.split('|')[1]] = str(protein.seq)
+        #proteome_dict[protein.id.split('|')[1]] = str(protein.seq)
+        proteome_dict[protein.id] = str(protein.seq)
     return proteome_dict
 
 
@@ -327,10 +328,12 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         proteins_df = proteins_df.with_columns(pl.col('peptide_index').cast(pl.List(pl.List(pl.Int64))))
         proteins_df = proteins_df.with_columns(pl.col('sample').cast(pl.List(pl.String)))
         proteins_df = proteins_df.with_columns(pl.col('condition').cast(pl.List(pl.String)))
-        block_size = len(proteins_df) // 10
+        
+        block_size = max(len(proteins_df) // 10,1)
         with get_context('spawn').Pool(10) as pool:
-            chunk_dfs = pool.starmap(group_repetitive_chunk,[(proteins_df,chunk*block_size,(chunk+1)*block_size if chunk < 10 else len(proteins_df)) for chunk in range(10)])
+            chunk_dfs = pool.starmap(group_repetitive_chunk,[(proteins_df,chunk*block_size,(chunk+1)*block_size if chunk < 9 else len(proteins_df)) for chunk in range(10)])
         proteins_df = pl.concat(chunk_dfs)
+        
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(2).alias('peptide_index'))
@@ -380,7 +383,6 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
         of the evidence file. 
     """
     peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, sample_column, condition_column)
-    
     # get peptides/proteins with protein accessions that do not appear in the proteome
     peptides = pl.Series(peptides_df.with_columns((pl.col(protacc_column).list.filter(~pl.element().is_in(list(proteome_dict.keys())))).alias('removed')).select('removed')).to_list()
     n_removed_proteins = set(itertools.chain.from_iterable(peptides))
