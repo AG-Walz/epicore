@@ -52,6 +52,7 @@ evidence_path = 'tests/evidence_file.csv'
 evidence_path_three = 'tests/evidence_file_cohort.csv'
 evidence_path_four = 'tests/evidence_file_modifications.csv'
 evidence_path_five = 'tests/evidence_file_five.csv'
+evidence_path_seven = 'tests/evidence_file_seven.csv'
 large_evidence = 'tests/large_evidence.csv'
 min_landscape_evidence = 'tests/minimal_landscape_evidence.csv'
 
@@ -62,7 +63,8 @@ path_result_two = 'tests/result_two.csv'
 path_result_three = 'tests/result_three.csv'
 path_result_four = 'tests/results_four.csv'
 path_result_five = 'tests/result_five.csv'
-large_result = 'tests/large_evidence_result.tsv'
+path_result_seven = 'tests/result_seven.csv'
+large_result = 'tests/large_evidence_result.csv'
 min_landscape_result = 'tests/result_min_landscape.csv'
 
 # fasta files
@@ -191,9 +193,10 @@ pep_cores_mapping_five['entire_epitope_sequence'] = pep_cores_mapping_five['enti
 pep_cores_mapping_five['consensus_epitope_sequence'] = pep_cores_mapping_five['consensus_epitope_sequence'].str.split(';')
 pep_cores_mapping_five = pep_cores_mapping_five.explode(['start', 'end', 'accessions', 'proteome_occurrence', 'entire_epitope_sequence', 'consensus_epitope_sequence']).sort_values(['accessions','start','end','sequence'])
 out_cols = list(pep_cores_mapping_five.columns.values)
+pep_cores_mapping_five.reset_index(drop=True,inplace=True)
 
 # read in expected result and sort it
-result_large = pd.read_csv(large_result, sep='\t')
+result_large = pd.read_csv(large_result)
 result_large = result_large.sort_values(by='sequence').reset_index(drop=True).astype(str)
 result_large = result_large.loc[:, ~result_large.columns.str.contains('^Unnamed')]
 result_large['sample'] = 'UPN52_1'
@@ -206,6 +209,7 @@ result_large['entire_epitope_sequence'] = result_large['entire_epitope_sequence'
 result_large['consensus_epitope_sequence'] = result_large['consensus_epitope_sequence'].str.split(';')
 result_large = result_large.explode(['start', 'end', 'accessions', 'proteome_occurrence', 'entire_epitope_sequence', 'consensus_epitope_sequence']).sort_values(['accessions','start','end','sequence'])
 result_large = result_large.drop_duplicates()
+result_large.reset_index(drop=True,inplace=True)
 
 # test if epicore produces expected final result
 def test_five():
@@ -228,3 +232,34 @@ result_file_six = result_file_six.sort_values(by='sequence').reset_index(drop=Tr
 # test if epicore produces expected final result
 def test_six():
   assert pep_cores_mapping_six.equals(result_file_six)
+
+
+
+#############################
+# Test without start and end position
+#############################
+# define params
+seq_column = 'sequence'
+protacc_column = 'accessions'
+intensity_column = None
+sample_column = 'sample'
+start_column = None
+end_column = None
+delimiter = ';'
+mod_pattern = ''
+min_overlap = 7
+max_step_size = 4
+min_epi_length = 10
+condition_column = 'condition'
+strict=False
+
+# run epicore on test file one 
+pep_cores_mapping_seven = run_epicore(proteome_path, evidence_path_seven, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column)
+
+# read in expected result and sort it
+result_file_seven = pd.read_csv(path_result_seven)
+result_file_seven = result_file_one.sort_values(by='sequence').reset_index(drop=True).astype(str)[['sequence','accessions','charge','score','intensity','sample','condition','start','end','entire_epitope_sequence','consensus_epitope_sequence','proteome_occurrence']]
+
+# test if epicore produces expected final result
+def test_seven():
+  assert pep_cores_mapping_seven.equals(result_file_seven)
