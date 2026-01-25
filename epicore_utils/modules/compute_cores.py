@@ -5,6 +5,7 @@ Computes core epitopes, by grouping overlapping peptides, together, building a l
 import numpy as np
 import re
 import pandas as pd
+from multiprocessing import get_context
 
 
 def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool) -> pd.DataFrame:
@@ -257,12 +258,12 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     return protein_df
 
 def pep_landscape(row: pd.Series) -> np.array:
-    """Generate landscape of a peptide in a group.
+    """Generate landscape of a peptide in a group.#
 
     Args:
         row: A row of a pandas dataframe containing per row one protein, 
              peptides mapped to the protein with their start and end position 
-             and their intensity. 
+             and their intensity. #
 
     Returns:
         A list containing the landscape of a protein in a given peptide group.
@@ -271,27 +272,9 @@ def pep_landscape(row: pd.Series) -> np.array:
     zeros[row['grouped_peptides_start']-row['start_min']:(row['grouped_peptides_end']-row['start_min']+1)] = 1
     return zeros
 
-def compute_group_landscapes(group: pd.DataFrame) -> list[int]:
-    """Generate landscape of a peptide group.
-
-    Args:
-        group: Rows of a pandas dataframe containing per row one peptide mapped to that peptide group
-    Returns:
-        A list containing the landscape of a protein in a given peptide group.
-    """
-    group = group.drop_duplicates(subset=['grouped_peptides_start','grouped_peptides_end','grouped_peptides_sample','grouped_peptides_condition']) # count each unique sequence once for each sample
-    landscapes = group['pep_landscape']
-    grouped_peptides_starts = group['grouped_peptides_start']
-    grouped_peptides_ends = group['grouped_peptides_end']
-    samples = group['grouped_peptides_sample']
-    conditions = group['grouped_peptides_condition']
-    group_landscape = landscapes.iloc[0]
-    seen = [f'{grouped_peptides_starts.iloc[0]},{grouped_peptides_ends.iloc[0]},{samples.iloc[1:]},{conditions.iloc[1:]}']# TODO: think about removing condition from here (only has effect if a sample is in both conditions)
-    # increase landscape for each landscape once
-    for landscape, grouped_peptides_start, grouped_peptides_end, sample, condition in zip(landscapes.iloc[1:], grouped_peptides_starts.iloc[1:], grouped_peptides_ends.iloc[1:], samples.iloc[1:], conditions.iloc[1:]):
-        group_landscape = np.add(group_landscape, landscape)
-    return group_landscape.astype(int).tolist()
-
+def landscape_chunk(chunk_df):
+    chunk_df['pep_landscape'] = chunk_df.apply(lambda row: pep_landscape(row), axis=1)
+    return chunk_df
 
 def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
     """Compute the landscape of all consensus epitope groups.
@@ -311,16 +294,21 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
         epitope group.
     """
     # get entire sequence of each group
-    protein_df['start_min'] = protein_df.apply(lambda row: min(row['grouped_peptides_start']), axis=1)
-    protein_df['end_max'] = protein_df.apply(lambda row: max(row['grouped_peptides_end']), axis=1)
-    protein_df['whole_epitopes'] = protein_df.apply(lambda row: proteome_dict[row['accession']][row['start_min']:row['end_max']+1], axis=1)
-    protein_df['whole_epitopes_all'] = protein_df.apply(lambda row: proteome_dict[row['accession']][row['start_min']:row['end_max']+1], axis=1)
+    protein_df['start_min'] = [min(x) for x in protein_df['grouped_peptides_start']]
+    protein_df['end_max'] = [max(x) for x in protein_df['grouped_peptides_end']]
+    protein_df['whole_epitopes'] = protein_df['accession'].map(proteome_dict)    
+    protein_df['whole_epitopes'] = [whole_epitopes[start:end+1] for start, end, whole_epitopes in zip(protein_df['start_min'],protein_df['end_max'],protein_df['whole_epitopes'])]#protein_df['whole_epitopes'].str.slice(start=protein_df['start_min'],stop=protein_df['end_max']+1)
+    protein_df = protein_df.assign(whole_epitopes_all=protein_df.whole_epitopes)
+
     protein_df['group'] = range(len(protein_df))
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_condition', 'grouped_peptides_sequence'])
-    protein_df['mapping'] = protein_df.groupby(protein_df.index).cumcount()
 
+    
     # compute the landscape for each peptide in the group
-    protein_df['pep_landscape'] = protein_df.apply(lambda row: pep_landscape(row), axis=1)
+    blocksize = max(len(protein_df) // 20,1)
+    with get_context('spawn').Pool(min(20,blocksize)) as pool:
+        chunk_dfs = pool.starmap(landscape_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(20,blocksize) -1 else len(protein_df)],) for chunk in range(min(20,blocksize))])
+    protein_df = pd.concat(chunk_dfs)
 
     cols = protein_df.columns.values
     aggr = {'whole_epitopes_all':lambda x: list(x), 'landscape': 'first', 'grouped_peptides_start': lambda x: list(x), 'grouped_peptides_end': lambda x: list(x), 'grouped_peptides_sample': lambda x: list(x), 'grouped_peptides_condition': lambda x: list(x), 'grouped_peptides_sequence': lambda x: list(x)}
@@ -328,10 +316,12 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
         if col not in aggr.keys():
             aggr[col] = 'first'
 
+    comb_landscapes = protein_df.groupby('group').agg({'pep_landscape': lambda column: np.sum(tuple(column), axis=0)}).reset_index()
+    comb_landscapes = comb_landscapes.rename(columns={'pep_landscape':'landscape'})
+
     # compute the landscape of the entire group
-    comb_landscapes = protein_df.groupby('group').apply(lambda group: compute_group_landscapes(group), include_groups=False)
-    comb_landscapes.name = 'landscape'
     protein_df = pd.merge(protein_df, comb_landscapes, on='group')
+
     protein_df = protein_df.groupby('group').agg(aggr)
     aggr['landscape'] = lambda x: list(x)
     aggr['whole_epitopes'] = lambda x: list(x)
@@ -342,7 +332,7 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
     # combine all groups of one protein
     protein_df = protein_df.groupby('accession').agg(aggr)
     protein_df['whole_epitopes_all'] = protein_df['whole_epitopes_all'].apply(lambda x: np.hstack(x).tolist())
-    protein_df = protein_df.drop(['group','mapping','pep_landscape'], axis=1)
+    protein_df = protein_df.drop(['group','pep_landscape'], axis=1)
     protein_df = protein_df.reset_index()
 
     return protein_df

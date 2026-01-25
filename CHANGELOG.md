@@ -14,11 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sort peptides with descending end positions and ascending start positions.
 - Split peptide groups at landscape minima in default mode.
 - Add all peptides completely included in a group to it.
+- Change pandas to polars for input parsing.
+- Use multiprocessing.
 
 ### Fixed
 - Include modification information in output.
 - Fix mapping of consensus sequences to input peptides.
 - Fix peptide sorting for repetitive regions.
+
+### Removed
+- Support for intensity column.
 
 
 ## v0.1.7 - 2025/10/14
