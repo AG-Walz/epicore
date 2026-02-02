@@ -9,15 +9,15 @@ from Bio import SeqIO
 import os 
 import itertools
 import polars as pl
-from multiprocessing import get_context
-from epicore_utils.modules.compute_position import add_positions
+from multiprocessing import get_context, cpu_count
+
 
 import logging
 logger = logging.getLogger(__name__)
 
 
 def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensity_column: str, 
-                   start_column: str, end_column: str, delimiter: str, sample_column: str, condition_column: str) -> pd.DataFrame:
+                   start_column: str, end_column: str, delimiter: str, sample_column: str, condition_column: str) -> pl.DataFrame:
     """Read in the evidence file.
 
     Args:
@@ -34,11 +34,15 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
             position of peptides in proteins.
         delimiter: The delimiter that separates multiple entries in one column 
             in the evidence file.
+        sample_column: The header of the column containing the sample 
+            information.
+        condition_column: The header of the column containing the condition 
+            information.
 
     Returns:
-        A pandas dataframe containing the columns sequence, protein accession, 
-        peptides intensity and optional the columns start and end of the input 
-        evidence file.
+        A polars dataframe containing the columns sequence, protein accession, 
+        peptides intensity, sample, condition and optional the columns start 
+        and end of the input evidence file.
 
     Raises:
         Exception: If the file type of the provided evidence file is not 
@@ -171,12 +175,12 @@ def get_pos(accessions_s: list[str], peptides: str, fasta_dict: dict) -> list[li
     return positions
 
 
-def add_positions(fasta_dict: dict, peptides_df: pd.DataFrame) -> pd.DataFrame:
+def add_positions(fasta_dict: dict, peptides_df: pl.DataFrame) -> pl.DataFrame:
     '''Adds positions of peptides in the proteins.
 
     Args:
         fasta_dict: Dictionary containing peptides as keys and accessions as values.
-        annotated_csv: Pandas dataframe containing the peptide sequence and the proteins they map to.
+        peptides_df: Polars dataframe containing the peptide sequence and the proteins they map to.
 
     Returns:
         The input dataframe with peptide positions.
@@ -194,14 +198,17 @@ def add_positions(fasta_dict: dict, peptides_df: pd.DataFrame) -> pd.DataFrame:
 
 
 
-def group_repetitive(start: list[int], end: list[int], pep: list[str], acc, idx, sample, condition)->tuple[list[int],list[int]]:
+def group_repetitive(start: list[int], end: list[int], pep: str, acc: str, idx: list[int], sample: list[str], condition: list[str])-> str:
     """Group peptide occurrences that belong to the same repetitive region.
 
-    Args: 
-        peptide: The string of a peptide sequence.
-        accession: The string of a protein accession.
-        starts: A list of all start positions of the peptide in the protein.
-        ends: A list of all end positions of the peptide in the protein. 
+    Args:
+        start: List of all start positions of the peptides in the protein.
+        end: List of all end positions of the peptide in the protein.
+        pep: The peptide sequence.
+        acc: The protein accession.
+        idx: List of all peptide indices.
+        sample: List of all samples of the peptides in the protein.
+        condition: List of all conditions of the peptides in the protein.
 
     Returns:
         Returns a tuple (starts,ends), where starts is a list containing the
@@ -280,11 +287,20 @@ def group_repetitive(start: list[int], end: list[int], pep: list[str], acc, idx,
     return f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}|{updated_samples}|{updated_conditions}'
 
             
-def group_repetitive_chunk(chunk_df,start, end):
+def group_repetitive_chunk(chunk_df: pl.DataFrame, start: int, end: int):
+    ''' Group repetitive peptides.
+
+    chunk_df: A polars DataFrame containing one protein per row.
+    start: The row, at which the polars DataFrame gets sliced.
+    end: The row, at which the polars DataFrame gets sliced.
+
+    Returns:
+        A slice of the input DataFrame with grouped repetitive peptides.
+    '''
     return chunk_df[start:end].with_columns(pl.struct('start', 'end', 'sequence', 'accessions', 'peptide_index', 'sample', 'condition').map_elements(lambda x: group_repetitive(x['start'], x['end'], x['sequence'], x['accessions'], x['peptide_index'], x['sample'], x['condition']), return_dtype=pl.String).str.split('|').alias('repetitive'))
 
 
-def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, proteome_dict: dict[str,str], mod_pattern:str, delimiter, sample_column, condition_column) -> pd.DataFrame:
+def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, sample_column: str, condition_column: str) -> pl.DataFrame:
     """Converts a dataframe from one peptide per row to one protein per row.
     
     Args:
@@ -300,12 +316,14 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
             start positions of peptides in proteins.
         end_column: The string of the header of the column containing the end 
             position of peptides in proteins.
-        proteome_dict: A dictionary containing the reference proteome.
-        mod_pattern: A comma separated string with delimiters for peptide
-            modifications
+        delimiter: The delimiter that separates multiple entries in one column 
+            in the evidence file.
+        sample_column: The header of the column containing sample information.
+        condition_column: The header of the column containing condition 
+            information.
     
     Returns:
-        A pandas dataframe containing one protein per row and all peptides 
+        A polars dataframe containing one protein per row and all peptides 
         mapped to that protein in the peptides_df, with their start position, 
         end position and intensity.
 
@@ -329,9 +347,10 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         proteins_df = proteins_df.with_columns(pl.col('sample').cast(pl.List(pl.String)))
         proteins_df = proteins_df.with_columns(pl.col('condition').cast(pl.List(pl.String)))
 
-        block_size = max(len(proteins_df) // 20,1)
+        n_parallel = max(1, cpu_count()-5)
+        block_size = max(len(proteins_df) // n_parallel,1)
         with get_context('spawn').Pool(20) as pool:
-            chunk_dfs = pool.starmap(group_repetitive_chunk,[(proteins_df,chunk*block_size,(chunk+1)*block_size if chunk < 19 else len(proteins_df)) for chunk in range(20)])
+            chunk_dfs = pool.starmap(group_repetitive_chunk,[(proteins_df,chunk*block_size,(chunk+1)*block_size if chunk < (n_parallel-1) else len(proteins_df)) for chunk in range(n_parallel)])
         proteins_df = pl.concat(chunk_dfs)
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
@@ -405,7 +424,7 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
         peptides_df = add_positions(proteome_dict, peptides_df)
 
     logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file: {n_removed_proteins}.')
-    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, proteome_dict, mod_pattern, delimiter, sample_column, condition_column)
+    protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, sample_column, condition_column)
     if intensity_column:
         total_intens = peptides_df[intensity_column].sum()
     else:
