@@ -5,7 +5,7 @@ Computes core epitopes, by grouping overlapping peptides, together, building a l
 import numpy as np
 import re
 import pandas as pd
-from multiprocessing import get_context
+from multiprocessing import get_context, cpu_count
 
 
 def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool) -> pd.DataFrame:
@@ -21,6 +21,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
         intensity_column: The header of the column containing the intensities
             of the peptides.
         total_intens: The total intensity of the evidence file.
+        strict: Indicates if strict version should be run.
 
     Returns:
         The protein_df with the five to seven additional columns: 
@@ -258,12 +259,12 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     return protein_df
 
 def pep_landscape(row: pd.Series) -> np.array:
-    """Generate landscape of a peptide in a group.#
+    """Generate landscape of a peptide in a group.
 
     Args:
         row: A row of a pandas dataframe containing per row one protein, 
              peptides mapped to the protein with their start and end position 
-             and their intensity. #
+             and their intensity. 
 
     Returns:
         A list containing the landscape of a protein in a given peptide group.
@@ -273,16 +274,22 @@ def pep_landscape(row: pd.Series) -> np.array:
     return zeros
 
 def landscape_chunk(chunk_df):
+    """Generate landscapes of the peptides in chunk_df.
+
+    Args:
+        chunk_df: A subset of the protein DataFrame.
+
+    Returns:
+        The input DataFrame with the additional column pep_landscape.
+    """
     chunk_df['pep_landscape'] = chunk_df.apply(lambda row: pep_landscape(row), axis=1)
     return chunk_df
 
-def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
+def comp_landscape(protein_df: pd.DataFrame, proteome_dict: dict[str,str]) -> pd.DataFrame:
     """Compute the landscape of all consensus epitope groups.
     
     Args:
         protein_df: A pandas dataframe containing one protein per row.
-        mod_pattern A comma separated string with delimiters for peptide
-            modifications
         proteome_dict: A dictionary containing the reference proteome.
 
     Returns:
@@ -303,11 +310,11 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
     protein_df['group'] = range(len(protein_df))
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_condition', 'grouped_peptides_sequence'])
 
-    
+    n_parallel = max(1, cpu_count()-5)
     # compute the landscape for each peptide in the group
-    blocksize = max(len(protein_df) // 20,1)
-    with get_context('spawn').Pool(min(20,blocksize)) as pool:
-        chunk_dfs = pool.starmap(landscape_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(20,blocksize) -1 else len(protein_df)],) for chunk in range(min(20,blocksize))])
+    blocksize = max(len(protein_df) // n_parallel,1)
+    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
+        chunk_dfs = pool.starmap(landscape_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],) for chunk in range(min(n_parallel,blocksize))])
     protein_df = pd.concat(chunk_dfs)
 
     cols = protein_df.columns.values
@@ -338,7 +345,7 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict) -> pd.DataFrame:
     return protein_df
 
 
-def find_minima(landscape):
+def find_minima(landscape: np.array) -> np.array:
     """Compute local minima of a landscape.
     
     Args:
@@ -359,7 +366,7 @@ def find_minima(landscape):
     return landscape
 
 
-def new_groups(starts, ends, samples, conditions, splits, sequences):
+def new_groups(starts: list[int], ends: list[int], samples: list[str], conditions: list[str], splits: list[int], sequences: list[str]) -> list:
     """Generate new peptide groups based on the landscape minima. 
 
     Args:
@@ -421,7 +428,7 @@ def new_groups(starts, ends, samples, conditions, splits, sequences):
     return [start_groups, end_groups, sequence_groups, sample_groups, condition_groups]
 
 
-def group_refinement(protein_df, proteome_dict):
+def group_refinement(protein_df: pd.DataFrame, proteome_dict: dict[str,str]):
     """Split peptide groups at landscape minima.
 
     Args: 
@@ -570,6 +577,7 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
             modifications
         proteome_dict: A dictionary containing the reference proteome.
         total_intens: The total intensity of the evidence file.
+        strict: A boolean indicating if the strict version should be run.
 
     Returns:
         The protein_df containing for each protein the core and whole sequence of each of its consensus epitope groups.

@@ -39,7 +39,7 @@ def read_entire_id_output(id_output: str) -> pd.DataFrame:
         raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
     return peptides_df
 
-def aggregate_series(series: pd.Series, delimiter: str):
+def aggregate_series(series: pd.Series, delimiter: str) -> str:
     """Aggregate the series.
 
     Args:
@@ -170,6 +170,6 @@ def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
     epitopes_grouped_df = protein_df_long.groupby(cols)
     epitopes_grouped_df = epitopes_grouped_df.agg({'accession':lambda x:','.join(x)}).reset_index()
 
-    logger.info(f'{len(epitopes_grouped_df)} unique epitopes were computed.')
+    logger.info(f'{len(epitopes_grouped_df.drop_duplicates(["whole_epitopes","consensus_epitopes"]))} unique epitopes were computed.')
 
     return epitopes_grouped_df

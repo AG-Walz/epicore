@@ -55,9 +55,9 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
     # determine the file type
     ext = os.path.splitext(id_output)[1]
     if ext == '.csv':
-        peptides_df = pl.read_csv(id_output, separator=',').with_row_count('peptide_index')
+        peptides_df = pl.read_csv(id_output, separator=',', infer_schema_length=0).with_row_count('peptide_index')
     elif ext == '.tsv':
-        peptides_df = pl.read_csv(id_output, separator='\t').with_row_count('peptide_index')
+        peptides_df = pl.read_csv(id_output, separator='\t', infer_schema_length=0).with_row_count('peptide_index')
     elif ext == '.xlsx':
         peptides_df = pl.read_excel(id_output)
     else:
