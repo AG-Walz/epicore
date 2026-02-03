@@ -8,6 +8,7 @@ from matplotlib.ticker import MaxNLocator
 import pandas as pd 
 import numpy as np
 import re
+import ast
 import logging
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def plot_peptide_length_dist(first_df: pd.DataFrame, second_df: pd.DataFrame, fi
     first_long = first_df.explode(first_explode)
     second_long = second_df.explode(second_explode)
     
-    logger.info(f'{len(first_long)} peptides were reduced to {len(second_long)} epitopes.')
+    logger.info(f'{len(first_long.drop_duplicates("sequence"))} peptides were reduced to {len(second_long.drop_duplicates(["whole_epitopes", "consensus_epitopes"]))} epitopes.')
 
     # compute a histogram of the sequence lengths in first_column and second_column
     fig, ax = plt.subplots(layout='constrained')
@@ -146,3 +147,85 @@ def plot_core_mapping_peptides_hist(epitope_df: pd.DataFrame) ->  plt.figure:
     return fig
 
 
+def compute_coverage(pep_start, pep_end, consensus_start, consensus_end):
+    '''Compute the coverage of the consensus sequence by the peptide contributing to it.
+
+    Args:
+        peptide: Peptide sequence.
+        consensus: Consensus sequence.
+        entire: Sequence of entire consensus sequence.
+
+    Returns:
+        The coverage of the consensus sequence by the peptide sequence
+    '''
+
+    if pep_start < consensus_start:
+        overlap = max(min(consensus_end-consensus_start+1, pep_end-consensus_start+1),0)
+    else:
+        overlap = max(min(pep_end-pep_start+1, consensus_end-pep_start+1),0)
+    return overlap/(consensus_end-consensus_start+1)
+
+
+def compute_epitopes_coverage(epitope_df: pd.DataFrame, out):
+    '''Compute the coverage of consensus sequence epitopes.
+
+    Args:
+        cores_df: A pandas DataFrame containing consensus sequence epitopes..
+
+    Returns:
+        A tuple containing the list of coverages for all consensus epitope sequences and the list of coverages for consensus sequence epitope sequences that are defined by at least two peptides.
+    '''
+    epitope_df['grouped_peptides_start'] = epitope_df['grouped_peptides_start'].apply(lambda starts: [re.sub(r'[^a-zA-Z0-9]', '',start) for start in starts.split(',')])
+    epitope_df['grouped_peptides_end'] = epitope_df['grouped_peptides_end'].apply(lambda starts: [re.sub(r'[^a-zA-Z0-9]', '',start) for start in starts.split(',')])
+    epitope_df['grouped_peptides_sequence'] = epitope_df['grouped_peptides_sequence'].apply(lambda starts: [re.sub(r'[^a-zA-Z0-9]', '',start) for start in starts.split(',')])
+    epitope_df = epitope_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sequence'])
+    epitope_df['coverage'] = epitope_df.apply(lambda row: compute_coverage(int(row['grouped_peptides_start']), int(row['grouped_peptides_end']), int(row['core_epitopes_start']), int(row['core_epitopes_end'])), axis=1)
+    coverage_all = epitope_df['coverage'].to_list()
+    epitope_df = epitope_df.drop_duplicates(['grouped_peptides_sequence', 'whole_epitopes', 'consensus_epitopes'])
+    epitope_df.to_csv(f'{out}/coverage.csv')
+    return coverage_all
+
+
+def plot_coverage(coverage_hist_all: list[float], out:str):
+    '''Plot the coverages of the consensus sequences by the peptides.
+
+    Args:
+        coverage_hist_all: List containing all coverages.
+        out: Path were the plot gets saved.
+    '''
+    figure, axis = plt.subplots(1, 1, dpi=150)
+    n_all, bins_all, _ = axis.hist(coverage_hist_all, 100, color='red', label='all consensus sequences')
+    axis.set_yscale('log')
+    axis.set_ylabel('Number of peptides')
+    axis.set_xlabel(f'Consensus sequence coverage')
+    axis.grid()
+    plt.tight_layout()
+    figure.savefig(f'{out}/consensus_sequence_coverage.png')
+
+
+def plot_consensus_sequence_coverage(epitopes_df: pd.DataFrame, out: str):
+    '''Plot the consensus sequence coverage of the computed consensus epitope sequences.
+    
+    Args:
+        epitopes_df: A pandas dataframe containing the calculated consensus epitope sequences.
+        out: Path were the plot gets saved.
+    '''
+    epitopes_df_copy = epitopes_df.copy()
+    all = compute_epitopes_coverage(epitopes_df_copy, out)
+    plot_coverage(all, out)
+    logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(all)}')
+
+
+def create_html(out_name):
+    ''' Create html version of plot.
+
+    Args: 
+        out_name: Location where the figure should be stored.    
+    '''
+    with open(f'{out_name[:-4]}svg', 'r') as svg_file:
+        svg_content = svg_file.read()
+        svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
+        svg_content = re.sub(r'<!DOCTYPE[^>]+>', '', svg_content)
+        html = f'<!DOCTYPE html> <html> <body>{svg_content}</body></html>'
+        with open(f'{out_name}','w') as f:
+            f.write(html)

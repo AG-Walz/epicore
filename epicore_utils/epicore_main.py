@@ -8,12 +8,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import warnings
 import re
+import polars as pl
 
 
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
 from epicore_utils.modules.map_result import map_pep_core, gen_epitope_df
-from epicore_utils.modules.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist
+from epicore_utils.modules.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist, plot_consensus_sequence_coverage, create_html
 from epicore_utils.modules.parse_input import parse_input, proteome_to_dict
 from epicore_utils.modules.generate_report import gen_report
 
@@ -51,7 +52,7 @@ class InputParameter(object):
             containing the end position of peptides in proteins.
 
     """
-    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None):
+    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None, sample_column=None, strict=None, condition=None):
         self.min_epi_length = min_epi_length
         self.min_overlap = min_overlap
         self.max_step_size = max_step_size
@@ -68,6 +69,9 @@ class InputParameter(object):
         self.html = html
         self.proteome_dict = proteome_to_dict(reference_proteome)
         self.reference_proteome = reference_proteome
+        self.sample_column = sample_column
+        self.strict = strict
+        self.condition_column = condition
 
 @click.version_option(__version__, "--version", "-V")
 
@@ -80,9 +84,11 @@ def main(ctx, reference_proteome, out_dir):
     
 @click.option('--min_epi_length', type=click.INT, default=11)
 @click.option('--min_overlap', type=click.INT, default=11)
-@click.option('--max_step_size', type=click.INT, required=5)
+@click.option('--max_step_size', type=click.INT, default=5)
 @click.option('--seq_column', type=click.STRING, required=True)
+@click.option('--sample_column', type=click.STRING, required=True)
 @click.option('--protacc_column', type=click.STRING, required=True)
+@click.option('--condition_column', type=click.STRING, required=True)
 @click.option('--intensity_column', type=click.STRING)
 @click.option('--delimiter', type=click.STRING, required=True)
 @click.option('--mod_pattern', type=click.STRING)
@@ -91,25 +97,28 @@ def main(ctx, reference_proteome, out_dir):
 @click.option('--end_column', type=click.STRING)
 @click.option('--report', is_flag=True)
 @click.option('--html', is_flag=True)
+@click.option('--strict', is_flag=True)
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
-def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html):
-    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html)
+def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html, sample_column, strict, condition_column):
+    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html, sample_column, strict, condition_column)
     if not os.path.exists(ctx.obj.out_dir):
         os.mkdir(ctx.obj.out_dir)
     logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-        
+    logger.info(f'Parameter: min_epi_length:{min_epi_length}, min_overlap:{min_overlap}, max_step_size:{max_step_size}, strict:{strict}, evidence_file:{evidence_file}, fasta_file:{ctx.obj.reference_proteome}')
+    
     # ----------------------
     #    Parse input file
     # ----------------------
-    protein_df, n_removed_peps, total_intens = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern)
+    protein_df, n_removed_peps, total_intens = parse_input(evidence_file, ctx.obj.seq_column, ctx.obj.protacc_column, ctx.obj.intensity_column, ctx.obj.start_column, ctx.obj.end_column, ctx.obj.delimiter, ctx.obj.proteome_dict, ctx.obj.mod_pattern, ctx.obj.sample_column, ctx.obj.condition_column)
+    protein_df = protein_df.to_pandas()
     os.makedirs(ctx.obj.out_dir,exist_ok=True)
 
     # ----------------------
     # compute core epitopes, map peptides to cores
     # ----------------------
-    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict, total_intens)
+    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict, total_intens, ctx.obj.strict)
     protein_df.to_csv(f'{ctx.obj.out_dir}/epicore_result.csv')
     pep_cores_mapping = map_pep_core(evidence_file,protein_df,ctx.obj.seq_column,ctx.obj.protacc_column,ctx.obj.start_column,ctx.obj.end_column,ctx.obj.intensity_column,ctx.obj.delimiter,ctx.obj.mod_pattern, ctx.obj.proteome_dict)
     pep_cores_mapping.to_csv(f'{ctx.obj.out_dir}/pep_cores_mapping.tsv', sep='\t', index=False)
@@ -122,6 +131,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     epitope_df = gen_epitope_df(protein_df)
     epitope_df.to_csv(f'{ctx.obj.out_dir}/epitopes.csv')
 
+    plot_consensus_sequence_coverage(epitope_df, f'{ctx.obj.out_dir}')
     # compute length distribution of peptides and epitopes
     ext = os.path.splitext(evidence_file)[1]
     if ext == '.csv':
@@ -133,33 +143,18 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
     fig = plot_core_mapping_peptides_hist(epitope_df)
+    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
     if ctx.obj.html:
-        fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
-        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', 'r') as svg_file:
-            svg_content = svg_file.read()
-        svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
-        svg_content = re.sub(r'<!DOCTYPE[^>]+>', '', svg_content)
-        html = f'<!DOCTYPE html> <html> <body>{svg_content}</body></html>'
-        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.html','w') as f:
-            f.write(html)
-    else:
-        fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
+        create_html(f'{ctx.obj.out_dir}/epitope_intensity_hist.html')
+
     fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'consensus_epitopes', ctx.obj.seq_column, 'consensus_epitopes', 'peptides', 'consensus epitopes', mod_pattern)
+    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
     if ctx.obj.html:
-        fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
-        with open(f'{ctx.obj.out_dir}/length_distributions.svg', 'r') as svg_file:
-            svg_content = svg_file.read()
-        svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
-        svg_content = re.sub(r'<!DOCTYPE[^>]+>', '', svg_content)
-        html = f'<!DOCTYPE html> <html> <body>{svg_content}</body></html>'
-        with open(f'{ctx.obj.out_dir}/length_distributions.html','w') as f:
-            f.write(html)
-    else:
-        fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
+        create_html(f'{ctx.obj.out_dir}/length_distributions.html')
     
     # summarize some results
     if ctx.obj.report:
-        gen_report(f'./{ctx.obj.out_dir}/length_distributions.svg', f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx, evidence_file,  f'{ctx.obj.out_dir}/epicore_result.csv')
+        gen_report(f'http://localhost:8000/{ctx.obj.out_dir}/length_distributions.svg', f'http://localhost:8000/{ctx.obj.out_dir}/epitope_intensity_hist.svg', epitope_df, peps, epitopes, n_removed_peps, ctx, evidence_file,  f'{ctx.obj.out_dir}/epicore_result.csv')
 
 
 @click.command()
@@ -175,8 +170,8 @@ def plot_landscape(ctx,epicore_csv, protacc):
         protein_df = pd.read_csv(epicore_csv)
 
         protein_df['grouped_peptides_start'] = protein_df['grouped_peptides_start'].apply(ast.literal_eval)
-        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(lambda cell: eval(cell, {"np": np}))
-        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(lambda cell: eval(cell, {"np": np}))
+        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(ast.literal_eval)
+        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
 
         if accession is not None:
