@@ -185,8 +185,8 @@ def plot_landscape(ctx,epicore_csv, protacc):
         protein_df = pd.read_csv(epicore_csv)
 
         protein_df['grouped_peptides_start'] = protein_df['grouped_peptides_start'].apply(ast.literal_eval)
-        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(lambda cell: eval(cell, {"np": np}))
-        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(lambda cell: eval(cell, {"np": np}))
+        protein_df['core_epitopes_start'] = protein_df['core_epitopes_start'].apply(ast.literal_eval)
+        protein_df['core_epitopes_end'] = protein_df['core_epitopes_end'].apply(ast.literal_eval)
         protein_df['landscape'] = protein_df['landscape'].apply(ast.literal_eval)
 
         if accession is not None:

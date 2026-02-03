@@ -254,7 +254,7 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict: dict[str,str]) -> pd
 
     # compute the landscape of the entire group
     protein_df = pd.merge(protein_df, comb_landscapes, on='group')
-
+    protein_df['landscape'] = protein_df['landscape'].apply(lambda landscape: landscape.tolist())
     protein_df = protein_df.groupby('group').agg(aggr)
     aggr['landscape'] = lambda x: list(x)
     aggr['whole_epitopes'] = lambda x: list(x)
@@ -426,14 +426,14 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
                 if current_pep_length >= min_epi_len:
 
                     # get position of epitope in protein sequences
-                    pep_in_prot_start = ce_start_pos
-                    pep_in_prot_end = pep_in_prot_start + current_pep_length
+                    pep_in_prot_start = ce_start_pos.item()
+                    pep_in_prot_end = pep_in_prot_start + current_pep_length.item()
 
                     # get consensus epitopes
                     whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
                     for _ in row['grouped_peptides_sequence'][group]:
                         protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
-                        protein_df.at[r,'core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
+                        protein_df.at[r,'core_epitopes_start_all'].append((pep_in_prot_start+min(row['grouped_peptides_start'][group])))
                         protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1) 
                     protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
                     protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
@@ -442,8 +442,8 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
                 
                 # if no core with length > min_epi_length
                 if total_count == total_counts[-1]:
-                    pep_in_prot_start = ce_start_pos
-                    pep_in_prot_end = pep_in_prot_start + current_pep_length
+                    pep_in_prot_start = ce_start_pos.item()
+                    pep_in_prot_end = pep_in_prot_start + current_pep_length.item()
                     whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
                     for _ in row['grouped_peptides_sequence'][group]:
                         protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])

@@ -55,9 +55,9 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
     # determine the file type
     ext = os.path.splitext(id_output)[1]
     if ext == '.csv':
-        peptides_df = pl.read_csv(id_output, separator=',', infer_schema_length=0).with_row_count('peptide_index')
+        peptides_df = pl.read_csv(id_output, separator=',', infer_schema_length=0).with_row_index('peptide_index')
     elif ext == '.tsv':
-        peptides_df = pl.read_csv(id_output, separator='\t', infer_schema_length=0).with_row_count('peptide_index')
+        peptides_df = pl.read_csv(id_output, separator='\t', infer_schema_length=0).with_row_index('peptide_index')
     elif ext == '.xlsx':
         peptides_df = pl.read_excel(id_output)
     else:
@@ -349,7 +349,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
 
         n_parallel = max(1, cpu_count()-5)
         block_size = max(len(proteins_df) // n_parallel,1)
-        with get_context('spawn').Pool(20) as pool:
+        with get_context('spawn').Pool(n_parallel) as pool:
             chunk_dfs = pool.starmap(group_repetitive_chunk,[(proteins_df,chunk*block_size,(chunk+1)*block_size if chunk < (n_parallel-1) else len(proteins_df)) for chunk in range(n_parallel)])
         proteins_df = pl.concat(chunk_dfs)
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
@@ -407,7 +407,7 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
     #n_removed_proteins = set(itertools.chain.from_iterable(pep for pep in peptides if pep))
 
     # remove all peptides occurring multiple times in different modification and charge states
-    peptides_df = peptides_df.with_columns((pl.col(seq_column).str.replace_all('\(.*?\)', '')).alias(seq_column))
+    peptides_df = peptides_df.with_columns((pl.col(seq_column).str.replace_all(r'\(.*?\)', '')).alias(seq_column))
     # remove peptides with protein accessions that do not appear in the proteome 
     if start_column and end_column:
         peptides_df = peptides_df.with_columns(pl.col(start_column).list.gather(pl.col(protacc_column).list.eval(pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(start_column))))
