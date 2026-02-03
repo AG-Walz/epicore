@@ -84,7 +84,7 @@ def main(ctx, reference_proteome, out_dir):
     
 @click.option('--min_epi_length', type=click.INT, default=11)
 @click.option('--min_overlap', type=click.INT, default=11)
-@click.option('--max_step_size', type=click.INT, required=5)
+@click.option('--max_step_size', type=click.INT, default=5)
 @click.option('--seq_column', type=click.STRING, required=True)
 @click.option('--sample_column', type=click.STRING, required=True)
 @click.option('--protacc_column', type=click.STRING, required=True)

@@ -13,31 +13,7 @@ import logging
 import time
 import polars as pl
 logger = logging.getLogger(__name__)
-
-def read_entire_id_output(id_output: str) -> pd.DataFrame:
-    """Read in the entire evidence file.
-    
-    Args:
-        id_output: The string of the path to the evidence file.
-    
-    Returns:
-        A pandas dataframe containing the evidence file.
-
-    Raises:
-        Exception: If the file type of the provided evidence file is not 
-            supported.
-    """
-    # determine the file type
-    ext = os.path.splitext(id_output)[1]
-    if ext == '.csv':
-        peptides_df = pd.read_csv(id_output, delimiter=',')
-    elif ext == '.tsv':
-        peptides_df = pd.read_csv(id_output, delimiter='\t')
-    elif ext == '.xlsx':
-        peptides_df = pd.read_excel(id_output)
-    else:
-        raise Exception('The file type of your evidence file is not supported. Please use an evidence file that has one of the following file types: csv, tsv, xlsx')
-    return peptides_df
+from epicore_utils.modules.parse_input import read_entire_id_output
 
 def aggregate_series(series: pd.Series, delimiter: str) -> str:
     """Aggregate the series.
@@ -93,7 +69,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     """
 
     # read in entire evidence file
-    evidence_file_df = read_entire_id_output(evidence_file)
+    evidence_file_df = read_entire_id_output(evidence_file, False)
     in_cols = evidence_file_df.columns.values
 
     if intensity_column:

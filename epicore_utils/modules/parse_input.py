@@ -10,14 +10,57 @@ import os
 import itertools
 import polars as pl
 from multiprocessing import get_context, cpu_count
+from typing import Union
 
 
 import logging
 logger = logging.getLogger(__name__)
 
 
+def read_entire_id_output(id_output: str, polars: bool) -> Union[pd.DataFrame, pl.DataFrame]:
+    '''Read in entire evidence file.
+
+    Args:
+        id_output: Path to the evidence file.
+        polars: Indicates if csv should be loaded in polars or pandas.
+
+    Returns:
+        The evidence file in a polars or pandas dataframe.
+    '''
+    if polars:
+        # determine the file type
+        ext = os.path.splitext(id_output)[1]
+        if ext == '.csv':
+            peptides_df = pl.read_csv(id_output, separator=',', infer_schema_length=0).with_row_index('peptide_index')
+        elif ext == '.tsv':
+            peptides_df = pl.read_csv(id_output, separator='\t', infer_schema_length=0).with_row_index('peptide_index')
+        elif ext == '.xlsx':
+            peptides_df = pl.read_excel(id_output)
+        else:
+            raise Exception('The file type of your evidence file is not supported. \
+                            Please use an evidence file that has one of the \
+                            following file types: csv, tsv, xlsx')
+        
+    else:
+        ext = os.path.splitext(id_output)[1]
+        if ext == '.csv':
+            peptides_df = pd.read_csv(id_output, delimiter=',')
+        elif ext == '.tsv':
+            peptides_df = pd.read_csv(id_output, delimiter='\t')
+        elif ext == '.xlsx':
+            peptides_df = pd.read_excel(id_output)
+        else:
+            raise Exception('The file type of your evidence file is not supported. \
+                            Please use an evidence file that has one of the following \
+                            file types: csv, tsv, xlsx')
+    
+    return peptides_df
+
+
+
 def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensity_column: str, 
-                   start_column: str, end_column: str, delimiter: str, sample_column: str, condition_column: str) -> pl.DataFrame:
+                   start_column: str, end_column: str, delimiter: str, sample_column: str, 
+                   condition_column: str, polars: bool) -> Union[pd.DataFrame, pl.DataFrame]:
     """Read in the evidence file.
 
     Args:
@@ -51,19 +94,7 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
             evidence file.
         Exception: If a mandatory column header is not provided.
     """
-
-    # determine the file type
-    ext = os.path.splitext(id_output)[1]
-    if ext == '.csv':
-        peptides_df = pl.read_csv(id_output, separator=',', infer_schema_length=0).with_row_index('peptide_index')
-    elif ext == '.tsv':
-        peptides_df = pl.read_csv(id_output, separator='\t', infer_schema_length=0).with_row_index('peptide_index')
-    elif ext == '.xlsx':
-        peptides_df = pl.read_excel(id_output)
-    else:
-        raise Exception('The file type of your evidence file is not supported. \
-                        Please use an evidence file that has one of the \
-                        following file types: csv, tsv, xlsx')
+    peptides_df = read_entire_id_output(id_output, True)
     # check that the mandatory headers are provided and all provided column 
     # headers are part of the evidence file
     if seq_column not in peptides_df.columns:
@@ -122,6 +153,7 @@ def read_id_output(id_output: str, seq_column: str, protacc_column: str, intensi
         peptides_df = peptides_df.with_columns((pl.col(protacc_column).str.split(delimiter)).alias(protacc_column))
 
     return peptides_df
+
 
 
 def proteome_to_dict(proteome: str) -> dict[str,str]:
@@ -400,7 +432,7 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
         accession not appearing in the proteome file. The float is the total intensity 
         of the evidence file. 
     """
-    peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, sample_column, condition_column)
+    peptides_df = read_id_output(evidence_file, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, sample_column, condition_column, True)
     # get peptides/proteins with protein accessions that do not appear in the proteome
     peptides = pl.Series(peptides_df.with_columns((pl.col(protacc_column).list.filter(~pl.element().is_in(list(proteome_dict.keys())))).alias('removed')).select('removed')).to_list()
     n_removed_proteins = set(itertools.chain.from_iterable(peptides))
