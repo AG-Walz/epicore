@@ -214,3 +214,18 @@ def plot_consensus_sequence_coverage(epitopes_df: pd.DataFrame, out: str):
     all = compute_epitopes_coverage(epitopes_df_copy, out)
     plot_coverage(all, out)
     logger.info(f'The calculated consensus epitope sequences have an average peptide coverage of {np.mean(all)}')
+
+
+def create_html(out_name):
+    ''' Create html version of plot.
+
+    Args: 
+        out_name: Location where the figure should be stored.    
+    '''
+    with open(f'{out_name[:-4]}svg', 'r') as svg_file:
+        svg_content = svg_file.read()
+        svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
+        svg_content = re.sub(r'<!DOCTYPE[^>]+>', '', svg_content)
+        html = f'<!DOCTYPE html> <html> <body>{svg_content}</body></html>'
+        with open(f'{out_name}','w') as f:
+            f.write(html)

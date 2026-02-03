@@ -14,7 +14,7 @@ import polars as pl
 from . import __version__
 from epicore_utils.modules.compute_cores import compute_consensus_epitopes
 from epicore_utils.modules.map_result import map_pep_core, gen_epitope_df
-from epicore_utils.modules.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist, plot_consensus_sequence_coverage
+from epicore_utils.modules.visualize_protein import plot_protein_landscape, plot_peptide_length_dist, plot_core_mapping_peptides_hist, plot_consensus_sequence_coverage, create_html
 from epicore_utils.modules.parse_input import parse_input, proteome_to_dict
 from epicore_utils.modules.generate_report import gen_report
 
@@ -143,29 +143,14 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(lambda accessions: accessions.split(ctx.obj.delimiter))
 
     fig = plot_core_mapping_peptides_hist(epitope_df)
+    fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
     if ctx.obj.html:
-        fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
-        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg', 'r') as svg_file:
-            svg_content = svg_file.read()
-        svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
-        svg_content = re.sub(r'<!DOCTYPE[^>]+>', '', svg_content)
-        html = f'<!DOCTYPE html> <html> <body>{svg_content}</body></html>'
-        with open(f'{ctx.obj.out_dir}/epitope_intensity_hist.html','w') as f:
-            f.write(html)
-    else:
-        fig.savefig(f'{ctx.obj.out_dir}/epitope_intensity_hist.svg')
+        create_html(f'{ctx.obj.out_dir}/epitope_intensity_hist.html')
+
     fig, peps, epitopes = plot_peptide_length_dist(evidence_df, epitope_df, ctx.obj.seq_column, 'consensus_epitopes', ctx.obj.seq_column, 'consensus_epitopes', 'peptides', 'consensus epitopes', mod_pattern)
+    fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
     if ctx.obj.html:
-        fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
-        with open(f'{ctx.obj.out_dir}/length_distributions.svg', 'r') as svg_file:
-            svg_content = svg_file.read()
-        svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
-        svg_content = re.sub(r'<!DOCTYPE[^>]+>', '', svg_content)
-        html = f'<!DOCTYPE html> <html> <body>{svg_content}</body></html>'
-        with open(f'{ctx.obj.out_dir}/length_distributions.html','w') as f:
-            f.write(html)
-    else:
-        fig.savefig(f'{ctx.obj.out_dir}/length_distributions.svg')
+        create_html(f'{ctx.obj.out_dir}/length_distributions.html')
     
     # summarize some results
     if ctx.obj.report:
