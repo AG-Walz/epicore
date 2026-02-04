@@ -83,7 +83,7 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
         group_overlap = min(grouped_peptides_end) - int(start_pos[i+1]) +1
 
         if strict:
-            condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) and (grouped_peptides_max_end<int(end_pos[i+1]))
+            condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap))
         else:
             condition_group = ((step_size >= max_step_size) and (overlap < min_overlap))
 
