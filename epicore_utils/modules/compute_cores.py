@@ -75,10 +75,6 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
         if intensity_column:
             core_intensity += float(intensity[i])
 
-        #first_start = grouped_peptides_start[0]
-        first_end = grouped_peptides_end[0]
-        group_overlap = max(min(int(end_pos[i+1])-int(start_pos[i+1])+1, first_end-int(start_pos[i+1])+1),0) 
-
         overlap = int(end_pos[i]) - int(start_pos[i+1]) +1
         group_overlap = min(grouped_peptides_end) - int(start_pos[i+1]) +1
 
@@ -160,8 +156,12 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
 
     return row
 
+def group_peptides_chunk(chunk_df, min_overlap, max_step_size, intensity_column, total_intens, strict):
+    chunk_df = chunk_df.apply(lambda row: group_peptides_protein(row, min_overlap, max_step_size, intensity_column, total_intens, strict), axis=1)
+    return chunk_df
+
+
 def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool) -> pd.DataFrame:
-    
     # start, end, sequence and intensity of peptides of one group grouped together
     protein_df['grouped_peptides_start'] = [[] for _ in range(len(protein_df))]
     protein_df['grouped_peptides_end'] = [[] for _ in range(len(protein_df))]
@@ -176,8 +176,13 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     # for each peptide the index of its group
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
     protein_df['peptide_indices'] = [[] for _ in range(len(protein_df))]
-    
-    protein_df = protein_df.apply(lambda row: group_peptides_protein(row, min_overlap, max_step_size, intensity_column, total_intens, strict), axis=1)
+
+    n_parallel = max(1, cpu_count()-5)
+    # compute the landscape for each peptide in the group
+    blocksize = max(len(protein_df) // n_parallel,1)
+    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
+        chunk_dfs = pool.starmap(group_peptides_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],min_overlap, max_step_size, intensity_column, total_intens, strict,) for chunk in range(min(n_parallel,blocksize))])
+    protein_df = pd.concat(chunk_dfs)
     return protein_df
 
 
@@ -377,13 +382,12 @@ def group_refinement(protein_df: pd.DataFrame, proteome_dict: dict[str,str]):
     protein_df = protein_df.drop(['landscape'], axis=1)
 
     # recompute group landscapes
-    #protein_df = protein_df.group_by(['accession'])
     protein_df = comp_landscape(protein_df,proteome_dict)
 
     return protein_df
 
 
-def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.DataFrame:
+def get_consensus_epitopes(row: list, min_epi_len: int) -> pd.DataFrame:
     """Compute the consensus epitope sequence of each consensus epitope group.
     
     Args:
@@ -393,64 +397,82 @@ def get_consensus_epitopes(protein_df: pd.DataFrame, min_epi_len: int) -> pd.Dat
     Returns:
         The protein_df with one additional column, that contains the consensus epitope sequence of each consensus epitope group.
     """
+
+    for group,landscape in enumerate(row['landscape']):
+        
+        # build consensus epitopes
+        total_counts = np.unique(landscape)
+        total_counts[::-1].sort()
+    
+        # find total coverage for which consensus epitope is at least min_epi_len long
+        for total_count in total_counts:
+
+            Z = landscape < total_count
+
+            # get lengths of peptide sequences with coverage above the current threshold
+            seqs_idx = np.where(np.diff(np.hstack(([False],~Z,[False]))))[0].reshape(-1,2)
+            
+            # get length of longest peptide subsequences with current count
+            ce_start_pos = seqs_idx[np.diff(seqs_idx, axis=1).argmax(),0]
+            current_pep_length = np.diff(seqs_idx, axis=1).max()
+            
+            # check if min_epi_length is fulfilled for that sequence
+            if current_pep_length >= min_epi_len:
+
+                # get position of epitope in protein sequences
+                pep_in_prot_start = ce_start_pos.item()
+                pep_in_prot_end = pep_in_prot_start + current_pep_length.item()
+
+                # get consensus epitopes
+                whole_epitope_wo_mod = row['whole_epitopes'][group]
+                for _ in row['grouped_peptides_sequence'][group]:
+                    row['consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
+                    row['core_epitopes_start_all'].append((pep_in_prot_start+min(row['grouped_peptides_start'][group])))
+                    row['core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1) 
+                row['consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
+                row['core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
+                row['core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
+                break
+            
+            # if no core with length > min_epi_length
+            if total_count == total_counts[-1]:
+                pep_in_prot_start = ce_start_pos.item()
+                pep_in_prot_end = pep_in_prot_start + current_pep_length.item()
+                whole_epitope_wo_mod = row['whole_epitopes'][group]
+                for _ in row['grouped_peptides_sequence'][group]:
+                    row['consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
+                    row['core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
+                    row['core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
+                row['consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
+                row['core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
+                row['core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
+              
+    row['proteome_occurrence'] = [row['accession']+':'+str(row['consensus_epitopes_all'][i])+':'+str(row['core_epitopes_start_all'][i])+'-'+str(row['core_epitopes_end_all'][i]) for i in range(len(row['core_epitopes_start_all']))]
+    return row
+
+def get_consensus_epitopes_chunk(chunk_df, min_epi_len):
+    chunk_df = chunk_df.apply(lambda row: get_consensus_epitopes(row, min_epi_len), axis=1)
+    return chunk_df
+
+def get_consensus_epitopes_protein(protein_df: pd.DataFrame, min_epi_length: int) -> pd.DataFrame:
+    
+    # start, end, sequence and intensity of peptides of one group grouped together
     protein_df['consensus_epitopes'] = [[] for _ in range(len(protein_df))]
     protein_df['consensus_epitopes_all'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_start'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_end'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_start_all'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_end_all'] = [[] for _ in range(len(protein_df))]
+    
+    n_parallel = max(1, cpu_count()-5)
+    # compute the landscape for each peptide in the group
+    blocksize = max(len(protein_df) // n_parallel,1)
+    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
+        chunk_dfs = pool.starmap(get_consensus_epitopes_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],min_epi_length,) for chunk in range(min(n_parallel,blocksize))])
+    protein_df = pd.concat(chunk_dfs)
 
-    for r, row in protein_df.iterrows():
-        for group,landscape in enumerate(row['landscape']):
-            
-            # build consensus epitopes
-            total_counts = np.unique(landscape)
-            total_counts[::-1].sort()
-        
-            # find total coverage for which consensus epitope is at least min_epi_len long
-            for total_count in total_counts:
 
-                Z = landscape < total_count
-
-                # get lengths of peptide sequences with coverage above the current threshold
-                seqs_idx = np.where(np.diff(np.hstack(([False],~Z,[False]))))[0].reshape(-1,2)
-                
-                # get length of longest peptide subsequences with current count
-                ce_start_pos = seqs_idx[np.diff(seqs_idx, axis=1).argmax(),0]
-                current_pep_length = np.diff(seqs_idx, axis=1).max()
-                
-                # check if min_epi_length is fulfilled for that sequence
-                if current_pep_length >= min_epi_len:
-
-                    # get position of epitope in protein sequences
-                    pep_in_prot_start = ce_start_pos.item()
-                    pep_in_prot_end = pep_in_prot_start + current_pep_length.item()
-
-                    # get consensus epitopes
-                    whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
-                    for _ in row['grouped_peptides_sequence'][group]:
-                        protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
-                        protein_df.at[r,'core_epitopes_start_all'].append((pep_in_prot_start+min(row['grouped_peptides_start'][group])))
-                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1) 
-                    protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
-                    protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
-                    break
-                
-                # if no core with length > min_epi_length
-                if total_count == total_counts[-1]:
-                    pep_in_prot_start = ce_start_pos.item()
-                    pep_in_prot_end = pep_in_prot_start + current_pep_length.item()
-                    whole_epitope_wo_mod = protein_df.at[r,'whole_epitopes'][group]
-                    for _ in row['grouped_peptides_sequence'][group]:
-                        protein_df.at[r,'consensus_epitopes_all'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
-                        protein_df.at[r,'core_epitopes_start_all'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                        protein_df.at[r,'core_epitopes_end_all'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
-                    protein_df.at[r,'consensus_epitopes'].append(whole_epitope_wo_mod[pep_in_prot_start:pep_in_prot_end])
-                    protein_df.at[r,'core_epitopes_start'].append(pep_in_prot_start+min(row['grouped_peptides_start'][group]))
-                    protein_df.at[r,'core_epitopes_end'].append(pep_in_prot_end+min(row['grouped_peptides_start'][group]) - 1)
-                    
-    protein_df['proteome_occurrence'] = protein_df.apply(lambda row: [row['accession']+':'+str(row['consensus_epitopes_all'][i])+':'+str(row['core_epitopes_start_all'][i])+'-'+str(row['core_epitopes_end_all'][i]) for i in range(len(row['core_epitopes_start_all']))],axis=1)
+    #protein_df = protein_df.apply(lambda row: get_consensus_epitopes(row, min_epi_length), axis=1)
     return protein_df
 
 
@@ -517,5 +539,5 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
         protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','condition','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample', 'grouped_peptides_condition','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all', 'start_min']]
         protein_df = group_refinement(protein_df, proteome_dict)
     protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','condition','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample', 'grouped_peptides_condition','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all']]
-    protein_df = get_consensus_epitopes(protein_df, min_epi_len)
+    protein_df = get_consensus_epitopes_protein(protein_df, min_epi_len)
     return protein_df

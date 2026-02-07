@@ -39,10 +39,10 @@ def plot_peptide_length_dist(first_df: pd.DataFrame, second_df: pd.DataFrame, fi
         The two integers are the number of peptides and the number of epitopes. 
     """
     
-    first_long = first_df.explode(first_explode)
-    second_long = second_df.explode(second_explode)
+    first_long = first_df.explode(first_explode).drop_duplicates("sequence")
+    second_long = second_df.explode(second_explode).drop_duplicates(["whole_epitopes", "consensus_epitopes"])
     
-    logger.info(f'{len(first_long.drop_duplicates("sequence"))} peptides were reduced to {len(second_long.drop_duplicates(["whole_epitopes", "consensus_epitopes"]))} epitopes.')
+    logger.info(f'{len(first_long)} peptides were reduced to {len(second_long)} epitopes.')
 
     # compute a histogram of the sequence lengths in first_column and second_column
     fig, ax = plt.subplots(layout='constrained')

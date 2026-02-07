@@ -89,7 +89,7 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     protein_df['start'] = protein_df['start'].astype(int)
     protein_df = protein_df.sort_values(by=['accession', 'start'])
     protein_df['start'] = protein_df['start'].astype(str)
-    protein_df = protein_df.groupby('peptide_index').agg(lambda x: delimiter.join(x))
+    protein_df = protein_df.groupby('peptide_index').agg(delimiter.join)
 
     # prepare peptide_df
     if start_column and end_column:
