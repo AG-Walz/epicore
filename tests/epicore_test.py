@@ -7,7 +7,7 @@ import polars as pl
 
 
 
-def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, mod_pattern: str, min_overlap: int, max_step_size: int, min_epi_length: int, sample_column, strict, condition_column) -> pd.DataFrame:
+def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, mod_pattern: str, min_overlap: int, max_step_size: int, min_epi_length: int, sample_column, strict, condition_column, included=False) -> pd.DataFrame:
   """Run epicore on an evidence file.
 
   Args:
@@ -42,7 +42,7 @@ def run_epicore(proteome_path:str, evidence_path: str, seq_column: str, protacc_
   proteome_dict = proteome_to_dict(proteome_path)
   protein_df, _, total_intens = parse_input(evidence_path, seq_column , protacc_column, intensity_column, start_column, end_column, delimiter, proteome_dict, mod_pattern, sample_column, condition_column)
   protein_df = protein_df.to_pandas()
-  protein_df = compute_consensus_epitopes(protein_df, min_overlap, max_step_size, min_epi_length, intensity_column, mod_pattern, proteome_dict, total_intens, strict)
+  protein_df = compute_consensus_epitopes(protein_df, min_overlap, max_step_size, min_epi_length, intensity_column, mod_pattern, proteome_dict, total_intens, strict, included)
   pep_cores_mapping = map_pep_core(evidence_path,protein_df,seq_column,protacc_column,start_column,end_column,intensity_column,delimiter,mod_pattern, proteome_dict)
   pep_cores_mapping = pep_cores_mapping.sort_values(by='sequence').reset_index(drop=True).astype(str)
   return pep_cores_mapping
@@ -55,6 +55,7 @@ evidence_path_five = 'tests/evidence_file_five.csv'
 evidence_path_seven = 'tests/evidence_file_seven.csv'
 large_evidence = 'tests/large_evidence.csv'
 min_landscape_evidence = 'tests/minimal_landscape_evidence.csv'
+evidence_path_included = 'tests/evidence_file_included.csv'
 
 # result files
 path_result_one = 'tests/result_one.csv'
@@ -66,6 +67,7 @@ path_result_five = 'tests/result_five.csv'
 path_result_seven = 'tests/result_seven.csv'
 large_result = 'tests/large_evidence_result.csv'
 min_landscape_result = 'tests/result_min_landscape.csv'
+path_result_included='tests/result_included.csv'
 
 # fasta files
 large_fasta = 'tests/spHUMANwoi_130927_CLL_mut.fasta'
@@ -211,6 +213,7 @@ result_large = result_large.explode(['start', 'end', 'accessions', 'proteome_occ
 result_large = result_large.drop_duplicates()
 result_large.reset_index(drop=True,inplace=True)
 
+
 # test if epicore produces expected final result
 def test_five():
   assert pep_cores_mapping_five.equals(result_large)
@@ -263,3 +266,35 @@ result_file_seven = result_file_one.sort_values(by='sequence').reset_index(drop=
 # test if epicore produces expected final result
 def test_seven():
   assert pep_cores_mapping_seven.equals(result_file_seven)
+
+
+
+####################
+# Test included flag
+####################
+# define params
+seq_column = 'sequence'
+protacc_column = 'accessions'
+intensity_column = None
+sample_column = 'sample'
+start_column = 'start'
+end_column = 'end'
+delimiter = ';'
+mod_pattern = ''
+min_overlap = 7
+max_step_size = 4
+min_epi_length = 10
+condition_column = 'condition'
+strict=True
+included=True
+
+# run epicore on test file one 
+pep_cores_mapping_included = run_epicore(proteome_path, evidence_path_included, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column, included)
+
+# read in expected result and sort it
+result_file_included = pd.read_csv(path_result_included)
+result_file_included = result_file_included.sort_values(by='sequence').reset_index(drop=True).astype(str)
+
+# test if epicore produces expected final result
+def test_included():
+  assert pep_cores_mapping_included.equals(result_file_included)
