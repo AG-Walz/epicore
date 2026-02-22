@@ -258,9 +258,9 @@ def group_repetitive(start: list[int], end: list[int], pep: str, acc: str, idx: 
     updated_peps = []
     updated_samples = []
 
-    lists = list(zip(start, end, idx))
-    lists = sorted(lists, key=lambda x: int(x[0]))
-    start, end, idx = zip(*lists)
+    #lists = list(zip(start, end, idx))
+    #lists = sorted(lists, key=lambda x: int(x[0]))
+    #start, end, idx = zip(*lists)
     group_ends = []
     # add the first occurrences start positions to the start positions
     for i in idx[0]:
@@ -375,7 +375,7 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
     else:
         proteins_df = peptides_df.explode(protacc_column, start_column, end_column)
         proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.Int64))
-        proteins_df = proteins_df.sort(start_column).group_by(protacc_column).agg(pl.col(seq_column), pl.col(start_column), pl.col(end_column), pl.col('peptide_index'), pl.col(sample_column), pl.col(condition_column))
+        proteins_df = proteins_df.group_by(protacc_column).agg(pl.col(seq_column), pl.col(start_column), pl.col(end_column), pl.col('peptide_index'), pl.col(sample_column), pl.col(condition_column))
         proteins_df = proteins_df.explode(start_column, end_column, seq_column, 'peptide_index', sample_column, condition_column).group_by(seq_column, protacc_column, sample_column, condition_column).agg(pl.col(start_column), pl.col(end_column), pl.col('peptide_index'))
         proteins_df = proteins_df.with_columns(pl.col(end_column).cast(pl.List(pl.Int64)))
         proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.List(pl.Int64)))

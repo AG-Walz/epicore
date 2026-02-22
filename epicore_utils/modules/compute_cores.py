@@ -1,22 +1,32 @@
 """
 Computes core epitopes, by grouping overlapping peptides, together, building a landscape for each group and identifying plateaus with a defined minimal length in each landscape. 
 """
-
 import numpy as np
-import re
 import pandas as pd
-import multiprocessing
 from multiprocessing import get_context, cpu_count
 
-def included_lookback(current_group, group_start, group_end, row):
-            
-    # check if peptide is included in previous peptide groups
+def included_lookback(current_group: dict[str,list], group_start: list[int], group_end: list[int], row: pd.Series) -> tuple[pd.Series, list[bool]]:
+    '''Adds peptides to groups in which they are completely included.
+
+    Args:
+        current_group: Dictionary containing information about the peptide group.
+        group_start: The start positions of the previous peptide groups.
+        group_end: The end positions of the previous peptide groups.
+        row: The protein and it's peptides that are currently processed.
+
+    Returns:
+        A tuple containing the input rows, where peptides are added to the 
+        peptides groups they are included in, and a boolean array indicating if
+        the current peptide is completly included in previous groups.
+    '''
     included_previous = False
+    # iterate over all previous groups which can include the current peptide
     for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
         if min_start + 17 < int(current_group['starts'][-1]):
-            # stop at peptide groups with N-terminal distance > 17 aas
+            # stop lookback at peptide groups with N-terminal distance > 17 aas
             continue
         else:
+
             if int(current_group['ends'][-1]) <= max_end:
                 # add peptide to previous group
                 row['grouped_peptides_start'][-(pos_index+1)] = row['grouped_peptides_start'][-(pos_index+1)] + [int(current_group['starts'][-1])]
@@ -26,18 +36,47 @@ def included_lookback(current_group, group_start, group_end, row):
                 row['grouped_peptides_condition'][-(pos_index+1)] = row['grouped_peptides_condition'][-(pos_index+1)] + [current_group['conditions'][-1]]
                 row['peptide_indices'][-(pos_index+1)] = row['peptide_indices'][-(pos_index+1)] + [current_group['indices'][-1]]
                 included_previous = True
+
     current_group['included_previous'].append(included_previous)
     return row, current_group
-    
 
-def parallelized_apply_pandas(chunk_function, protein_df,function_args=[]):
+
+def function_apply(df: pd.DataFrame, function: callable, function_args=[]) -> pd.DataFrame:
+    '''Applies a function to a dataframe.
+
+    Args:
+        df: A dataframe.
+        function: A function which should be applied to a dataframe.
+        function_args: List of all parameters required by the function.
+
+    Returns:
+        The input dataframe to which function was applied to.
+    '''
+    df = df.apply(lambda row: function(row, *function_args), axis=1)
+    return df
+
+
+def parallelized_apply(chunk_function: callable, df: pd.DataFrame, function_args=[]) -> pd.DataFrame:
+    '''Apply a function to a dataframe using multiprocessing.
+
+    Args:
+        chunk_function: The function that should be applyed to the chunks.
+        df: The dataframe which is splitted into chunks.
+        function_args: A list containing all arguments of chunk_function.
+
+    Returns:
+        The input dataframe to which the chunk_function was applied.
+    '''
+    # calculate number of maximal processes
     n_parallel = max(1, cpu_count()-5)
-    blocksize = max(len(protein_df) // n_parallel,1)
-    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
-        chunk_dfs = pool.starmap(chunk_function,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],*function_args,) for chunk in range(min(n_parallel,blocksize))])
-    protein_df = pd.concat(chunk_dfs)
-    return protein_df
+    # size of the chunk_dfs
+    blocksize = max(len(df) // n_parallel,1)
 
+    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
+        chunk_dfs = pool.starmap(function_apply,[(df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(df)],chunk_function,function_args,) for chunk in range(min(n_parallel,blocksize))])
+    df = pd.concat(chunk_dfs)
+
+    return df
 
 
 def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool, included: bool) -> pd.DataFrame:
@@ -91,7 +130,7 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
     group_start = []
     group_end = []
 
-    # Iterate over all peptide mapped to a protein
+    # Iterate over all peptides mapped to a protein
     for i in range(len(start_pos)-1):
 
         # add peptide to current group
@@ -147,7 +186,8 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
                 if intensity_column:
                     core_intensity = 0
 
-    # add peptide to current group
+
+    # add last peptide to current group
     current_group['starts'].append(int(start_pos[-1]))
     current_group['ends'].append(int(end_pos[-1]))
     current_group['sequences'].append(sequences[-1])
@@ -156,8 +196,10 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
     current_group['max_end']= max(current_group['max_end'], int(end_pos[-1]))
     current_group['indices'].append(peptide_indices[-1])
 
+
     # special case for last peptide match of protein
     if len(current_group['ends']) == 0:
+
         if included:
             # check if peptide is included in previous peptide groups
             row, current_group = included_lookback(current_group, group_start, group_end, row)
@@ -206,12 +248,27 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
 
     return row
 
-def group_peptides_chunk(chunk_df, min_overlap, max_step_size, intensity_column, total_intens, strict, included):
-    chunk_df = chunk_df.apply(lambda row: group_peptides_protein(row, min_overlap, max_step_size, intensity_column, total_intens, strict, included), axis=1)
-    return chunk_df
 
 
 def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool, included: bool) -> pd.DataFrame:
+    '''Group the peptides based on their overlap.
+
+    Args:
+        protein_df: A dataframe containing one protein per row.
+        min_overlap: The minimal overlap required between two peptides for them 
+            to be grouped together.
+        max_step_size: The distance between two peptides up to which the overlap 
+            between the peptide is not considered for the peptide groupiing. 
+        intensity_column: Header of the column containing intensity information.
+        total_intens: The total intensity of all peptides in a file.
+        strict: Boolean that indicates if the strict mode should be run.
+        included: Boolean that indicates if all peptides completly included in 
+            the protein region of a peptide group should be added to the group.
+    
+    Returns:
+        A dataframe where each row contains the peptide groups of a protein.
+    '''
+    
     # start, end, sequence and intensity of peptides of one group grouped together
     protein_df['grouped_peptides_start'] = [[] for _ in range(len(protein_df))]
     protein_df['grouped_peptides_end'] = [[] for _ in range(len(protein_df))]
@@ -227,8 +284,9 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
     protein_df['peptide_indices'] = [[] for _ in range(len(protein_df))]
 
-    protein_df = parallelized_apply_pandas(group_peptides_chunk, protein_df,function_args=[min_overlap, max_step_size, intensity_column, total_intens, strict,included])
 
+    protein_df = parallelized_apply(group_peptides_protein,protein_df,function_args=[min_overlap, max_step_size, intensity_column, total_intens, strict,included])
+    
     return protein_df
 
 
@@ -243,21 +301,9 @@ def pep_landscape(row: pd.Series) -> np.array:
     Returns:
         A list containing the landscape of a protein in a given peptide group.
     """
-    zeros = np.zeros([row['end_max']-row['start_min']+1])
-    zeros[row['grouped_peptides_start']-row['start_min']:(row['grouped_peptides_end']-row['start_min']+1)] = 1
-    return zeros
-
-def landscape_chunk(chunk_df):
-    """Generate landscapes of the peptides in chunk_df.
-
-    Args:
-        chunk_df: A subset of the protein DataFrame.
-
-    Returns:
-        The input DataFrame with the additional column pep_landscape.
-    """
-    chunk_df['pep_landscape'] = chunk_df.apply(lambda row: pep_landscape(row), axis=1)
-    return chunk_df
+    row['pep_landscape'] = np.zeros([row['end_max']-row['start_min']+1])
+    row['pep_landscape'][row['grouped_peptides_start']-row['start_min']:(row['grouped_peptides_end']-row['start_min']+1)] = 1
+    return row
 
 def comp_landscape(protein_df: pd.DataFrame, proteome_dict: dict[str,str]) -> pd.DataFrame:
     """Compute the landscape of all consensus epitope groups.
@@ -275,6 +321,7 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict: dict[str,str]) -> pd
         epitope group.
     """
     # get entire sequence of each group
+    print(protein_df['grouped_peptides_start'])
     protein_df['start_min'] = [min(x) for x in protein_df['grouped_peptides_start']]
     protein_df['end_max'] = [max(x) for x in protein_df['grouped_peptides_end']]
     protein_df['whole_epitopes'] = protein_df['accession'].map(proteome_dict)    
@@ -283,7 +330,7 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict: dict[str,str]) -> pd
 
     protein_df['group'] = range(len(protein_df))
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_condition', 'grouped_peptides_sequence'])
-    protein_df = parallelized_apply_pandas(landscape_chunk, protein_df)
+    protein_df = parallelized_apply(pep_landscape, protein_df)
 
     cols = protein_df.columns.values
     aggr = {'whole_epitopes_all':lambda x: list(x), 'landscape': 'first', 'grouped_peptides_start': lambda x: list(x), 'grouped_peptides_end': lambda x: list(x), 'grouped_peptides_sample': lambda x: list(x), 'grouped_peptides_condition': lambda x: list(x), 'grouped_peptides_sequence': lambda x: list(x)}
@@ -490,11 +537,19 @@ def get_consensus_epitopes(row: list, min_epi_len: int) -> pd.DataFrame:
     row['proteome_occurrence'] = [row['accession']+':'+str(row['consensus_epitopes_all'][i])+':'+str(row['core_epitopes_start_all'][i])+'-'+str(row['core_epitopes_end_all'][i]) for i in range(len(row['core_epitopes_start_all']))]
     return row
 
-def get_consensus_epitopes_chunk(chunk_df, min_epi_len):
-    chunk_df = chunk_df.apply(lambda row: get_consensus_epitopes(row, min_epi_len), axis=1)
-    return chunk_df
 
 def get_consensus_epitopes_protein(protein_df: pd.DataFrame, min_epi_length: int) -> pd.DataFrame:
+    '''Determine the consensus epitopes of all peptide groups.
+
+    Args:
+        protein_df: A dataframe containing one protein per row:
+        min_epi_length: The minimal length od the consensus epitopes to be 
+            identified.
+    
+    Returns: 
+        The input dataframe containing the identified consensus epitopes in 
+        addition to the input data.
+    '''
     
     # start, end, sequence and intensity of peptides of one group grouped together
     protein_df['consensus_epitopes'] = [[] for _ in range(len(protein_df))]
@@ -505,7 +560,7 @@ def get_consensus_epitopes_protein(protein_df: pd.DataFrame, min_epi_length: int
     protein_df['core_epitopes_end_all'] = [[] for _ in range(len(protein_df))]
 
     # compute the landscape for each peptide in the group
-    protein_df = parallelized_apply_pandas(get_consensus_epitopes_chunk, protein_df,function_args=[min_epi_length])
+    protein_df = parallelized_apply(get_consensus_epitopes, protein_df, function_args=[min_epi_length])
 
     return protein_df
 
@@ -567,11 +622,11 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
         protein_df[['start', 'end', 'sequence', 'intensity', 'peptide_index', 'sample', 'condition']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
     else:
         protein_df[['start', 'end', 'sequence', 'peptide_index', 'sample', 'condition']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
-    # group peptides
+    
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens, strict, included)
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence', 'grouped_peptides_condition'])
     protein_df = comp_landscape(protein_df, proteome_dict)
-    if not strict:
+    if (not strict) and (not included):
         protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','condition','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample', 'grouped_peptides_condition','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all', 'start_min']]
         protein_df = group_refinement(protein_df, proteome_dict)
     protein_df = protein_df[['accession','sequence','start','end','peptide_index','sample','condition','grouped_peptides_start','grouped_peptides_end','grouped_peptides_sequence','grouped_peptides_sample', 'grouped_peptides_condition','sequence_group_mapping','landscape','whole_epitopes','whole_epitopes_all']]
