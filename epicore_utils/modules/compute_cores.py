@@ -5,7 +5,39 @@ Computes core epitopes, by grouping overlapping peptides, together, building a l
 import numpy as np
 import re
 import pandas as pd
+import multiprocessing
 from multiprocessing import get_context, cpu_count
+
+def included_lookback(current_group, group_start, group_end, row):
+            
+    # check if peptide is included in previous peptide groups
+    included_previous = False
+    for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
+        if min_start + 17 < int(current_group['starts'][-1]):
+            # stop at peptide groups with N-terminal distance > 17 aas
+            continue
+        else:
+            if int(current_group['ends'][-1]) <= max_end:
+                # add peptide to previous group
+                row['grouped_peptides_start'][-(pos_index+1)] = row['grouped_peptides_start'][-(pos_index+1)] + [int(current_group['starts'][-1])]
+                row['grouped_peptides_end'][-(pos_index+1)] = row['grouped_peptides_end'][-(pos_index+1)] + [int(current_group['ends'][-1])]
+                row['grouped_peptides_sequence'][-(pos_index+1)] = row['grouped_peptides_sequence'][-(pos_index+1)] + [current_group['sequences'][-1]]
+                row['grouped_peptides_sample'][-(pos_index+1)] = row['grouped_peptides_sample'][-(pos_index+1)] + [current_group['samples'][-1]]
+                row['grouped_peptides_condition'][-(pos_index+1)] = row['grouped_peptides_condition'][-(pos_index+1)] + [current_group['conditions'][-1]]
+                row['peptide_indices'][-(pos_index+1)] = row['peptide_indices'][-(pos_index+1)] + [current_group['indices'][-1]]
+                included_previous = True
+    current_group['included_previous'].append(included_previous)
+    return row, current_group
+    
+
+def parallelized_apply_pandas(chunk_function, protein_df,function_args=[]):
+    n_parallel = max(1, cpu_count()-5)
+    blocksize = max(len(protein_df) // n_parallel,1)
+    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
+        chunk_dfs = pool.starmap(chunk_function,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],*function_args,) for chunk in range(min(n_parallel,blocksize))])
+    protein_df = pd.concat(chunk_dfs)
+    return protein_df
+
 
 
 def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool, included: bool) -> pd.DataFrame:
@@ -49,15 +81,8 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
     peptide_indices = row['peptide_index']
 
     # Stores current peptide group
-    grouped_peptides_start = []
-    grouped_peptides_end = []
-    grouped_peptides_sequence = []
-    grouped_peptides_sample = []
-    grouped_peptides_condition = []
-    grouped_peptides_index = []
-    grouped_peptides_previous = []
-    grouped_peptides_max_end = 0
-    grouped_peptides_index = []
+    current_group = {'starts':[], 'ends':[], 'sequences':[],'samples':[],'conditions':[],'indices':[],'included_previous':[],'max_end':0}
+
     if intensity_column:
         grouped_peptides_intensity = []
         core_intensity = 0
@@ -69,37 +94,17 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
     # Iterate over all peptide mapped to a protein
     for i in range(len(start_pos)-1):
 
+        # add peptide to current group
+        current_group['starts'].append(int(start_pos[i]))
+        current_group['ends'].append(int(end_pos[i]))
+        current_group['sequences'].append(sequences[i])
+        current_group['samples'].append(samples[i])
+        current_group['conditions'].append(conditions[i])
+        current_group['max_end']= max(current_group['max_end'], int(end_pos[i]))
+        current_group['indices'].append(peptide_indices[i])
         if included:
             # check if peptide is included in previous peptide groups
-            included_previous = False
-            for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
-                if min_start + 17 < int(start_pos[i]):
-                    # stop at peptide groups with N-terminal distance > 17 aas
-                    continue
-                else:
-                    if int(end_pos[i]) <= max_end:
-                        # add peptide to previous group
-                        row['grouped_peptides_start'][-(pos_index+1)] = row['grouped_peptides_start'][-(pos_index+1)] + [int(start_pos[i])]
-                        row['grouped_peptides_end'][-(pos_index+1)] = row['grouped_peptides_end'][-(pos_index+1)] + [int(end_pos[i])]
-                        row['grouped_peptides_sequence'][-(pos_index+1)] = row['grouped_peptides_sequence'][-(pos_index+1)] + [sequences[i]]
-                        row['grouped_peptides_sample'][-(pos_index+1)] = row['grouped_peptides_sample'][-(pos_index+1)] + [samples[i]]
-                        row['grouped_peptides_condition'][-(pos_index+1)] = row['grouped_peptides_condition'][-(pos_index+1)] + [conditions[i]]
-                        row['peptide_indices'][-(pos_index+1)] = row['peptide_indices'][-(pos_index+1)] + [peptide_indices[i]]
-                        included_previous = True
-            grouped_peptides_previous.append(included_previous)
-
-
-
-        # add peptide to cuurent group
-        grouped_peptides_start.append(int(start_pos[i]))
-        grouped_peptides_end.append(int(end_pos[i]))
-        grouped_peptides_sequence.append(sequences[i])
-        grouped_peptides_sample.append(samples[i])
-        grouped_peptides_condition.append(conditions[i])
-        grouped_peptides_max_end = max(grouped_peptides_max_end, int(end_pos[i]))
-        grouped_peptides_index.append(peptide_indices[i])
-        if intensity_column:
-            grouped_peptides_intensity.append(intensity[i])
+            row, current_group = included_lookback(current_group, group_start, group_end, row)
 
 
 
@@ -109,11 +114,11 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
         if intensity_column:
             core_intensity += float(intensity[i])
         overlap = int(end_pos[i]) - int(start_pos[i+1]) +1
-        group_overlap = min(grouped_peptides_end) - int(start_pos[i+1]) +1
+        group_overlap = min(current_group['ends']) - int(start_pos[i+1]) +1
         if strict:
             condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap))
         elif included:
-            condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) and (grouped_peptides_max_end<int(end_pos[i+1]))
+            condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) and (current_group['max_end']<int(end_pos[i+1]))
         else:
             condition_group = ((step_size >= max_step_size) and (overlap < min_overlap))
 
@@ -121,59 +126,43 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
 
         # start new peptide group if condition are met
         if step_size != 0:
-            if (condition_group and not included) or (condition_group and included and (not all(grouped_peptides_previous))):
+            if (condition_group and not included) or (condition_group and included and (not all(current_group['included_previous']))):
                 # add group if it is not included in previous group or if included flag is not set
-                row['grouped_peptides_start'].append(grouped_peptides_start)
-                row['grouped_peptides_end'].append(grouped_peptides_end)
-                row['grouped_peptides_sequence'].append(grouped_peptides_sequence)
-                row['grouped_peptides_sample'].append(grouped_peptides_sample)
-                row['grouped_peptides_condition'].append(grouped_peptides_condition)
-                row['peptide_indices'].append(grouped_peptides_index)
+                row['grouped_peptides_start'].append(current_group['starts'])
+                row['grouped_peptides_end'].append(current_group['ends'])
+                row['grouped_peptides_sequence'].append(current_group['sequences'])
+                row['grouped_peptides_sample'].append(current_group['samples'])
+                row['grouped_peptides_condition'].append(current_group['conditions'])
+                row['peptide_indices'].append(current_group['indices'])
                 if intensity_column:
                     row['grouped_peptides_intensity'].append(grouped_peptides_intensity)
                     row['core_epitopes_intensity'].append(core_intensity)                   
                 
-                group_start = [grouped_peptides_start[0]] + group_start
-                group_end = [max(grouped_peptides_end)] + group_end
+                group_start = [current_group['starts'][0]] + group_start
+                group_end = [max(current_group['ends'])] + group_end
             if condition_group:
                 # rest current group
                 n_jumps += 1
-                grouped_peptides_end = []
-                grouped_peptides_start = []
-                grouped_peptides_sequence = []
-                grouped_peptides_sample = []
-                grouped_peptides_condition = []
-                grouped_peptides_intensity = []
-                grouped_peptides_index = []
-                grouped_peptides_max_end = 0
-                grouped_peptides_previous = []
+                current_group = {'starts':[], 'ends':[], 'sequences':[],'samples':[],'conditions':[],'indices':[],'included_previous':[],'max_end':0}
                 if intensity_column:
                     core_intensity = 0
 
+    # add peptide to current group
+    current_group['starts'].append(int(start_pos[-1]))
+    current_group['ends'].append(int(end_pos[-1]))
+    current_group['sequences'].append(sequences[-1])
+    current_group['samples'].append(samples[-1])
+    current_group['conditions'].append(conditions[-1])
+    current_group['max_end']= max(current_group['max_end'], int(end_pos[-1]))
+    current_group['indices'].append(peptide_indices[-1])
 
     # special case for last peptide match of protein
-    if len(grouped_peptides_end) == 0:
-
+    if len(current_group['ends']) == 0:
         if included:
             # check if peptide is included in previous peptide groups
-            included_previous = False
-            for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
-                if min_start + 17 < int(start_pos[i]):
-                    # stop at peptide groups with N-terminal distance > 17 aas
-                    continue
-                else:
-                    if int(end_pos[i]) <= max_end:
-                        # add peptide to previous group
-                        row['grouped_peptides_start'][-(pos_index+1)] = row['grouped_peptides_start'][-(pos_index+1)] + [int(start_pos[i])]
-                        row['grouped_peptides_end'][-(pos_index+1)] = row['grouped_peptides_end'][-(pos_index+1)] + [int(end_pos[i])]
-                        row['grouped_peptides_sequence'][-(pos_index+1)] = row['grouped_peptides_sequence'][-(pos_index+1)] + [sequences[i]]
-                        row['grouped_peptides_sample'][-(pos_index+1)] = row['grouped_peptides_sample'][-(pos_index+1)] + [samples[i]]
-                        row['grouped_peptides_condition'][-(pos_index+1)] = row['grouped_peptides_condition'][-(pos_index+1)] + [conditions[i]]
-                        row['peptide_indices'][-(pos_index+1)] = row['peptide_indices'][-(pos_index+1)] + [peptide_indices[i]]
-                        included_previous = True
-            grouped_peptides_previous.append(included_previous)
-
-        if (not included) or (included and not included_previous):
+            row, current_group = included_lookback(current_group, group_start, group_end, row)
+            
+        if (not included) or (included and (not all(current_group['included_previous']))):
             # add group if it is not included in previous group or if included flag is not set
             row['grouped_peptides_start'].append([int(start_pos[-1])])
             row['grouped_peptides_end'].append([int(end_pos[-1])])
@@ -190,45 +179,22 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
 
         if included:
             # check if peptide is included in previous peptide groups
-            included_previous = False
-            for pos_index, (min_start, max_end) in enumerate(zip(group_start, group_end)):
-                if min_start + 17 < int(start_pos[i]):
-                    # stop at peptide groups with N-terminal distance > 17 aas
-                    continue
-                else:
-                    if int(end_pos[i]) <= max_end:
-                        row['grouped_peptides_start'][-(pos_index+1)] = row['grouped_peptides_start'][-(pos_index+1)] + [int(start_pos[i])]
-                        row['grouped_peptides_end'][-(pos_index+1)] = row['grouped_peptides_end'][-(pos_index+1)] + [int(end_pos[i])]
-                        row['grouped_peptides_sequence'][-(pos_index+1)] = row['grouped_peptides_sequence'][-(pos_index+1)] + [sequences[i]]
-                        row['grouped_peptides_sample'][-(pos_index+1)] = row['grouped_peptides_sample'][-(pos_index+1)] + [samples[i]]
-                        row['grouped_peptides_condition'][-(pos_index+1)] = row['grouped_peptides_condition'][-(pos_index+1)] + [conditions[i]]
-                        row['peptide_indices'][-(pos_index+1)] = row['peptide_indices'][-(pos_index+1)] + [peptide_indices[i]]
-                        included_previous = True
-                        # add peptide to previous group
-            grouped_peptides_previous.append(included_previous)
+            row, current_group = included_lookback(current_group, group_start, group_end, row)
         
-        # add peptide to cuurent group
-        grouped_peptides_start.append(int(start_pos[-1]))
-        grouped_peptides_end.append(int(end_pos[-1]))
-        grouped_peptides_sequence.append(sequences[-1])
-        grouped_peptides_sample.append(samples[-1])
-        grouped_peptides_condition.append(conditions[-1])
-        grouped_peptides_index.append(peptide_indices[-1])
-    
         if intensity_column:
             grouped_peptides_intensity.append(intensity[-1])
             core_intensity += float(intensity[-1])
             row['grouped_peptides_intensity'].append(grouped_peptides_intensity)
             row['core_epitopes_intensity'].append(core_intensity)
             
-        if (not included) or (included and not all(grouped_peptides_previous)):
+        if (not included) or (included and (not all(current_group['included_previous']))):
             # add group if it is not included in previous group or if included flag is not set
-            row['grouped_peptides_start'].append(grouped_peptides_start)
-            row['grouped_peptides_end'].append(grouped_peptides_end)
-            row['grouped_peptides_sequence'].append(grouped_peptides_sequence)
-            row['grouped_peptides_sample'].append(grouped_peptides_sample)
-            row['grouped_peptides_condition'].append(grouped_peptides_condition)
-            row['peptide_indices'].append(grouped_peptides_index)
+            row['grouped_peptides_start'].append(current_group['starts'])
+            row['grouped_peptides_end'].append(current_group['ends'])
+            row['grouped_peptides_sequence'].append(current_group['sequences'])
+            row['grouped_peptides_sample'].append(current_group['samples'])
+            row['grouped_peptides_condition'].append(current_group['conditions'])
+            row['peptide_indices'].append(current_group['indices'])
             mapping.append(n_jumps)
 
     row['sequence_group_mapping'] = mapping
@@ -261,12 +227,8 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     protein_df['sequence_group_mapping'] = [[] for _ in range(len(protein_df))]
     protein_df['peptide_indices'] = [[] for _ in range(len(protein_df))]
 
-    n_parallel = max(1, cpu_count()-5)
-    # compute the landscape for each peptide in the group
-    blocksize = max(len(protein_df) // n_parallel,1)
-    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
-        chunk_dfs = pool.starmap(group_peptides_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],min_overlap, max_step_size, intensity_column, total_intens, strict,included,) for chunk in range(min(n_parallel,blocksize))])
-    protein_df = pd.concat(chunk_dfs)
+    protein_df = parallelized_apply_pandas(group_peptides_chunk, protein_df,function_args=[min_overlap, max_step_size, intensity_column, total_intens, strict,included])
+
     return protein_df
 
 
@@ -321,13 +283,7 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict: dict[str,str]) -> pd
 
     protein_df['group'] = range(len(protein_df))
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_condition', 'grouped_peptides_sequence'])
-
-    n_parallel = max(1, cpu_count()-5)
-    # compute the landscape for each peptide in the group
-    blocksize = max(len(protein_df) // n_parallel,1)
-    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
-        chunk_dfs = pool.starmap(landscape_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],) for chunk in range(min(n_parallel,blocksize))])
-    protein_df = pd.concat(chunk_dfs)
+    protein_df = parallelized_apply_pandas(landscape_chunk, protein_df)
 
     cols = protein_df.columns.values
     aggr = {'whole_epitopes_all':lambda x: list(x), 'landscape': 'first', 'grouped_peptides_start': lambda x: list(x), 'grouped_peptides_end': lambda x: list(x), 'grouped_peptides_sample': lambda x: list(x), 'grouped_peptides_condition': lambda x: list(x), 'grouped_peptides_sequence': lambda x: list(x)}
@@ -547,16 +503,10 @@ def get_consensus_epitopes_protein(protein_df: pd.DataFrame, min_epi_length: int
     protein_df['core_epitopes_end'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_start_all'] = [[] for _ in range(len(protein_df))]
     protein_df['core_epitopes_end_all'] = [[] for _ in range(len(protein_df))]
-    
-    n_parallel = max(1, cpu_count()-5)
+
     # compute the landscape for each peptide in the group
-    blocksize = max(len(protein_df) // n_parallel,1)
-    with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
-        chunk_dfs = pool.starmap(get_consensus_epitopes_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],min_epi_length,) for chunk in range(min(n_parallel,blocksize))])
-    protein_df = pd.concat(chunk_dfs)
+    protein_df = parallelized_apply_pandas(get_consensus_epitopes_chunk, protein_df,function_args=[min_epi_length])
 
-
-    #protein_df = protein_df.apply(lambda row: get_consensus_epitopes(row, min_epi_length), axis=1)
     return protein_df
 
 
