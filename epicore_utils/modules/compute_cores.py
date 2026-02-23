@@ -331,7 +331,6 @@ def comp_landscape(protein_df: pd.DataFrame, proteome_dict: dict[str,str]) -> pd
         epitope group.
     """
     # get entire sequence of each group
-    print(protein_df['grouped_peptides_start'])
     protein_df['start_min'] = [min(x) for x in protein_df['grouped_peptides_start']]
     protein_df['end_max'] = [max(x) for x in protein_df['grouped_peptides_end']]
     protein_df['whole_epitopes'] = protein_df['accession'].map(proteome_dict)    
@@ -593,7 +592,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         lists = sorted(lists, key=lambda x: x[2], reverse=True)
         sorted_lists = sorted(lists, key=lambda x: int(x[0]))
         starts, ends, sequences, intensities, indices, samples, conditions = zip(*sorted_lists)
-        return list(starts), list(ends), list(sequences), list(intensities), list(indices), list(samples), list(conditions)
+        row[['start','end','sequence','intensity','peptide_index','sample','condition']] = list(starts), list(ends), list(sequences), list(intensities), list(indices), list(samples), list(conditions)
     else:
         lists = list(zip(row['start'], row['end'], row['sequence'], row['peptide_index'], row['sample'], row['condition']))
         lists = sorted(lists, key=lambda x: x[4], reverse=True)
@@ -601,7 +600,9 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         lists = sorted(lists, key=lambda x: int(x[1]), reverse=True)
         sorted_lists = sorted(lists, key=lambda x: int(x[0]))
         starts, ends, sequences, indices, samples, conditions = zip(*sorted_lists)
-        return list(starts), list(ends), list(sequences), list(indices), list(samples), list(conditions)
+        row[['start','end','sequence','peptide_index','sample','condition']] = list(starts), list(ends), list(sequences), list(indices), list(samples), list(conditions)
+    return row
+        
 
 
 def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str, proteome_dict: dict[str,str], total_intens: float, strict: bool, included: bool) -> pd.DataFrame:
@@ -628,11 +629,7 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
     Returns:
         The protein_df containing for each protein the core and whole sequence of each of its consensus epitope groups.
     """
-    if intensity_column:
-        protein_df[['start', 'end', 'sequence', 'intensity', 'peptide_index', 'sample', 'condition']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
-    else:
-        protein_df[['start', 'end', 'sequence', 'peptide_index', 'sample', 'condition']] = protein_df.apply(lambda row: pd.Series(reorder_peptides(row, intensity_column)), axis=1)
-    
+    protein_df = parallelized_apply(reorder_peptides, protein_df, function_args=[intensity_column])
     protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens, strict, included)
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence', 'grouped_peptides_condition'])
     protein_df = comp_landscape(protein_df, proteome_dict)

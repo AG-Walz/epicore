@@ -207,7 +207,7 @@ def get_pos(accessions_s: list[str], peptides: str, fasta_dict: dict) -> list[li
     return positions
 
 
-def add_positions(fasta_dict: dict, peptides_df: pl.DataFrame) -> pl.DataFrame:
+def add_positions(peptides_df: pl.DataFrame, fasta_dict: dict) -> pl.DataFrame:
     '''Adds positions of peptides in the proteins.
 
     Args:
@@ -318,26 +318,54 @@ def group_repetitive(start: list[int], end: list[int], pep: str, acc: str, idx: 
 
     return f'{updated_start}|{updated_end}|{updated_idx}|{updated_peps}|{updated_samples}|{updated_conditions}'
 
+
+
+def parallelized_apply_polars(chunk_function: callable, df: pd.DataFrame, function_args=[]) -> pd.DataFrame:
+    '''Apply a function to a dataframe using multiprocessing.
+
+    Args:
+        chunk_function: The function that should be applyed to the chunks.
+        df: The dataframe which is splitted into chunks.
+        function_args: A list containing all arguments of chunk_function.
+
+    Returns:
+        The input dataframe to which the chunk_function was applied.
+
+    Raises:
+        Exception: If data is lost during multiprocessing.
+    '''
+    n_proteins = len(df)
+
+    # calculate number of maximal processes
+    n_parallel = max(1, cpu_count()-5)
+    # size of the chunk_dfs
+    block_size = max(len(df) // n_parallel,1)
+
+    with get_context('spawn').Pool(min(n_parallel, block_size)) as pool:
+        chunk_dfs = pool.starmap(chunk_function,[(df[chunk*block_size:(chunk+1)*block_size if chunk < min(n_parallel,block_size) -1 else len(df)], *function_args,) for chunk in range(min(n_parallel,block_size))])
+    df = pl.concat(chunk_dfs)
+
+    if n_proteins != len(df):
+        raise Exception('Something went wrong in the multiprocessing. Some rows got \
+                        lost. ')
+
+    return df
+
+
             
-def group_repetitive_chunk(chunk_df: pl.DataFrame, start, end):
+def group_repetitive_chunk(chunk_df: pl.DataFrame):
     ''' Group repetitive peptides.
 
     chunk_df: A polars DataFrame containing one protein per row.
+    start: The row, at which the polars DataFrame gets sliced.
+    end: The row, at which the polars DataFrame gets sliced.
 
     Returns:
         A slice of the input DataFrame with grouped repetitive peptides.
     '''
-    return chunk_df[start:end].with_columns(pl.struct('start', 'end', 'sequence', 'accessions', 'peptide_index', 'sample', 'condition').map_elements(lambda x: group_repetitive(x['start'], x['end'], x['sequence'], x['accessions'], x['peptide_index'], x['sample'], x['condition']), return_dtype=pl.String).str.split('|').alias('repetitive'))
+    return chunk_df.with_columns(pl.struct('start', 'end', 'sequence', 'accessions', 'peptide_index', 'sample', 'condition').map_elements(lambda x: group_repetitive(x['start'], x['end'], x['sequence'], x['accessions'], x['peptide_index'], x['sample'], x['condition']), return_dtype=pl.String).str.split('|').alias('repetitive'))
 
-def parallelized_apply(chunk_function, proteins_df,args=None):
-    n_parallel = max(1, cpu_count()-5)
-    blocksize = max(len(proteins_df) // n_parallel,1)
-    with get_context('spawn').Pool(n_parallel) as pool:
 
-        #chunk_dfs = pool.starmap(get_consensus_epitopes_chunk,[(protein_df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(protein_df)],min_epi_length,) for chunk in range(min(n_parallel,blocksize))])
-        chunk_dfs = pool.starmap(chunk_function,[(proteins_df,chunk*blocksize,(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(proteins_df)) for chunk in range(min(n_parallel,blocksize))])
-    proteins_df = pl.concat(chunk_dfs)
-    return proteins_df
 
 def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: str, intensity_column: str, start_column: str, end_column: str, delimiter: str, sample_column: str, condition_column: str) -> pl.DataFrame:
     """Converts a dataframe from one peptide per row to one protein per row.
@@ -378,20 +406,17 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
     else:
         proteins_df = peptides_df.explode(protacc_column, start_column, end_column)
         proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.Int64))
+        
         proteins_df = proteins_df.group_by(protacc_column).agg(pl.col(seq_column), pl.col(start_column), pl.col(end_column), pl.col('peptide_index'), pl.col(sample_column), pl.col(condition_column))
         proteins_df = proteins_df.explode(start_column, end_column, seq_column, 'peptide_index', sample_column, condition_column).group_by(seq_column, protacc_column, sample_column, condition_column).agg(pl.col(start_column), pl.col(end_column), pl.col('peptide_index'))
+        
         proteins_df = proteins_df.with_columns(pl.col(end_column).cast(pl.List(pl.Int64)))
         proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.List(pl.Int64)))
         proteins_df = proteins_df.with_columns(pl.col('peptide_index').cast(pl.List(pl.List(pl.Int64))))
         proteins_df = proteins_df.with_columns(pl.col('sample').cast(pl.List(pl.String)))
         proteins_df = proteins_df.with_columns(pl.col('condition').cast(pl.List(pl.String)))
 
-        n_parallel = max(1, cpu_count()-5)
-        block_size = max(len(proteins_df) // n_parallel,1)
-        with get_context('spawn').Pool(n_parallel) as pool:
-            chunk_dfs = pool.starmap(group_repetitive_chunk,[(proteins_df,chunk*block_size,(chunk+1)*block_size if chunk < (n_parallel-1) else len(proteins_df)) for chunk in range(n_parallel)])
-        proteins_df = pl.concat(chunk_dfs)
-        #proteins_df = parallelized_apply(group_repetitive_chunk, proteins_df)
+        proteins_df = parallelized_apply_polars(group_repetitive_chunk, proteins_df, function_args=[])
 
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
@@ -405,8 +430,10 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         proteins_df = proteins_df.with_columns((pl.col('sequence').str.split(delimiter)).alias('sequence'))
         proteins_df = proteins_df.with_columns((pl.col('sample').str.split(delimiter)).alias('sample'))
         proteins_df = proteins_df.with_columns((pl.col('condition').str.split(delimiter)).alias('condition'))
+
         proteins_df = proteins_df.explode('start', 'end', 'peptide_index','sequence', 'sample', 'condition')
         proteins_df = proteins_df.group_by(protacc_column).agg(pl.col(seq_column), pl.col('start'), pl.col('end'), pl.col('peptide_index'), pl.col('sample'), pl.col('condition'))
+        
         proteins_df = proteins_df.rename({protacc_column:'accession'})
 
     return proteins_df
@@ -462,7 +489,7 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
 
     # compute start and end positions of the peptides
     if not start_column and not end_column:
-        peptides_df = add_positions(proteome_dict, peptides_df)
+        peptides_df = parallelized_apply_polars(add_positions, peptides_df, function_args=[proteome_dict])
 
     logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file: {n_removed_proteins}.')
     protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, sample_column, condition_column)
