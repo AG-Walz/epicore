@@ -66,7 +66,12 @@ def parallelized_apply(chunk_function: callable, df: pd.DataFrame, function_args
 
     Returns:
         The input dataframe to which the chunk_function was applied.
+
+    Raises:
+        Exception: If data is lost during multiprocessing.
     '''
+    n_proteins = len(df)
+
     # calculate number of maximal processes
     n_parallel = max(1, cpu_count()-5)
     # size of the chunk_dfs
@@ -75,6 +80,10 @@ def parallelized_apply(chunk_function: callable, df: pd.DataFrame, function_args
     with get_context('spawn').Pool(min(n_parallel,blocksize)) as pool:
         chunk_dfs = pool.starmap(function_apply,[(df.iloc[chunk*blocksize:(chunk+1)*blocksize if chunk < min(n_parallel,blocksize) -1 else len(df)],chunk_function,function_args,) for chunk in range(min(n_parallel,blocksize))])
     df = pd.concat(chunk_dfs)
+
+    if n_proteins != len(df):
+        raise Exception('Something went wrong in the multiprocessing. Some rows got \
+                        lost. ')
 
     return df
 
@@ -304,6 +313,7 @@ def pep_landscape(row: pd.Series) -> np.array:
     row['pep_landscape'] = np.zeros([row['end_max']-row['start_min']+1])
     row['pep_landscape'][row['grouped_peptides_start']-row['start_min']:(row['grouped_peptides_end']-row['start_min']+1)] = 1
     return row
+
 
 def comp_landscape(protein_df: pd.DataFrame, proteome_dict: dict[str,str]) -> pd.DataFrame:
     """Compute the landscape of all consensus epitope groups.

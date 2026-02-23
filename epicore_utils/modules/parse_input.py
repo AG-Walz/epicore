@@ -24,6 +24,9 @@ def read_entire_id_output(id_output: str, polars: bool) -> Union[pd.DataFrame, p
 
     Returns:
         The evidence file in a polars or pandas dataframe.
+
+    Raises:
+        Exception: If a file with an unsupported file type is specified as the input 
     '''
     if polars:
         # determine the file type
