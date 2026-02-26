@@ -173,7 +173,7 @@ def proteome_to_dict(proteome: str) -> dict[str,str]:
     return proteome_dict
 
 
-def get_pos(accessions_s: list[str], peptides: str, fasta_dict: dict) -> list[list]:
+def get_pos(accessions: list[str], peptide: str, fasta_dict: dict) -> list[list]:
     '''Compute positions of peptide in sequence.
 
     Args:
@@ -185,26 +185,22 @@ def get_pos(accessions_s: list[str], peptides: str, fasta_dict: dict) -> list[li
         Lists containing the accessions and start and end position of a peptide in the proteome.
     '''
 
-    positions = []
-    for accessions, peptide in zip(accessions_s,peptides):
-        starts = ''
-        ends = ''
-        accessions_str = ''
-        for accession in accessions:
-            if accession != 'unmapped':
-                seq = fasta_dict[accession]
-                groups_pos = re.finditer(f'(?=({peptide}))', seq)
-                for group_pos in groups_pos:
-                    pep_start, pep_end = group_pos.span()
-                    accessions_str += f';{accession}'
-                    starts += f';{pep_start}'
-                    ends += f';{pep_end+len(peptide)-1}'
-            else:
-                accessions_str = f';unmapped'
+    starts = ''
+    ends = ''
+    accessions_str = ''
+    for accession in set(accessions):
+        if accession != 'unmapped':
+            seq = fasta_dict[accession]
+            groups_pos = re.finditer(f'(?=({peptide}))', seq)
+            for group_pos in groups_pos:
+                pep_start, pep_end = group_pos.span()
+                accessions_str += f';{accession}'
+                starts += f';{pep_start}'
+                ends += f';{pep_end+len(peptide)-1}'
+        else:
+            accessions_str = f';unmapped'
 
-        
-        positions.append(f'{accessions_str[1:]}~{starts[1:]}~{ends[1:]}')
-    return positions
+    return f'{accessions_str[1:]}~{starts[1:]}~{ends[1:]}'
 
 
 def add_positions(peptides_df: pl.DataFrame, fasta_dict: dict) -> pl.DataFrame:
@@ -217,15 +213,14 @@ def add_positions(peptides_df: pl.DataFrame, fasta_dict: dict) -> pl.DataFrame:
     Returns:
         The input dataframe with peptide positions.
     '''
-
-    peptides_df = peptides_df.with_columns(pl.struct('accessions','sequence').map_batches(lambda x: pl.Series(get_pos(x.struct.field('accessions'), x.struct.field('sequence'), fasta_dict)),return_dtype=pl.String).str.split('~').alias('positions'))
+    peptides_df = peptides_df.with_columns(pl.struct('accessions','sequence').map_elements(lambda x: get_pos(x['accessions'], x['sequence'], fasta_dict),return_dtype=pl.String).str.split('~').alias('positions'))
     peptides_df = peptides_df.with_columns(pl.col('positions').list.get(0).alias('accessions'))
     peptides_df = peptides_df.with_columns(pl.col('positions').list.get(1).alias('start'))
     peptides_df = peptides_df.with_columns(pl.col('positions').list.get(2).alias('end'))
     peptides_df = peptides_df.with_columns(pl.col('accessions').str.split(';').alias('accessions'))
     peptides_df = peptides_df.with_columns(pl.col('start').str.split(';').alias('start'))
     peptides_df = peptides_df.with_columns(pl.col('end').str.split(';').alias('end'))
-
+    peptides_df = peptides_df.drop('positions')
     return peptides_df
 
 
@@ -250,8 +245,6 @@ def group_repetitive(start: list[int], end: list[int], pep: str, acc: str, idx: 
         end positions that are part of repetitive regions the lowest start 
         position and highest end position is kept for each repetitive region. 
     """
-    #lodo have to be sorted
-
 
     current = -1
     updated_start = []
@@ -261,9 +254,10 @@ def group_repetitive(start: list[int], end: list[int], pep: str, acc: str, idx: 
     updated_peps = []
     updated_samples = []
 
-    #lists = list(zip(start, end, idx))
-    #lists = sorted(lists, key=lambda x: int(x[0]))
-    #start, end, idx = zip(*lists)
+    lists = list(zip(start, end, idx))
+    lists = sorted(lists, key=lambda x: int(x[0]))
+    start, end, idx = zip(*lists)
+
     group_ends = []
     # add the first occurrences start positions to the start positions
     for i in idx[0]:
@@ -351,19 +345,19 @@ def parallelized_apply_polars(chunk_function: callable, df: pd.DataFrame, functi
 
     return df
 
-
             
-def group_repetitive_chunk(chunk_df: pl.DataFrame):
+def group_repetitive_chunk(chunk_df: pl.DataFrame, start, end):
     ''' Group repetitive peptides.
 
-    chunk_df: A polars DataFrame containing one protein per row.
-    start: The row, at which the polars DataFrame gets sliced.
-    end: The row, at which the polars DataFrame gets sliced.
+    Args:
+        chunk_df: A polars DataFrame containing one protein per row.
+        start: The row, at which the polars DataFrame gets sliced.
+        end: The row, at which the polars DataFrame gets sliced.
 
     Returns:
         A slice of the input DataFrame with grouped repetitive peptides.
     '''
-    return chunk_df.with_columns(pl.struct('start', 'end', 'sequence', 'accessions', 'peptide_index', 'sample', 'condition').map_elements(lambda x: group_repetitive(x['start'], x['end'], x['sequence'], x['accessions'], x['peptide_index'], x['sample'], x['condition']), return_dtype=pl.String).str.split('|').alias('repetitive'))
+    return chunk_df[start:end].with_columns(pl.struct('start', 'end', 'sequence', 'accessions', 'peptide_index', 'sample', 'condition').map_elements(lambda x: group_repetitive(x['start'], x['end'], x['sequence'], x['accessions'], x['peptide_index'], x['sample'], x['condition']), return_dtype=pl.String).str.split('|').alias('repetitive'))
 
 
 
@@ -416,7 +410,11 @@ def prot_pep_link(peptides_df: pd.DataFrame, seq_column: str, protacc_column: st
         proteins_df = proteins_df.with_columns(pl.col('sample').cast(pl.List(pl.String)))
         proteins_df = proteins_df.with_columns(pl.col('condition').cast(pl.List(pl.String)))
 
-        proteins_df = parallelized_apply_polars(group_repetitive_chunk, proteins_df, function_args=[])
+        n_parallel = max(1, cpu_count()-5)
+        block_size = max(len(proteins_df) // n_parallel,1)
+        with get_context('spawn').Pool(n_parallel) as pool:
+            chunk_dfs = pool.starmap(group_repetitive_chunk,[(proteins_df,chunk*block_size,(chunk+1)*block_size if chunk < (n_parallel-1) else len(proteins_df)) for chunk in range(n_parallel)])
+        proteins_df = pl.concat(chunk_dfs)
 
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(0).alias('start'))
         proteins_df = proteins_df.with_columns(pl.col('repetitive').list.get(1).alias('end'))
@@ -489,7 +487,7 @@ def parse_input(evidence_file: str, seq_column: str, protacc_column: str, intens
 
     # compute start and end positions of the peptides
     if not start_column and not end_column:
-        peptides_df = parallelized_apply_polars(add_positions, peptides_df, function_args=[proteome_dict])
+        peptides_df = add_positions(peptides_df, proteome_dict)
 
     logger.info(f'Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file: {n_removed_proteins}.')
     protein_df = prot_pep_link(peptides_df, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, sample_column, condition_column)
