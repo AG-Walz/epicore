@@ -1,0 +1,5 @@
+sequence,accessions,charge,score,intensity,sample,start,end,condition
+STTETRUIOVCDHA,sp|D|1,2,0.9,9,A,6,19,W
+TETRUIOVCDHA,sp|D|1,2,3.3,1.5,A,8,19,W
+TTESTTETRUIOVCDHAUIFG,sp|D|1,2,3.3,1.5,A,3,23,W
+TESTTESTTETRUIOVCDHA,sp|D|1,2,3.3,1.5,A,0,19,W

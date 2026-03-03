@@ -58,7 +58,7 @@ class InputParameter(object):
             in the protein region of a peptide group should be added to it.
 
     """
-    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None, sample_column=None, strict=None, condition=None, mapping=None, included=None, qc=None):
+    def __init__(self,reference_proteome=None, min_epi_length=None, min_overlap=None, max_step_size=None, seq_column=None, protacc_column=None, intensity_column=None, delimiter=None, mod_pattern=None, out_dir=None, prot_accession=None, start_column=None, end_column=None, report=None, html=None, sample_column=None, strict=None, condition=None, mapping=None, included=None, qc=None, max_group_len=None):
         self.min_epi_length = min_epi_length
         self.min_overlap = min_overlap
         self.max_step_size = max_step_size
@@ -81,6 +81,7 @@ class InputParameter(object):
         self.mapping = mapping
         self.included = included
         self.qc = qc
+        self.max_group_len = max_group_len
 
 @click.version_option(__version__, "--version", "-V")
 
@@ -104,6 +105,7 @@ def main(ctx, reference_proteome, out_dir):
 @click.option('--prot_accession', type=click.STRING)
 @click.option('--start_column', type=click.STRING)
 @click.option('--end_column', type=click.STRING)
+@click.option('--max_group_len', type=click.INT, default=100)
 @click.option('--report', is_flag=True)
 @click.option('--html', is_flag=True)
 @click.option('--strict', is_flag=True)
@@ -113,8 +115,8 @@ def main(ctx, reference_proteome, out_dir):
 @click.command()
 @click.option('--evidence_file',type=click.Path(exists=True), required=True)
 @click.pass_context
-def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html, sample_column, strict, condition_column, mapping, included, qc):
-    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html, sample_column, strict, condition_column, mapping,included, qc)
+def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, prot_accession, start_column, end_column, report, html, sample_column, strict, condition_column, mapping, included, qc, max_group_len):
+    ctx.obj = InputParameter(ctx.obj.reference_proteome, min_epi_length, min_overlap, max_step_size, seq_column, protacc_column, intensity_column, delimiter, mod_pattern, ctx.obj.out_dir, prot_accession, start_column, end_column, report, html, sample_column, strict, condition_column, mapping,included, qc, max_group_len)
     if not os.path.exists(ctx.obj.out_dir):
         os.mkdir(ctx.obj.out_dir)
     logging.basicConfig(filename=f'{ctx.obj.out_dir}/epicore.log', level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -130,7 +132,7 @@ def generate_epicore_csv(ctx,evidence_file, min_epi_length, min_overlap, max_ste
     # ----------------------
     # compute core epitopes, map peptides to cores
     # ----------------------
-    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict, total_intens, ctx.obj.strict, ctx.obj.included)
+    protein_df = compute_consensus_epitopes(protein_df, ctx.obj.min_overlap, ctx.obj.max_step_size, ctx.obj.min_epi_length, ctx.obj.intensity_column, ctx.obj.mod_pattern, ctx.obj.proteome_dict, total_intens, ctx.obj.strict, ctx.obj.included, ctx.obj.max_group_len)
     protein_df.to_csv(f'{ctx.obj.out_dir}/epicore_result.csv')
 
     if mapping:

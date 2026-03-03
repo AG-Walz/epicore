@@ -139,11 +139,11 @@ def plot_core_mapping_peptides_hist(epitope_df: pd.DataFrame) ->  plt.figure:
         A histogram visualizing the number of peptides per peptide group.
     """
     fig, ax = plt.subplots(layout='constrained')
-    n_peps = epitope_df['grouped_peptides_sequence'].apply(lambda sequences: len(sequences.split(','))) # TODO check if only unique sequences here
+    n_peps = epitope_df['grouped_peptides_sequence'].apply(lambda sequences: len(set(sequences)))
     ax.hist(n_peps,bins=np.arange(1,max(n_peps)+2,1))
     ax.set_yscale('log')
-    ax.set_xlabel('number of peptides contributing to each consensus epitope')
-    ax.set_ylabel('count')
+    ax.set_xlabel('Number of peptides contributing to a consensus sequence')
+    ax.set_ylabel('Count')
     return fig
 
 
@@ -358,13 +358,18 @@ def qc_plots(protein_df: pd.DataFrame, out_dir: str):
     plot_df['intern_ratio'] = plot_df['intern_max']/plot_df['len_pep']
     plot_df['extern_ratio'] = plot_df.apply(lambda row: min(1,max(row['previous'], row['next'])/row['len_pep']), axis=1)
     plot_df.to_csv(f'{out_dir}/ov.csv')
+
+    figure, axis = plt.subplots(1, 1, dpi=150)
     # plot the intern vs the extern ratio
     matrix, xedges, yedges = np.histogram2d(plot_df['intern_ratio'], plot_df['extern_ratio'], bins=30)
-    im1 = plt.imshow(np.log(np.flip(matrix.T,0), where=(np.flip(matrix.T,0))!=0), extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], cmap='Blues')
-    plt.xlim([0,1])
-    plt.ylim([0,1])
-    plt.colorbar(im1, shrink=0.5)
-    plt.savefig(f'{out_dir}/intern_extern.svg')
+    im1 = axis.imshow(np.log(np.flip(matrix.T,0), where=(np.flip(matrix.T,0))!=0), extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], cmap='Blues')
+    axis.set_xlim([0,1])
+    axis.set_ylim([0,1])
+    cbar = plt.colorbar(im1, shrink=0.5)
+    cbar.set_label('Peptide count (log)')
+    axis.set_xlabel('Intern ratio')
+    axis.set_ylabel('Extern ratio')
+    figure.savefig(f'{out_dir}/intern_extern.svg')
 
     figure, axis = plt.subplots(1, 1, dpi=150)
     axis.hist(plot_df['consensus_sequence_coverage'], 100, color='red', label='all consensus sequences')

@@ -91,7 +91,7 @@ def parallelized_apply(chunk_function: callable, df: pd.DataFrame, function_args
     return df
 
 
-def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool, included: bool) -> pd.DataFrame:
+def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool, included: bool, max_group_len: int) -> pd.DataFrame:
     """Group the peptides to consensus epitopes.
 
     Args:
@@ -107,6 +107,7 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
         strict: Indicates if strict version should be run.
         included: Indicates if a peptide being included in the protein region of 
             a peptide group should be added to it.
+        max_group_len: Maximal length of a peptide group.
 
     Returns:
         The protein_df with the five to seven additional columns: 
@@ -166,12 +167,14 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
             core_intensity += float(intensity[i])
         overlap = int(end_pos[i]) - int(start_pos[i+1]) +1
         group_overlap = min(current_group['ends']) - int(start_pos[i+1]) +1
-        if strict:
-            condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap))
-        elif included:
-            condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) and (current_group['max_end']<int(end_pos[i+1]))
+        max_len_condition = (max_group_len < int(end_pos[i+1]) - current_group['starts'][0]) 
+
+        if included:
+            condition_group = ((((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) or max_len_condition) and (current_group['max_end']<int(end_pos[i+1]))
+        elif strict:
+            condition_group = (((step_size >= max_step_size) and (overlap < min_overlap)) or (overlap < min_overlap) or (group_overlap < min_overlap)) or max_len_condition
         else:
-            condition_group = ((step_size >= max_step_size) and (overlap < min_overlap))
+            condition_group = ((step_size >= max_step_size) and (overlap < min_overlap)) or max_len_condition
 
 
 
@@ -262,7 +265,7 @@ def group_peptides_protein(row: list, min_overlap: int, max_step_size: int, inte
 
 
 
-def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool, included: bool) -> pd.DataFrame:
+def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, intensity_column: str, total_intens: float, strict: bool, included: bool, max_group_len: int) -> pd.DataFrame:
     '''Group the peptides based on their overlap.
 
     Args:
@@ -297,7 +300,7 @@ def group_peptides(protein_df: pd.DataFrame, min_overlap: int, max_step_size: in
     protein_df['peptide_indices'] = [[] for _ in range(len(protein_df))]
 
 
-    protein_df = parallelized_apply(group_peptides_protein,protein_df,function_args=[min_overlap, max_step_size, intensity_column, total_intens, strict,included])
+    protein_df = parallelized_apply(group_peptides_protein,protein_df,function_args=[min_overlap, max_step_size, intensity_column, total_intens, strict,included, max_group_len])
     
     return protein_df
 
@@ -505,7 +508,8 @@ def get_consensus_epitopes(row: list, min_epi_len: int) -> pd.DataFrame:
         min_epi_length: An integer of the minimal length of a consensus epitope.
 
     Returns:
-        The protein_df with one additional column, that contains the consensus epitope sequence of each consensus epitope group.
+        The protein_df with one additional column, that contains the consensus 
+        epitope sequence of each consensus epitope group.
     """
 
     # iterate all peptide groups
@@ -592,7 +596,8 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
     
     Args:
         row: A row of a pandas dataframe containing per row one protein, 
-            peptides mapped to the protein, start and end position of the peptide in the protein and the intensity of the peptide.
+            peptides mapped to the protein, start and end position of the 
+            peptide in the protein and the intensity of the peptide.
         intensity_column: The header of the column containing the intensities
             of the peptides.
     Returns:
@@ -618,7 +623,7 @@ def reorder_peptides(row: pd.Series, intensity_column: str) -> pd.Series:
         
 
 
-def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str, proteome_dict: dict[str,str], total_intens: float, strict: bool, included: bool) -> pd.DataFrame:
+def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_step_size: int, min_epi_len: int, intensity_column: float, mod_pattern: str, proteome_dict: dict[str,str], total_intens: float, strict: bool, included: bool, max_group_len: int) -> pd.DataFrame:
     """ Compute the core and whole sequence of all consensus epitope groups. 
     
     Args:
@@ -638,13 +643,15 @@ def compute_consensus_epitopes(protein_df: pd.DataFrame, min_overlap: int, max_s
         strict: A boolean indicating if the strict version should be run.
         included: A boolean indicating if all peptides included in the sequence 
             of a peptide group should be included in that peptide group.
+        max_group_len: Maximal length of a peptide group.
 
     Returns:
-        The protein_df containing for each protein the core and whole sequence of each of its consensus epitope groups.
+        The protein_df containing for each protein the core and whole sequence 
+        of each of its consensus epitope groups.
     """
     # group peptides
     protein_df = parallelized_apply(reorder_peptides, protein_df, function_args=[intensity_column])
-    protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens, strict, included)
+    protein_df = group_peptides(protein_df, min_overlap, max_step_size, intensity_column, total_intens, strict, included, max_group_len)
     protein_df = protein_df.explode(['grouped_peptides_start', 'grouped_peptides_end', 'grouped_peptides_sample', 'grouped_peptides_sequence', 'grouped_peptides_condition'])
     
     # refine peptide groups at landscape minima
