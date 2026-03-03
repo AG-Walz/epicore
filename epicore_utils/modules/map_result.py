@@ -1,17 +1,11 @@
 """
-Assigns each peptide in the evidence files its core epitopes, the total intensity of that core epitope and the relative core intensity. 
+Assigns each peptide in the evidence files its consensus sequence, 
+the total intensity of that core epitope and the relative core intensity. 
 """
 import warnings
 import pandas as pd
-import ast
-import numpy as np
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
-import re
-import os 
-from itertools import repeat
 import logging
-import time
-import polars as pl
 logger = logging.getLogger(__name__)
 from epicore_utils.modules.parse_input import read_entire_id_output
 
@@ -20,6 +14,7 @@ def aggregate_series(series: pd.Series, delimiter: str) -> str:
 
     Args:
         series: A pandas series.
+        delimiter: The delimiter of the evidence file.
     
     Returns:
         A aggregated version of the pandas series. If all elements of the
@@ -120,13 +115,13 @@ def map_pep_core(evidence_file: str, protein_df: pd.DataFrame, seq_column: str, 
     return evidence_file_df
 
 def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
-    """Generate dataframe that has one epitope per row.
+    """Generate dataframe that has one consensus sequence per row.
 
     Args:
         protein_df: A pandas dataframe containing one protein per row.
 
     Returns:
-        A reordered version of protein_df were each row stores one epitope.
+        A pandas dataframe containing one consensus sequence per row.
     """
     # include intensity columns if present
     if ('core_epitopes_intensity' not in protein_df.columns) and ('relative_core_intensity' not in protein_df.columns):
@@ -136,11 +131,11 @@ def gen_epitope_df(protein_df: pd.DataFrame) -> pd.DataFrame:
 
     cols_acc = cols + ['accession']
 
-    # separate each epitope in one row
+    # separate each consensus sequence in one row
     protein_df_long = protein_df[cols_acc].explode(cols)
     protein_df_long = protein_df_long.astype(str)
 
-    # remove peptide groups occurring multiple times
+    # remove duplicate consensus sequences
     protein_df_long = protein_df_long.drop_duplicates()
 
     epitopes_grouped_df = protein_df_long.groupby(cols)

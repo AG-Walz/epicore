@@ -1,5 +1,7 @@
 """
-Reads in the evidence file and reference profile, computes the peptides positions in the proteome and links a protein accession with all peptides associated with the protein. 
+Reads in the evidence file and reference profile, computes the peptides 
+positions in the proteome and links a protein accession with all peptides 
+associated with the protein. 
 """
 
 import pandas as pd 
@@ -207,8 +209,8 @@ def add_positions(peptides_df: pl.DataFrame, fasta_dict: dict) -> pl.DataFrame:
     '''Adds positions of peptides in the proteins.
 
     Args:
-        fasta_dict: Dictionary containing peptides as keys and accessions as values.
         peptides_df: Polars dataframe containing the peptide sequence and the proteins they map to.
+        fasta_dict: Dictionary containing peptides as keys and accessions as values.
 
     Returns:
         The input dataframe with peptide positions.
@@ -263,6 +265,7 @@ def group_repetitive(start: list[int], end: list[int], pep: str, acc: str, idx: 
     for i in idx[0]:
         updated_start.append(str(start[0]))
 
+    # iterate all peptides of the protein
     for pep_pos in range(len(start)-1):
         for i in idx[pep_pos]:
             group_ends.append(end[pep_pos])
@@ -340,13 +343,13 @@ def parallelized_apply_polars(chunk_function: callable, df: pd.DataFrame, functi
     df = pl.concat(chunk_dfs)
 
     if n_proteins != len(df):
-        raise Exception('Something went wrong in the multiprocessing. Some rows got \
-                        lost. ')
+        raise Exception('Something went wrong in the multiprocessing. Some rows \
+                        got lost. ')
 
     return df
 
             
-def group_repetitive_chunk(chunk_df: pl.DataFrame, start, end):
+def group_repetitive_chunk(chunk_df: pl.DataFrame, start: int, end: int) -> pl.DataFrame:
     ''' Group repetitive peptides.
 
     Args:
