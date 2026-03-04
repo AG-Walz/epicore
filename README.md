@@ -152,11 +152,10 @@ The height indicates how many peptides are mapped to a position in the proteome.
 
 
 ## Workflow
-1. Identification of the location of all peptides in the proteome.
-2. Group peptides whose start position does not differ by more than max_step_size amino acids or whose overlap is larger than min_overlap. max_step_size and min_overlap are parameters that can be specified by the user.
-3. Refine the peptide groups by splitting the peptide groups at positions where the landscape has a minimum.
-4. Identify epitope sequences, as the sequence of each peptide group.
-5. For each peptide sequence, identify the core epitope sequence. The core epitope sequence is defined as the sequence region that has the highest peptide mapping count while having a minimum length of min_epi_length amino acids.
+1. Compute the positions of the peptides in the proteome.
+2. Group peptides based on their overlap. The following three modes are available: Strict, Included and Loose. The strict mode requires all peptides that are assigned to the same group to have a minimal shared overlap of min_epi_length. When the included mode is specified the peptide groups are extended by also adding peptides to the groups that are completely covered by the peptide group region. The loose modes groups peptides, when their start positions do not differ more than max_step_size or when their overlap is larger than min_overlap. max_step_size and min_overlap are parameters that can be specified by the user.
+3. Refine the peptide groups by splitting the peptide groups at positions where their landscape has a minimum. This is only part of the loose mode.
+4. Identify the consensus sequences of each peptide group. The consensus sequence is defined as the sequence region that has the highest landscape value while having a minimum length of min_epi_length. min_epi_length is a parameter that can be specified by the user.
 
 ## Citation
 Epicore is an adaption from the tool developed by Álvaro-Benito et al.[1].<br>
