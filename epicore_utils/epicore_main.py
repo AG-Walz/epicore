@@ -202,8 +202,9 @@ def generate_epicore_csv(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
     )
+    logger.info(f"Starting epicore run (version: {__version__}) ")
     logger.info(
-        f"Parameter: min_epi_length:{min_epi_length}, min_overlap:{min_overlap}, max_step_size:{max_step_size}, strict:{strict}, evidence_file:{evidence_file}, fasta_file:{ctx.obj.reference_proteome}, included:{included}, QC:{qc}"
+        f"Parameter: min_epi_length:{min_epi_length}, min_overlap:{min_overlap}, max_step_size:{max_step_size}, max_group_len:{max_group_len}, strict:{strict}, evidence_file:{evidence_file}, fasta_file:{ctx.obj.reference_proteome}, included:{included}, QC:{qc}"
     )
 
     # ----------------------

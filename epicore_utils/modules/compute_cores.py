@@ -230,21 +230,12 @@ def group_peptides_protein(
         )
 
         if included:
-            condition_group = (
-                (
-                    ((step_size >= max_step_size) and (overlap < min_overlap))
-                    or (overlap < min_overlap)
-                    or (group_overlap < min_overlap)
-                )
-                or max_len_condition
-            ) and (current_group["max_end"] < int(end_pos[i + 1]))
+            condition_group = ((group_overlap < min_overlap) or max_len_condition) and (
+                current_group["max_end"] < int(end_pos[i + 1])
+            )
         elif strict:
-            condition_group = (
-                ((step_size >= max_step_size) and (overlap < min_overlap))
-                or (overlap < min_overlap)
-                or (group_overlap < min_overlap)
-            ) or max_len_condition
-        else:
+            condition_group = (group_overlap < min_overlap) or max_len_condition
+        else:  # loose mode
             condition_group = (
                 (step_size >= max_step_size) and (overlap < min_overlap)
             ) or max_len_condition

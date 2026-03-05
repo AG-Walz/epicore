@@ -3,20 +3,33 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v0.1.8 - 2026/02/02
+## v1.0.0 - [dev]
 
 ### Added
-- Enable epicore for cohorts.
-- The flag --strict, enabling a strict peptide grouping mode.
 - The flag --included, enabling a peptide grouping, where all peptides completely included in the region of a peptide group are added to the peptide group.
 - The flag --mapping, which performs an optional mapping of the input sequences and their information to the determined peptide groups.
 - The flag --QC, which results in qc plots being generated.
 - An additional quality control plot, that visualizes the overlap of a peptide with peptides within its group and the peptides of the neighboring group.
 - The optional parameter max_group_len, which ensures peptide group lengths below a specified threshold.
 
+### Fixed
+- Fix repetitive peptide grouping.
+
+### Removed
+- Support for report.
+
+
+## v0.1.8 - 2026/02/02
+
+### Added
+- Enable epicore for cohorts.
+- The flag --strict, enabling a strict peptide grouping mode.
+- Add quality control plots to output.
+
 ### Changed 
 - Sort peptides with descending end positions and ascending start positions.
 - Split peptide groups at landscape minima in default mode.
+- Add all peptides completely included in a group to it.
 - Change pandas to polars for input parsing.
 - Use multiprocessing.
 
@@ -27,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Support for intensity column.
-- Support for report.
 
 
 ## v0.1.7 - 2025/10/14

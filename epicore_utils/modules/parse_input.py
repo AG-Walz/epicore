@@ -360,7 +360,7 @@ def group_repetitive(
         for i in idx[pep_pos]:
             group_ends.append(end[pep_pos])
         # two start positions are not part of one repetitive region if the next start position is higher than the current end position
-        if int(start[pep_pos + 1]) > int(end[pep_pos]):  # new group
+        if int(start[pep_pos + 1]) > int(end[pep_pos]) + 1:  # new group
             for i in idx[pep_pos]:
                 updated_idx.append(str(i))
                 updated_peps.append(pep)
@@ -564,26 +564,9 @@ def prot_pep_link(
         proteins_df = peptides_df.explode(protacc_column, start_column, end_column)
         proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.Int64))
 
-        proteins_df = proteins_df.group_by(protacc_column).agg(
-            pl.col(seq_column),
-            pl.col(start_column),
-            pl.col(end_column),
-            pl.col("peptide_index"),
-            pl.col(sample_column),
-            pl.col(condition_column),
-        )
-        proteins_df = (
-            proteins_df.explode(
-                start_column,
-                end_column,
-                seq_column,
-                "peptide_index",
-                sample_column,
-                condition_column,
-            )
-            .group_by(seq_column, protacc_column, sample_column, condition_column)
-            .agg(pl.col(start_column), pl.col(end_column), pl.col("peptide_index"))
-        )
+        proteins_df = proteins_df.group_by(
+            seq_column, protacc_column, sample_column, condition_column
+        ).agg(pl.col(start_column), pl.col(end_column), pl.col("peptide_index"))
 
         proteins_df = proteins_df.with_columns(
             pl.col(end_column).cast(pl.List(pl.Int64))
