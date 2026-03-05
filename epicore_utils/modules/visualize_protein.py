@@ -51,8 +51,7 @@ def plot_peptide_length_dist(
         histogram visualizing the length distribution of peptides and epitopes.
         The two integers are the number of peptides and the number of epitopes.
     """
-
-    first_long = first_df.explode(first_explode).drop_duplicates("sequence")
+    first_long = first_df.explode(first_explode).drop_duplicates(first_explode)
     second_long = second_df.explode(second_explode).drop_duplicates(
         ["whole_epitopes", "consensus_epitopes"]
     )

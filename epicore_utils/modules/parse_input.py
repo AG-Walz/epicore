@@ -507,35 +507,18 @@ def group_repetitive_chunk(
 
 def prot_pep_link(
     peptides_df: pd.DataFrame,
-    seq_column: str,
-    protacc_column: str,
     intensity_column: str,
-    start_column: str,
-    end_column: str,
     delimiter: str,
-    sample_column: str,
-    condition_column: str,
 ) -> pl.DataFrame:
     """Converts a dataframe from one peptide per row to one protein per row.
 
     Args:
         peptides_df: A pandas dataframe containing the columns peptide sequence,
             protein accession, intensity, start position and end position.
-        seq_column: The string of the header of the column containing
-            peptide sequence information in the evidence file.
-        protacc_column: The string of the header of the column containing
-            protein accession information in the evidence file.
         intensity_column: The string of the header of the column containing
             intensity information in the evidence file.
-        start_column: The string of the header of the column containing the
-            start positions of peptides in proteins.
-        end_column: The string of the header of the column containing the end
-            position of peptides in proteins.
         delimiter: The delimiter that separates multiple entries in one column
             in the evidence file.
-        sample_column: The header of the column containing sample information.
-        condition_column: The header of the column containing condition
-            information.
 
     Returns:
         A polars dataframe containing one protein per row and all peptides
@@ -546,8 +529,6 @@ def prot_pep_link(
         Exception: If a peptide does not occur in the protein to which it is
             mapped.
     """
-    start_column = "start"
-    end_column = "end"
 
     if intensity_column:
         proteins = pd.DataFrame(
@@ -561,19 +542,15 @@ def prot_pep_link(
             ]
         )
     else:
-        proteins_df = peptides_df.explode(protacc_column, start_column, end_column)
-        proteins_df = proteins_df.with_columns(pl.col(start_column).cast(pl.Int64))
+        proteins_df = peptides_df.explode("accessions", "start", "end")
+        proteins_df = proteins_df.with_columns(pl.col("start").cast(pl.Int64))
 
         proteins_df = proteins_df.group_by(
-            seq_column, protacc_column, sample_column, condition_column
-        ).agg(pl.col(start_column), pl.col(end_column), pl.col("peptide_index"))
+            "sequence", "accessions", "sample", "condition"
+        ).agg(pl.col("start"), pl.col("end"), pl.col("peptide_index"))
 
-        proteins_df = proteins_df.with_columns(
-            pl.col(end_column).cast(pl.List(pl.Int64))
-        )
-        proteins_df = proteins_df.with_columns(
-            pl.col(start_column).cast(pl.List(pl.Int64))
-        )
+        proteins_df = proteins_df.with_columns(pl.col("end").cast(pl.List(pl.Int64)))
+        proteins_df = proteins_df.with_columns(pl.col("start").cast(pl.List(pl.Int64)))
         proteins_df = proteins_df.with_columns(
             pl.col("peptide_index").cast(pl.List(pl.List(pl.Int64)))
         )
@@ -623,10 +600,10 @@ def prot_pep_link(
             pl.col("repetitive").list.get(5).alias("condition")
         )
         proteins_df = proteins_df.with_columns(
-            (pl.col(start_column).str.split(delimiter)).alias(start_column)
+            (pl.col("start").str.split(delimiter)).alias("start")
         )
         proteins_df = proteins_df.with_columns(
-            (pl.col(end_column).str.split(delimiter)).alias(end_column)
+            (pl.col("end").str.split(delimiter)).alias("end")
         )
         proteins_df = proteins_df.with_columns(
             (pl.col("peptide_index").str.split(delimiter)).alias("peptide_index")
@@ -644,8 +621,8 @@ def prot_pep_link(
         proteins_df = proteins_df.explode(
             "start", "end", "peptide_index", "sequence", "sample", "condition"
         )
-        proteins_df = proteins_df.group_by(protacc_column).agg(
-            pl.col(seq_column),
+        proteins_df = proteins_df.group_by("accessions").agg(
+            pl.col("sequence"),
             pl.col("start"),
             pl.col("end"),
             pl.col("peptide_index"),
@@ -653,7 +630,7 @@ def prot_pep_link(
             pl.col("condition"),
         )
 
-        proteins_df = proteins_df.rename({protacc_column: "accession"})
+        proteins_df = proteins_df.rename({"accessions": "accession"})
 
     return proteins_df
 
@@ -711,12 +688,22 @@ def parse_input(
         condition_column,
         True,
     )
+    peptides_df = peptides_df.rename(
+        {
+            seq_column: "sequence",
+            protacc_column: "accessions",
+            sample_column: "sample",
+            condition_column: "condition",
+        }
+    )
+    if start_column and end_column:
+        peptides_df = peptides_df.rename({start_column: "start", end_column: "end"})
 
     # get peptides/proteins with protein accessions that do not appear in the proteome
     peptides = pl.Series(
         peptides_df.with_columns(
             (
-                pl.col(protacc_column).list.filter(
+                pl.col("accessions").list.filter(
                     ~pl.element().is_in(list(proteome_dict.keys()))
                 )
             ).alias("removed")
@@ -726,50 +713,46 @@ def parse_input(
 
     # remove all peptides occurring multiple times in different modification and charge states
     peptides_df = peptides_df.with_columns(
-        (pl.col(seq_column).str.replace_all(r"\(.*?\)", "")).alias(seq_column)
+        (pl.col("sequence").str.replace_all(r"\(.*?\)", "")).alias("sequence")
     )
     # remove peptides with protein accessions that do not appear in the proteome
     if start_column and end_column:
         peptides_df = peptides_df.with_columns(
-            pl.col(start_column).list.gather(
-                pl.col(protacc_column).list.eval(
-                    pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(
-                        start_column
-                    )
+            pl.col("start").list.gather(
+                pl.col("accessions").list.eval(
+                    pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias("start")
                 )
             )
         )
         peptides_df = peptides_df.with_columns(
-            pl.col(end_column).list.gather(
-                pl.col(protacc_column).list.eval(
-                    pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(
-                        end_column
-                    )
+            pl.col("end").list.gather(
+                pl.col("accessions").list.eval(
+                    pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias("end")
                 )
             )
         )
         peptides_df = peptides_df.group_by(
-            [protacc_column, seq_column, sample_column, condition_column]
+            ["accessions", "sequence", "sample", "condition"]
         ).agg(
-            pl.col(start_column).first(),
-            pl.col(end_column).first(),
+            pl.col("start").first(),
+            pl.col("end").first(),
             pl.col("peptide_index"),
         )
     else:
         peptides_df = peptides_df.group_by(
-            [protacc_column, seq_column, sample_column, condition_column]
+            ["accessions", "sequence", "sample", "condition"]
         ).agg(pl.col("peptide_index"))
     peptides_df = peptides_df.with_columns(
-        pl.col(protacc_column).list.gather(
-            pl.col(protacc_column).list.eval(
+        pl.col("accessions").list.gather(
+            pl.col("accessions").list.eval(
                 pl.arg_where(~pl.element().is_in(n_removed_proteins)).alias(
-                    protacc_column
+                    "accessions"
                 )
             )
         )
     )
     # remove peptides that are not annotated with any proteome accession
-    peptides_df = peptides_df.remove(pl.col(protacc_column).list.len() == 0)
+    peptides_df = peptides_df.remove(pl.col("accessions").list.len() == 0)
 
     # compute start and end positions of the peptides
     if not start_column and not end_column:
@@ -778,17 +761,7 @@ def parse_input(
     logger.info(
         f"Peptides mapped to the following {len(n_removed_proteins)} proteins were removed since the proteins do not appear in the proteome fasta file: {n_removed_proteins}."
     )
-    protein_df = prot_pep_link(
-        peptides_df,
-        seq_column,
-        protacc_column,
-        intensity_column,
-        start_column,
-        end_column,
-        delimiter,
-        sample_column,
-        condition_column,
-    )
+    protein_df = prot_pep_link(peptides_df, intensity_column, delimiter)
     if intensity_column:
         total_intens = peptides_df[intensity_column].sum()
     else:

@@ -158,7 +158,9 @@ def map_pep_core(
     protein_df = protein_df.groupby("peptide_index").agg(delimiter.join)
 
     # prepare peptide_df
-    if start_column and end_column:
+    if ("start" in evidence_file_df.columns) and (
+        end_column in evidence_file_df.columns
+    ):
         evidence_file_df = evidence_file_df.drop(
             columns=["start", "end", protacc_column]
         )
