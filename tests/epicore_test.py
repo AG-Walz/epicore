@@ -57,6 +57,7 @@ large_evidence = 'tests/large_evidence.csv'
 min_landscape_evidence = 'tests/minimal_landscape_evidence.csv'
 evidence_path_included = 'tests/evidence_file_included.csv'
 evidence_path_limlen = 'tests/evidence_file_lengthlim.csv'
+evidence_path_smallpeps = 'tests/evidence_file_smallpeps.csv'
 
 # result files
 path_result_one = 'tests/result_one.csv'
@@ -70,6 +71,7 @@ large_result = 'tests/large_evidence_result.csv'
 min_landscape_result = 'tests/result_min_landscape.csv'
 path_result_included='tests/result_included.csv'
 path_result_limlen = 'tests/result_lengthlim.csv'
+path_result_smallpeps = 'tests/result_smallpeps.csv'
 
 # fasta files
 large_fasta = 'tests/spHUMANwoi_130927_CLL_mut.fasta'
@@ -274,19 +276,11 @@ def test_seven():
 ####################
 # Test included flag
 ####################
-# define params
-seq_column = 'sequence'
-protacc_column = 'accessions'
-intensity_column = None
-sample_column = 'sample'
 start_column = 'start'
 end_column = 'end'
-delimiter = ';'
-mod_pattern = ''
 min_overlap = 7
 max_step_size = 4
 min_epi_length = 10
-condition_column = 'condition'
 strict=True
 included=True
 
@@ -306,21 +300,6 @@ def test_included():
 ##############################
 # test group length limitation
 ##############################
-# define params
-seq_column = 'sequence'
-protacc_column = 'accessions'
-intensity_column = None
-sample_column = 'sample'
-start_column = 'start'
-end_column = 'end'
-delimiter = ';'
-mod_pattern = ''
-min_overlap = 7
-max_step_size = 4
-min_epi_length = 10
-condition_column = 'condition'
-strict=True
-included=True
 max_group_len=22
 
 # run epicore on test file one 
@@ -333,3 +312,27 @@ result_file_limlen = result_file_limlen.sort_values(by='sequence').reset_index(d
 # test if epicore produces expected final result
 def test_limlen():
   assert pep_cores_mapping_limlen.equals(result_file_limlen)
+
+
+##############################
+# test small peptides 
+##############################
+# define params
+min_overlap = 9
+max_step_size = 5
+min_epi_length = 9
+strict=True
+included=False
+max_group_len=100
+
+# run epicore on test file one 
+pep_cores_mapping_smallpeps = run_epicore(proteome_path, evidence_path_smallpeps, seq_column, protacc_column, intensity_column, start_column, end_column, delimiter, mod_pattern, min_overlap, max_step_size, min_epi_length, sample_column, strict, condition_column, included, max_group_len)
+
+# read in expected result and sort it
+result_file_smallpeps = pd.read_csv(path_result_smallpeps)
+result_file_smallpeps = result_file_smallpeps.sort_values(by='sequence').reset_index(drop=True).astype(str)
+print(pep_cores_mapping_smallpeps)
+print(result_file_smallpeps)
+# test if epicore produces expected final result
+def test_smallpeps():
+  assert pep_cores_mapping_smallpeps.equals(result_file_smallpeps)
