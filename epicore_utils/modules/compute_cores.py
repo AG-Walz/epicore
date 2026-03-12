@@ -214,6 +214,7 @@ def group_peptides_protein(
         current_group["max_end"] = max(current_group["max_end"], int(end_pos[i]))
         current_group["indices"].append(peptide_indices[i])
         current_sequence_length = len(sequences[i])
+        next_sequence_length = len(sequences[i+1])
 
         # redefine end position
         if current_sequence_length >= min_overlap: # peptide long enough
@@ -236,8 +237,9 @@ def group_peptides_protein(
         group_overlap = current_group['min_end'] - int(start_pos[i + 1]) + 1
 
         # prevent group breakage for sequences shorter then min_overlap
-        if (current_sequence_length < min_overlap) & (group_overlap==current_sequence_length):
+        if (next_sequence_length < min_overlap) and (group_overlap == next_sequence_length):
             group_overlap = min_overlap
+
         max_len_condition = (
             max_group_len < int(end_pos[i + 1]) - current_group["starts"][0]
         )
