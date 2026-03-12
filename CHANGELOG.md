@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An additional quality control plot, that visualizes the overlap of a peptide with peptides within its group and the peptides of the neighboring group.
 - The optional parameter max_group_len, which ensures peptide group lengths below a specified threshold.
 
+### Changed
+- Prohibit peptides shorter than min_overlap to induce peptide group breakage.
+
 ### Fixed
 - Fix repetitive peptide grouping.
 

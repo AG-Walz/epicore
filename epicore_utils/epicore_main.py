@@ -124,9 +124,9 @@ def main(ctx, reference_proteome, out_dir):
     ctx.obj = InputParameter(reference_proteome=reference_proteome, out_dir=out_dir)
 
 
-@click.option("--min_epi_length", type=click.INT, default=11)
-@click.option("--min_overlap", type=click.INT, default=11)
-@click.option("--max_step_size", type=click.INT, default=5)
+@click.option("--min_epi_length", type=click.IntRange(5,20), default=11)
+@click.option("--min_overlap", type=click.IntRange(1,100), default=9)
+@click.option("--max_step_size", type=click.IntRange(0,100), default=5)
 @click.option("--seq_column", type=click.STRING, required=True)
 @click.option("--sample_column", type=click.STRING, required=True)
 @click.option("--protacc_column", type=click.STRING, required=True)
@@ -137,7 +137,7 @@ def main(ctx, reference_proteome, out_dir):
 @click.option("--prot_accession", type=click.STRING)
 @click.option("--start_column", type=click.STRING)
 @click.option("--end_column", type=click.STRING)
-@click.option("--max_group_len", type=click.INT, default=100)
+@click.option("--max_group_len", type=click.IntRange(1,100), default=100)
 @click.option("--report", is_flag=True)
 @click.option("--html", is_flag=True)
 @click.option("--strict", is_flag=True)
@@ -274,11 +274,11 @@ def generate_epicore_csv(
 
     ext = os.path.splitext(evidence_file)[1]
     if ext == ".csv":
-        evidence_df = pd.read_csv(evidence_file, delimiter=",")
+        evidence_df = pd.read_csv(evidence_file, delimiter=",", usecols=[ctx.obj.seq_column, ctx.obj.protacc_column])
     elif ext == ".tsv":
-        evidence_df = pd.read_csv(evidence_file, delimiter="\t")
+        evidence_df = pd.read_csv(evidence_file, delimiter="\t", usecols=[ctx.obj.seq_column, ctx.obj.protacc_column])
     elif ext == ".xlsx":
-        evidence_df = pd.read_excel(evidence_file)
+        evidence_df = pd.read_excel(evidence_file, usecols=[ctx.obj.seq_column, ctx.obj.protacc_column])
     evidence_df[ctx.obj.protacc_column] = evidence_df[ctx.obj.protacc_column].apply(
         lambda accessions: accessions.split(ctx.obj.delimiter)
     )
@@ -298,7 +298,7 @@ def generate_epicore_csv(
         ctx.obj.seq_column,
         "consensus_epitopes",
         "peptides",
-        "consensus epitopes",
+        "consensus sequences",
         mod_pattern,
     )
     fig.savefig(f"{ctx.obj.out_dir}/length_distributions.svg")

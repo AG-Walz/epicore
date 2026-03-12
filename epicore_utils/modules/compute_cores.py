@@ -191,6 +191,7 @@ def group_peptides_protein(
         "indices": [],
         "included_previous": [],
         "max_end": 0,
+        "min_end": 100_000
     }
 
     if intensity_column:
@@ -212,6 +213,14 @@ def group_peptides_protein(
         current_group["conditions"].append(conditions[i])
         current_group["max_end"] = max(current_group["max_end"], int(end_pos[i]))
         current_group["indices"].append(peptide_indices[i])
+        current_sequence_length = len(sequences[i])
+
+        # redefine end position
+        if current_sequence_length >= min_overlap: # peptide long enough
+            current_group['min_end'] = min(current_group['min_end'], int(end_pos[i]))
+        if current_group['min_end'] == 100_000: # enforce new group 
+            current_group['min_end'] = 0
+
         if included:
             # check if peptide is included in previous peptide groups
             row, current_group = included_lookback(
@@ -224,7 +233,11 @@ def group_peptides_protein(
         if intensity_column:
             core_intensity += float(intensity[i])
         overlap = int(end_pos[i]) - int(start_pos[i + 1]) + 1
-        group_overlap = min(current_group["ends"]) - int(start_pos[i + 1]) + 1
+        group_overlap = current_group['min_end'] - int(start_pos[i + 1]) + 1
+
+        # prevent group breakage for sequences shorter then min_overlap
+        if (current_sequence_length < min_overlap) & (group_overlap==current_sequence_length):
+            group_overlap = min_overlap
         max_len_condition = (
             max_group_len < int(end_pos[i + 1]) - current_group["starts"][0]
         )
@@ -237,7 +250,9 @@ def group_peptides_protein(
             condition_group = (group_overlap < min_overlap) or max_len_condition
         else:  # loose mode
             condition_group = (
-                (step_size >= max_step_size) and (overlap < min_overlap)
+                (step_size >= max_step_size) and (overlap < min_overlap) and (
+                    current_group["max_end"] < int(end_pos[i + 1])
+                    ) # not included
             ) or max_len_condition
 
         # start new peptide group if condition are met
@@ -272,6 +287,7 @@ def group_peptides_protein(
                     "indices": [],
                     "included_previous": [],
                     "max_end": 0,
+                    "min_end": 100_000,
                 }
                 if intensity_column:
                     core_intensity = 0

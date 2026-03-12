@@ -11,6 +11,7 @@ from matplotlib.ticker import MaxNLocator
 import pandas as pd
 import numpy as np
 import re
+import ast
 from epicore_utils.modules.compute_cores import parallelized_apply
 import logging
 
@@ -57,7 +58,7 @@ def plot_peptide_length_dist(
     )
 
     logger.info(
-        f"{len(first_long)} peptides were reduced to {len(second_long)} epitopes."
+        f"{len(first_long)} peptides were reduced to {len(second_long)} consensus sequences."
     )
 
     # compute a histogram of the sequence lengths both dataframes
@@ -170,7 +171,7 @@ def plot_core_mapping_peptides_hist(epitope_df: pd.DataFrame) -> plt.figure:
     """
     fig, ax = plt.subplots(layout="constrained")
     n_peps = epitope_df["grouped_peptides_sequence"].apply(
-        lambda sequences: len(set(sequences))
+        lambda sequences: len(set(ast.literal_eval(sequences)))
     )
     ax.hist(n_peps, bins=np.arange(1, max(n_peps) + 2, 1))
     ax.set_yscale("log")
