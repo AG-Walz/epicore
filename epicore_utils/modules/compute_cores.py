@@ -191,8 +191,11 @@ def group_peptides_protein(
         "indices": [],
         "included_previous": [],
         "max_end": 0,
+        "prev_end": 0,
         "min_end": 100_000
     }
+
+
 
     if intensity_column:
         grouped_peptides_intensity = []
@@ -212,6 +215,8 @@ def group_peptides_protein(
         current_group["samples"].append(samples[i])
         current_group["conditions"].append(conditions[i])
         current_group["max_end"] = max(current_group["max_end"], int(end_pos[i]))
+        if len(sequences[i]) >= min_overlap: 
+            current_group['prev_end'] = int(end_pos[i])
         current_group["indices"].append(peptide_indices[i])
         current_sequence_length = len(sequences[i])
         next_sequence_length = len(sequences[i+1])
@@ -233,7 +238,14 @@ def group_peptides_protein(
         mapping.append(n_jumps)
         if intensity_column:
             core_intensity += float(intensity[i])
+
         overlap = int(end_pos[i]) - int(start_pos[i + 1]) + 1
+        if len(sequences[i+1]) < min_overlap:
+            if end_pos[i] >= end_pos[i+1]:
+                overlap = min_overlap
+        if (len(sequences[i]) < min_overlap):
+            overlap = current_group['prev_end'] - int(start_pos[i + 1]) + 1
+
         group_overlap = current_group['min_end'] - int(start_pos[i + 1]) + 1
 
         # prevent group breakage for sequences shorter then min_overlap
@@ -252,9 +264,7 @@ def group_peptides_protein(
             condition_group = (group_overlap < min_overlap) or max_len_condition
         else:  # loose mode
             condition_group = (
-                (step_size >= max_step_size) and (overlap < min_overlap) and (
-                    current_group["max_end"] < int(end_pos[i + 1])
-                    ) # not included
+                (step_size >= max_step_size) and (overlap < min_overlap)
             ) or max_len_condition
 
         # start new peptide group if condition are met
@@ -289,6 +299,7 @@ def group_peptides_protein(
                     "indices": [],
                     "included_previous": [],
                     "max_end": 0,
+                    "prev_end": 0,
                     "min_end": 100_000,
                 }
                 if intensity_column:
@@ -384,11 +395,11 @@ def group_peptides(
         min_overlap: The minimal overlap required between two peptides for them
             to be grouped together.
         max_step_size: The distance between two peptides up to which the overlap
-            between the peptide is not considered for the peptide groupiing.
+            between the peptide is not considered for the peptide grouping.
         intensity_column: Header of the column containing intensity information.
         total_intens: The total intensity of all peptides in a file.
         strict: Boolean that indicates if the strict mode should be run.
-        included: Boolean that indicates if all peptides completly included in
+        included: Boolean that indicates if all peptides completely included in
             the protein region of a peptide group should be added to the group.
 
     Returns:
