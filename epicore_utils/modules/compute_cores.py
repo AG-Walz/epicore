@@ -192,10 +192,8 @@ def group_peptides_protein(
         "included_previous": [],
         "max_end": 0,
         "prev_end": 0,
-        "min_end": 100_000
+        "min_end": 100_000,
     }
-
-
 
     if intensity_column:
         grouped_peptides_intensity = []
@@ -215,17 +213,17 @@ def group_peptides_protein(
         current_group["samples"].append(samples[i])
         current_group["conditions"].append(conditions[i])
         current_group["max_end"] = max(current_group["max_end"], int(end_pos[i]))
-        if len(sequences[i]) >= min_overlap: 
-            current_group['prev_end'] = int(end_pos[i])
+        if len(sequences[i]) >= min_overlap:
+            current_group["prev_end"] = int(end_pos[i])
         current_group["indices"].append(peptide_indices[i])
         current_sequence_length = len(sequences[i])
-        next_sequence_length = len(sequences[i+1])
+        next_sequence_length = len(sequences[i + 1])
 
         # redefine end position
-        if current_sequence_length >= min_overlap: # peptide long enough
-            current_group['min_end'] = min(current_group['min_end'], int(end_pos[i]))
-        if current_group['min_end'] == 100_000: # enforce new group 
-            current_group['min_end'] = 0
+        if current_sequence_length >= min_overlap:  # peptide long enough
+            current_group["min_end"] = min(current_group["min_end"], int(end_pos[i]))
+        if current_group["min_end"] == 100_000:  # enforce new group
+            current_group["min_end"] = 0
 
         if included:
             # check if peptide is included in previous peptide groups
@@ -240,16 +238,18 @@ def group_peptides_protein(
             core_intensity += float(intensity[i])
 
         overlap = int(end_pos[i]) - int(start_pos[i + 1]) + 1
-        if len(sequences[i+1]) < min_overlap:
-            if end_pos[i] >= end_pos[i+1]:
+        if len(sequences[i + 1]) < min_overlap:
+            if end_pos[i] >= end_pos[i + 1]:
                 overlap = min_overlap
-        if (len(sequences[i]) < min_overlap):
-            overlap = current_group['prev_end'] - int(start_pos[i + 1]) + 1
+        if len(sequences[i]) < min_overlap:
+            overlap = current_group["prev_end"] - int(start_pos[i + 1]) + 1
 
-        group_overlap = current_group['min_end'] - int(start_pos[i + 1]) + 1
+        group_overlap = current_group["min_end"] - int(start_pos[i + 1]) + 1
 
         # prevent group breakage for sequences shorter then min_overlap
-        if (next_sequence_length < min_overlap) and (group_overlap == next_sequence_length):
+        if (next_sequence_length < min_overlap) and (
+            group_overlap == next_sequence_length
+        ):
             group_overlap = min_overlap
 
         max_len_condition = (
