@@ -199,7 +199,7 @@ def included(
     included_df = included_df[overlap_df[overlap_df.all(axis=1)].index]
 
     # get row of interest and check if any value is true
-    return included_df.loc[f"{start}-{end}",].any()
+    return included_df.loc[f"{start}-{end}"].any()
 
 
 def get_largest_overlap(
@@ -460,7 +460,7 @@ def qc_plots(protein_df: pd.DataFrame, out_dir: str):
         plot_df["intern_ratio"], plot_df["extern_ratio"], bins=30
     )
     im1 = axis.imshow(
-        np.log(np.flip(matrix.T, 0), where=(np.flip(matrix.T, 0)) != 0),
+        np.log(np.flip(matrix.T, 0), where=(np.flip(matrix.T, 0)) != 0,out=np.flip(matrix.T, 0)),
         extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
         cmap="Blues",
     )
