@@ -145,7 +145,7 @@ The plot visualizes for each peptide the intern versus the extern ratio. The int
 
 #### landscape visualization
 An example landscape visualization of a protein generated with the plot-landscape command:<br>
-<img src="landscape_example.png" width="600">
+<img src="landscape_example.png" width="600"><br>
 The height indicates how many peptides are mapped to a position in the proteome. The different colors indicate different epitopes. Lighter areas of a color indicate how many peptides are associated with the epitope. The more intense region indicate the core epitope. 
 
 
