@@ -128,24 +128,24 @@ The pep_cores_mapping.csv contains all the information from the initial evidence
 
 #### consensus_sequence_coverage.svg
 A histogram that visualizes the consensus sequence coverage of all peptides in the input. 
-The consensus sequence coverage is defined for each peptide in a peptide group as the fraction of the consensus sequence corresponding to the peptide group that is covered by the peptide. 
-![An example consensus_sequence_coverage.svg](consensus_sequence_coverage.png)
+The consensus sequence coverage is defined for each peptide in a peptide group as the fraction of the consensus sequence corresponding to the peptide group that is covered by the peptide. <br>
+<img src="consensus_sequence_coverage.png" width="350">
 
 #### epitope_intensity_hist.svg
-The plot visualizes how many peptides contribute to each peptide group.
-![An example epitope_intensity_hist plot](epitope_intensity_hist.svg)
+The plot visualizes how many peptides contribute to each peptide group. <br>
+<img src="epitope_intensity_hist.svg" width="350">
 
 #### length_distributions.svg
-The plot visualizes the length distribution of the original peptides and the computed peptide groups. 
-![An example length_distributions plot](length_distributions.svg)
+The plot visualizes the length distribution of the original peptides and the computed peptide groups. <br>
+<img src="length_distributions.svg" width="350">
 
 #### intern_extern.svg
-The plot visualizes for each peptide the intern versus the extern ratio. The intern ratio is defined as the maximal overlap of a peptide with a peptides within the same group. The extern ratio is defined as the maximal overlap of a peptide with the peptides of an adjacent peptide group.
-![An example intern_extern plot](intern_extern.svg)
+The plot visualizes for each peptide the intern versus the extern ratio. The intern ratio is defined as the maximal overlap of a peptide with a peptides within the same group. The extern ratio is defined as the maximal overlap of a peptide with the peptides of an adjacent peptide group.<br>
+<img src="intern_extern.svg" width="350">
 
 #### landscape visualization
-An example landscape visualization of a protein generated with the plot-landscape command:
-![An example landscape of the protein sp|P62736|ACTA_HUMAN](landscape_example.png)
+An example landscape visualization of a protein generated with the plot-landscape command:<br>
+<img src="landscape_example.png" width="600">
 The height indicates how many peptides are mapped to a position in the proteome. The different colors indicate different epitopes. Lighter areas of a color indicate how many peptides are associated with the epitope. The more intense region indicate the core epitope. 
 
 
