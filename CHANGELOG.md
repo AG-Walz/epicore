@@ -3,6 +3,25 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.0.0 - 2026/04/15
+
+### Added
+- The flag --included, enabling a peptide grouping, where all peptides completely included in the region of a peptide group are added to the peptide group.
+- The flag --mapping, which performs an optional mapping of the input sequences and their information to the determined peptide groups.
+- The flag --QC, which results in qc plots being generated.
+- An additional quality control plot, that visualizes the overlap of a peptide with peptides within its group and the peptides of the neighboring group.
+- The optional parameter max_group_len, which ensures peptide group lengths below a specified threshold.
+
+### Changed
+- Prohibit peptides shorter than min_overlap to induce peptide group breakage.
+
+### Fixed
+- Fix repetitive peptide grouping.
+
+### Removed
+- Support for report.
+
+
 ## v0.1.8 - 2026/02/02
 
 ### Added
