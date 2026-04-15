@@ -238,11 +238,8 @@ def group_peptides_protein(
             core_intensity += float(intensity[i])
 
         overlap = int(end_pos[i]) - int(start_pos[i + 1]) + 1
-        if len(sequences[i + 1]) < min_overlap:
-            if end_pos[i] >= end_pos[i + 1]:
-                overlap = min_overlap
-        if len(sequences[i]) < min_overlap:
-            overlap = current_group["prev_end"] - int(start_pos[i + 1]) + 1
+        if (min(len(sequences[i + 1]),len(sequences[i])) < min_overlap) & (overlap == min(len(sequences[i + 1]),len(sequences[i]))):
+            overlap = min_overlap
 
         group_overlap = current_group["min_end"] - int(start_pos[i + 1]) + 1
 
