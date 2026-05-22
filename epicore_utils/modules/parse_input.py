@@ -45,7 +45,7 @@ def read_entire_id_output(
                 id_output, separator="\t", infer_schema_length=0
             ).with_row_index("peptide_index")
         elif ext == ".xlsx":
-            peptides_df = pl.read_excel(id_output)
+            peptides_df = pl.read_excel(id_output).with_row_index("peptide_index")
         else:
             raise Exception("The file type of your evidence file is not supported. \
                             Please use an evidence file that has one of the \
