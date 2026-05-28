@@ -20,7 +20,8 @@ dependencies = [
 requires-python = '>= 3.10'
 description = 'Compute core epitopes from multiple overlapping peptides.'
 readme = 'README.md'
-license= {text = 'MIT license'}
+license= 'MIT'
+license-file=['LICENSE']
 keywords = ['peptides', 'epitopes', 'core epitopes']
 authors = [{name='Jana Hoffmann', email='epicore_jana@family-hoffmann.de'}]
 classifiers = ['Programming Language :: Python :: 3', 'Programming Language :: Python :: 3.10']
