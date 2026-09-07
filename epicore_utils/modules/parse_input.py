@@ -3,14 +3,15 @@ Reads in the evidence file and reference profile, computes the peptides
 positions in the proteome and links a protein accession with all peptides
 associated with the protein.
 """
-
+import threading
+import multiprocessing as mp
 import pandas as pd
 import re
 from Bio import SeqIO
 import os
 import itertools
 import polars as pl
-from multiprocessing import get_context, cpu_count
+from multiprocessing import cpu_count, get_context
 from typing import Union
 
 import logging
@@ -416,14 +417,13 @@ def group_repetitive(
 
 
 def parallelized_apply_polars(
-    chunk_function: callable, df: pd.DataFrame, function_args=[]
+    chunk_function: callable, df: pd.DataFrame
 ) -> pd.DataFrame:
     """Apply a function to a dataframe using multiprocessing.
 
     Args:
         chunk_function: The function that should be applyed to the chunks.
         df: The dataframe which is splitted into chunks.
-        function_args: A list containing all arguments of chunk_function.
 
     Returns:
         The input dataframe to which the chunk_function was applied.
@@ -438,7 +438,10 @@ def parallelized_apply_polars(
     # size of the chunk_dfs
     block_size = max(len(df) // n_parallel, 1)
 
-    with get_context("spawn").Pool(min(n_parallel, block_size)) as pool:
+    if len(threading.enumerate()) > 1:
+        print('More than one thread.')
+
+    with get_context("spawn").Pool(n_parallel) as pool:
         chunk_dfs = pool.starmap(
             chunk_function,
             [
@@ -451,11 +454,10 @@ def parallelized_apply_polars(
                             else len(df)
                         )
                     ],
-                    *function_args,
                 )
                 for chunk in range(min(n_parallel, block_size))
             ],
-        )
+        )        
     df = pl.concat(chunk_dfs)
 
     if n_proteins != len(df):
@@ -466,19 +468,17 @@ def parallelized_apply_polars(
 
 
 def group_repetitive_chunk(
-    chunk_df: pl.DataFrame, start: int, end: int
+    chunk_df: pl.DataFrame
 ) -> pl.DataFrame:
     """Group repetitive peptides.
 
     Args:
         chunk_df: A polars DataFrame containing one protein per row.
-        start: The row, at which the polars DataFrame gets sliced.
-        end: The row, at which the polars DataFrame gets sliced.
 
     Returns:
         A slice of the input DataFrame with grouped repetitive peptides.
     """
-    return chunk_df[start:end].with_columns(
+    return chunk_df.with_columns(
         pl.struct(
             "start",
             "end",
@@ -561,25 +561,12 @@ def prot_pep_link(
             pl.col("condition").cast(pl.List(pl.String))
         )
 
-        n_parallel = max(1, cpu_count() - 5)
-        block_size = max(len(proteins_df) // n_parallel, 1)
-        with get_context("spawn").Pool(n_parallel) as pool:
-            chunk_dfs = pool.starmap(
-                group_repetitive_chunk,
-                [
-                    (
-                        proteins_df,
-                        chunk * block_size,
-                        (
-                            (chunk + 1) * block_size
-                            if chunk < (n_parallel - 1)
-                            else len(proteins_df)
-                        ),
-                    )
-                    for chunk in range(n_parallel)
-                ],
-            )
-        proteins_df = pl.concat(chunk_dfs)
+        if len(threading.enumerate()) > 1:
+            print('More than one thread.')
+
+        proteins_df = parallelized_apply_polars(
+            group_repetitive_chunk, 
+            proteins_df)
 
         proteins_df = proteins_df.with_columns(
             pl.col("repetitive").list.get(0).alias("start")
