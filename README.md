@@ -39,26 +39,26 @@ Replace ```<EPICORE_RESULT>``` with the file epicore_result.csv, which can be ge
 
 
 ### Input 
-The description of all input parameters for the generate-epicore-csv command can be found in the table below. Parameters enclosed in square brackets are optional. The tool supports any output that contains a sequence, protein accession, sample and condition column. 
+The description of all input parameters for the generate-epicore-csv command can be found in the table below. Parameters enclosed in square brackets are optional. The tool supports any output that contains a sequence, protein accession, sample and condition column. Required input parameters are highlighted with *.
 | Parameter | Default | Description |
 | --- | --- | --- |
-| <span style='opacity: 0.7;'>max_step_size</span> | 5 | Parameter for the default mode. Two peptides with a distance below the specified value are always assigned to one group. | 
-| <span style='opacity: 0.7;'>min_overlap</span> | 9 | Parameter for all modes. It specifies the minimal overlap between two peptides to be assigned to the same group in default mode and the minimal required overlap between all peptides that are summarized in one group in strict mode. |
-| <span style='opacity: 0.7;'>min_epi_length</span> | 11 | Parameter for all modes. It specifies the minimal length of identified consensus sequences. | 
-| seq_column | None | Defines the column header in the input evidence file corresponding to the column containing the peptide sequences. |
-| protacc_column | None | Defines the column header in the input evidence file corresponding to the column containing the protein accessions. |
-| <span style='opacity: 0.7;'>start_column</span> | None | Defines the column header in the input evidence file corresponding to the column containing the peptide start positions. |
-| <span style='opacity: 0.7;'>end_column</span> | None | Defines the column header in the input evidence file corresponding to the column containing the peptide end positions.|
-| sample_column | None | Defines the column header in the input evidence file corresponding to the column containing the sample information.|
-| condition_column | None | Defines the column header in the input evidence file corresponding to the column containing the condition information.|
-| out_dir | None | Specifies the output directory. |
-| delimiter | None | Defines the delimiter that separates multiple values in one cell in the input evidence file. |
-| <span style='opacity: 0.7;'>strict</span> | not set | If set, a strict version is run. The strict version ensures the defined minimal overlap is given between all peptides in a peptide group. Peptides shorter than the specified minimal overlap are an exception. |
-| <span style='opacity: 0.7;'>included</span> | not set | A version of the strict mode. If set, all strict mode peptide groups are extended by peptides that are included in the protein region of the group but not included in the group due to the min_overlap requirement between all peptides. |
-| <span style='opacity: 0.7;'>QC</span> | not set | If set, two QC plots [consensus_sequence_coverage.png](#consensus_sequence_coveragesvg) and [intern_extern.svg](#intern_externsvg), are generated. |
-| <span style='opacity: 0.7;'>mapping</span> | not set | If set, the [pep_cores_mapping](#pep_cores_mappingtsv) file is generated. |
-| <span style='opacity: 0.7;'>html</span> | not set | If set, a html version of the generated plots gets computed.|
-| <span style='opacity: 0.7;'>max_group_len</span> | None | If specified, the parameter ensures that all peptide groups have a length below the specified threshold. Peptides exceeding the defined length are an exception. |
+| * ```seq_column``` | None | Defines the column header in the input evidence file corresponding to the column containing the peptide sequences. |
+| * ```protacc_column``` | None | Defines the column header in the input evidence file corresponding to the column containing the protein accessions. |
+| * ```sample_column``` | None | Defines the column header in the input evidence file corresponding to the column containing the sample information.|
+| * ```condition_column``` | None | Defines the column header in the input evidence file corresponding to the column containing the condition information.|
+| * ```out_dir``` | None | Specifies the output directory. |
+| * ```delimiter``` | None | Defines the delimiter that separates multiple values in one cell in the input evidence file. |
+| ```max_step_size``` | 5 | Parameter for the default mode. Two peptides with a distance below the specified value are always assigned to one group. | 
+| ```min_overlap``` | 9 | Parameter for all modes. It specifies the minimal overlap between two peptides to be assigned to the same group in default mode and the minimal required overlap between all peptides that are summarized in one group in strict mode. |
+| ```min_epi_length``` | 11 | Parameter for all modes. It specifies the minimal length of identified consensus sequences. | 
+| ```start_column``` | None | Defines the column header in the input evidence file corresponding to the column containing the peptide start positions. |
+| ```end_column``` | None | Defines the column header in the input evidence file corresponding to the column containing the peptide end positions.|
+| ```strict``` | not set | If set, a strict version is run. The strict version ensures the defined minimal overlap is given between all peptides in a peptide group. Peptides shorter than the specified minimal overlap are an exception. |
+| ```included``` | not set | A version of the strict mode. If set, all strict mode peptide groups are extended by peptides that are included in the protein region of the group but not included in the group due to the min_overlap requirement between all peptides. |
+| ```QC``` | not set | If set, two QC plots [consensus_sequence_coverage.png](#consensus_sequence_coveragesvg) and [intern_extern.svg](#intern_externsvg), are generated. |
+| ```mapping``` | not set | If set, the [pep_cores_mapping](#pep_cores_mappingtsv) file is generated. |
+| ```html``` | not set | If set, a html version of the generated plots gets computed.|
+| ```max_group_len``` | None | If specified, the parameter ensures that all peptide groups have a length below the specified threshold. Peptides exceeding the defined length are an exception. |
 
 For the plot-landscape command, --protacc specifies proteins for which a consensus landscape is visualized. Separate multiple parameters with commas. 
 
