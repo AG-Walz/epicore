@@ -3,7 +3,7 @@ Computes consensus sequences, by grouping overlapping peptides, building a
 landscape for each group and identifying plateaus with a defined minimal length
 in each landscape.
 """
-
+import threading 
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
@@ -102,6 +102,9 @@ def parallelized_apply(
     n_parallel = max(1, cpu_count() - 5)
     # size of the chunk_dfs
     blocksize = max(len(df) // n_parallel, 1)
+
+    if len(threading.enumerate()) > 1:
+        print('More than one thread.')
 
     with mp.Pool(min(n_parallel, blocksize)) as pool:
         chunk_dfs = pool.starmap(
