@@ -441,7 +441,7 @@ def parallelized_apply_polars(
     if len(threading.enumerate()) > 1:
         print('More than one thread.')
 
-    with get_context("spawn").Pool(n_parallel) as pool:
+    with get_context("spawn").Pool(min(n_parallel, block_size)) as pool:
         chunk_dfs = pool.starmap(
             chunk_function,
             [

@@ -106,7 +106,7 @@ def parallelized_apply(
     if len(threading.enumerate()) > 1:
         print('More than one thread.')
 
-    with mp.Pool(n_parallel) as pool:
+    with mp.Pool(min(n_parallel, blocksize)) as pool:
         chunk_dfs = pool.starmap(
             function_apply,
             [

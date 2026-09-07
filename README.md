@@ -55,9 +55,8 @@ The description of all input parameters for the generate-epicore-csv command can
 | ```end_column``` | None | Defines the column header in the input evidence file corresponding to the column containing the peptide end positions.|
 | ```strict``` | not set | If set, a strict version is run. The strict version ensures the defined minimal overlap is given between all peptides in a peptide group. Peptides shorter than the specified minimal overlap are an exception. |
 | ```included``` | not set | A version of the strict mode. If set, all strict mode peptide groups are extended by peptides that are included in the protein region of the group but not included in the group due to the min_overlap requirement between all peptides. |
-| ```QC``` | not set | If set, two QC plots [consensus_sequence_coverage.png](#consensus_sequence_coveragesvg) and [intern_extern.svg](#intern_externsvg), are generated. |
+| ```QC``` | not set | If set, two QC plots [consensus_sequence_coverage.svg](#consensus_sequence_coveragesvg) and [intern_extern.svg](#intern_externsvg), are generated. |
 | ```mapping``` | not set | If set, the [pep_cores_mapping](#pep_cores_mappingtsv) file is generated. |
-| ```html``` | not set | If set, a html version of the generated plots gets computed.|
 | ```max_group_len``` | None | If specified, the parameter ensures that all peptide groups have a length below the specified threshold. Peptides exceeding the defined length are an exception. |
 
 For the plot-landscape command, --protacc specifies proteins for which a consensus landscape is visualized. Separate multiple parameters with commas. 
