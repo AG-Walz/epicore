@@ -137,7 +137,7 @@ def main(ctx, reference_proteome, out_dir):
 @click.option("--prot_accession", type=click.STRING)
 @click.option("--start_column", type=click.STRING)
 @click.option("--end_column", type=click.STRING)
-@click.option("--max_group_len", type=click.IntRange(1, 100), default=1000)
+@click.option("--max_group_len", type=click.IntRange(1, 1000), default=1000)
 @click.option("--report", is_flag=True)
 @click.option("--html", is_flag=True)
 @click.option("--strict", is_flag=True)
