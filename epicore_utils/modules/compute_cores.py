@@ -585,6 +585,8 @@ def new_groups(row: pd.Series) -> list:
         positions.
     """
     splits = row["split_position"]
+    # keep first position of local minimum as split position
+    splits = np.flatnonzero(splits[1:] & ~splits[:-1]) + 1
 
     row["new_groups_start"] = []
     row["new_groups_end"] = []
