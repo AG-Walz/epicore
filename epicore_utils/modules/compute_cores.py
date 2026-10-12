@@ -555,17 +555,22 @@ def find_minima(row: pd.Series) -> np.array:
     """
     landscape = row["landscape"]
 
+    landscape_change = np.insert(np.cumsum(np.diff(landscape) != 0),0,False)
+
+    # keep first occurrence of each landscape value
+    compact_landscape = landscape[np.insert(np.diff(landscape).astype(bool), 0, True)]
+
     # find minima
-    landscape_f = np.roll(landscape, -1) > landscape
-    landscape_b = np.roll(landscape, 1) > landscape
+    compact_landscape_f = np.roll(compact_landscape, -1) > compact_landscape
+    compact_landscape_b = np.roll(compact_landscape, 1) > compact_landscape
 
     # ensure minima is not at the edge
-    edge = np.full(len(landscape), True)
+    edge = np.full(len(compact_landscape), True)
     edge[0] = False
     edge[-1] = False
-    landscape = landscape_f & landscape_b & edge
+    compact_landscape = compact_landscape_f & compact_landscape_b & edge
 
-    row["split_rows"] = landscape
+    row["split_rows"] = compact_landscape[landscape_change]
     return row
 
 
@@ -610,7 +615,7 @@ def new_groups(row: pd.Series) -> list:
         row["grouped_peptides_sequence"],
     ):
 
-        if len(splits) == 0 or splits[0] > start:
+        if len(splits) == 0 or splits[0] - 5 > start:
             # build peptide group before split
             start_list.append(start)
             end_list.append(end)
@@ -618,7 +623,7 @@ def new_groups(row: pd.Series) -> list:
             condition_list.append(condition)
             sequence_list.append(sequence)
 
-        elif splits[0] <= start:
+        elif splits[0] - 5 <= start:
             # start new peptide group after minimum
             row["new_groups_start"].append(start_list)
             row["new_groups_end"].append(end_list)
