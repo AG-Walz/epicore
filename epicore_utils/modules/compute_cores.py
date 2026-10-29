@@ -558,7 +558,7 @@ def find_minima(row: pd.Series) -> np.array:
     landscape_change = np.insert(np.cumsum(np.diff(landscape) != 0),0,False)
 
     # keep first occurrence of each landscape value
-    compact_landscape = landscape[np.insert(np.diff(landscape).astype(bool), 0, True)]
+    compact_landscape = np.asarray(landscape)[np.insert(np.diff(landscape).astype(bool), 0, True)]
 
     # find minima
     compact_landscape_f = np.roll(compact_landscape, -1) > compact_landscape
@@ -586,7 +586,7 @@ def new_groups(row: pd.Series) -> list:
     """
     splits = row["split_position"]
     # keep first position of local minimum as split position
-    splits = np.flatnonzero(splits[1:] & ~splits[:-1]) + 1
+    splits = splits[np.flatnonzero(splits[1:] & ~splits[:-1])]
 
     row["new_groups_start"] = []
     row["new_groups_end"] = []
