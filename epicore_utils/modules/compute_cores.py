@@ -586,7 +586,8 @@ def new_groups(row: pd.Series) -> list:
     """
     splits = row["split_position"]
     # keep first position of local minimum as split position
-    splits = splits[np.flatnonzero(splits[1:] & ~splits[:-1])]
+    if len(splits) != 0:
+        splits = splits[np.insert(np.diff(splits) != 1,0, True)]
 
     row["new_groups_start"] = []
     row["new_groups_end"] = []
